@@ -21,7 +21,7 @@ def lambda_handler(event, context):
     caa_params = event['caa-params']
     caa_identifiers = caa_params['caa-identities']
     domain = dns.name.from_text(event['identifier'])
-    
+    is_wc_domain = domain.to_text().startswith('*.')
     caa_found = False
     valid_for_issue = True
     
@@ -51,7 +51,7 @@ def lambda_handler(event, context):
         }
     
     
-    is_wc_domain = domain.to_text().startswith('*.')
+    
     caa_tags_seen = {}
     
     for rr in rrset:
