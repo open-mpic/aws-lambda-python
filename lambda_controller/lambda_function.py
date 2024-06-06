@@ -3,15 +3,15 @@ import boto3
 import time
 import concurrent.futures
 from datetime import datetime
-
+import os
 
 # TODO: specify these via config
 func_arns = {
     "validations": {
-        # "region": "lambda_validator_arn" # format
+        "us-east-2": os.environ['validator_arn'] # format
         },
     "caa": {
-        # "region": "lambda_validator_arn" # format
+        "us-east-2": os.environ['caa_arn'] # format
     }
 }
 
@@ -35,7 +35,6 @@ def thread_call(lambda_arn, region, input_params):
 
 
 def lambda_handler(event, context):
-    
     request_path = event["requestContext"]["http"]["path"]
     body = json.loads(event["body"])
     regions = body["regions"]
