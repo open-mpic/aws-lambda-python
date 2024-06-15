@@ -35,13 +35,13 @@ def thread_call(lambda_arn, region, input_params):
 
 
 def lambda_handler(event, context):
-    request_path = event["requestContext"]["http"]["path"]
+    request_path = event["path"]
     body = json.loads(event["body"])
     regions = body["regions"]
     quorum_count = body["quorum-count"]
     
     async_calls_to_invoke = []
-    
+
     match request_path:
         case '/caa-lookup':
             input_args = {"identifier": body["identifier"],
