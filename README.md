@@ -10,22 +10,27 @@ All requirements for running the API are packaged and uploaded to AWS as a lambd
 - Open Tofu (https://opentofu.org/) is installed. This is an open-source fork of Terraform and the configs in this project are largely interoperable between the two.
 - Python3.11 which can be run with the command `python3.11`
 - Bash. Several deployment scripts are written for bash.
+- A Python3 install linked to the command python3 and the requirements from requirements.txt (in the root directory) installed. These requirements are for the configure.py script (run on the local machine) and are distinct from the requirements in layer/requirements.txt which are requirements for the AWS Lambda Functions run in the cloud.
 
 ## Deployment Steps
 1. Install layer dependencies. cd to the `layer` directory. Run `./1-install.sh` to create a virtual Python environment and install the project dependencies via pip.
 2. Package the AWS layer. In the `layer` directory, run `./2-package.sh`. This will make a file called `layer_content.zip` which will later be referenced by Open Tofu.
 3. Zip all functions. AWS Lambda functions are usually deployed from zip files. cd to the main project directory and then run `./zip-all.sh`
-4. Deploy the entire package with Open Tofu. The configs should create a default API with a single region (us-east-2). Simply run `tofu init` in the project root directory. Then run `tofu apply` and type `yes` at the confirmation prompt.
+4. Edit config.yaml to contain the proper values needed for the deployment. A default config.yaml for a 6-perspective deployment with the controller in us-east-2 is included in this repo.
+5. Run `./configure.py` from the root directory of the repo to generate Open Tofu files from templates.
+7. Deploy the entire package with Open Tofu. cd to the `open-tofu` directory where .tf files are located. Then run `tofu init`. Then run `tofu apply` and type `yes` at the confirmation prompt.
 
 ## Testing
 If you log into your AWS account, you can now see the API listed under the AWS API Gateway page. From here you can get the API URL provided by amazon or test the API directly with different parameters. You can also view and test the individual lambda functions that are called.
 
 ## Development
-Code changes can easily be deployed by editing the .py files and then rezipping the project via `./zip-all.sh`. Then, running `tofu apply` will update only on the required resources and leave the others unchanged.
+Code changes can easily be deployed by editing the .py files and then rezipping the project via `./zip-all.sh`. Then, running `tofu apply` run from the open-tofu directory will update only on the required resources and leave the others unchanged. If any `.tf.template` files are changed or `config.yaml` is edited, `./configure.py` must be rerun followed by `tofu apply` in the open-tofu directory.
+
+`.generated.tf` files should not be edited directly and are not checked into git. Edit `.tf.template` files and regenerate the files via `./configure.py`.
 
 ## Tear-down
-If you would like to take the API down, run `tofu destroy` and type `yes` at the prompt. This will remove all AWS resources created by Open Tofu for the API.
-
+If you would like to take the API down, run `tofu destroy` in the open-tofu directory and type `yes` at the prompt. This will remove all AWS resources created by Open Tofu for the API.
+`./clean.sh` in the root directory also clears generated/zip files.
 
 # Timeline of remaining tasks
 
