@@ -5,6 +5,9 @@ lambda_caa_resolver/lambda_caa_resolver.zip
 layer/create_layer
 layer/layer_content.zip
 
+# Generated tf files.
+*.generated.tf
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
