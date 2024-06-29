@@ -1,0 +1,11 @@
+# A list of perspectives with the format <RIR>.<AWS-Region>
+perspectives:
+  - arin.us-east-2
+  - arin.us-west-2
+  - ripe.eu-central-1
+  - ripe.eu-west-2
+  - apnic.ap-northeast-2
+  - apnic.ap-southeast-1
+
+# The AWS region name for the API deployment.
+api-region: us-east-2

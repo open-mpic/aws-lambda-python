@@ -5,14 +5,15 @@ import concurrent.futures
 from datetime import datetime
 import os
 
-# TODO: specify these via config
+# Load lists of perspective names, validator arns, and caa arns from environment vars.
+perspective_name_list = os.environ['perspective_names'].split("|")
+validator_arn_list = os.environ['validator_arns'].split("|")
+caa_arn_list = os.environ['caa_arns'].split("|")
+
+
 func_arns = {
-    "validations": {
-        "us-east-2": os.environ['validator_arn'] # format
-        },
-    "caa": {
-        "us-east-2": os.environ['caa_arn'] # format
-    }
+    "validations": {perspective_name_list[i]: validator_arn_list[i] for i in range(len(perspective_name_list))},
+    "caa": {perspective_name_list[i]: caa_arn_list[i] for i in range(len(perspective_name_list))}
 }
 
 VERSION = "0.1.0b"
@@ -21,7 +22,7 @@ def thread_call(lambda_arn, region, input_params):
     print(f'Started lambda call for region {region} at {str(datetime.now())}')
     
     tic_init = time.perf_counter()
-    client = boto3.client('lambda', region)
+    client = boto3.client('lambda', region.split(".")[1])
     tic = time.perf_counter()
     response = client.invoke(
         FunctionName = lambda_arn,      
@@ -37,7 +38,10 @@ def thread_call(lambda_arn, region, input_params):
 def lambda_handler(event, context):
     request_path = event["path"]
     body = json.loads(event["body"])
-    regions = body["regions"]
+    if "regions" in body:
+        regions = body["regions"]
+    else:
+        regions = perspective_name_list
     quorum_count = body["quorum-count"]
     
     async_calls_to_invoke = []
@@ -70,7 +74,7 @@ def lambda_handler(event, context):
     
     num_perspectives = len(regions)
     perspective_responses = {}
-    valid_by_perspective = {r: True for r in regions}
+    valid_by_perspective = {r: False for r in regions}
     
     # example code: https://docs.python.org/3/library/concurrent.futures.html
     with concurrent.futures.ThreadPoolExecutor(max_workers=num_perspectives) as executor:
@@ -89,7 +93,7 @@ def lambda_handler(event, context):
                 persp_resp_body = json.loads(persp_resp['body'])
                 if persp_resp_body['ValidForIssue']:
                     print(f'Perspective in {persp_resp_body["Region"]} was valid!')
-                valid_by_perspective[region] &= persp_resp_body['ValidForIssue']
+                valid_by_perspective[region] |= persp_resp_body['ValidForIssue']
                 if optype not in perspective_responses:
                     perspective_responses[optype] = []
                 perspective_responses[optype].append(persp_resp)
