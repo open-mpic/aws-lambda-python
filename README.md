@@ -19,6 +19,7 @@ All requirements for running the API are packaged and uploaded to AWS as a lambd
 4. Edit config.yaml to contain the proper values needed for the deployment. A default config.yaml for a 6-perspective deployment with the controller in us-east-2 is included in this repo.
 5. Run `./configure.py` from the root directory of the repo to generate Open Tofu files from templates.
 7. Deploy the entire package with Open Tofu. cd to the `open-tofu` directory where .tf files are located. Then run `tofu init`. Then run `tofu apply` and type `yes` at the confirmation prompt.
+8. Get the URL of the deployed API endpoint by running `./get_api_url.py` in the root directory.
 
 ## Testing
 If you log into your AWS account, you can now see the API listed under the AWS API Gateway page. From here you can get the API URL provided by amazon or test the API directly with different parameters. You can also view and test the individual lambda functions that are called.
