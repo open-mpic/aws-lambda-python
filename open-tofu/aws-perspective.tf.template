@@ -34,4 +34,9 @@ resource "aws_lambda_function" "lambda_caa_resolver_{{region}}" {
     runtime = "python3.11"
     layers = [aws_lambda_layer_version.python311-open-mpic-layer_{{region}}.arn]
     provider = aws.{{region}}
+    environment {
+      variables = {
+        default_caa_domains = {{default-caa-domains}}
+      }
+    }
 }

@@ -59,6 +59,12 @@ def main(raw_args=None):
         main_tf_string = main_tf_string.replace("{{caa-resolver-arns-list}}", f"\"{arn_caa_resolver_list}\"")
         
 
+        # Replace default perspective count and default quorum.
+        main_tf_string = main_tf_string.replace("{{default-perspective-count}}", f"\"{config['default-perspective-count']}\"")
+        main_tf_string = main_tf_string.replace("{{default-quorum}}", f"\"{config['default-quorum']}\"")
+        
+
+
 
         # Derive the out file from the input file name.
         if not args.main_tf_template.endswith(".tf.template"):
@@ -79,6 +85,11 @@ def main(raw_args=None):
         # Iterate through the different regions specified and produce an output file for each region.
         for region in regions:
             aws_perspective_tf_region = aws_perspective_tf.replace("{{region}}", region)
+            
+            # Construct the default CAA domain list.
+            default_caa_domains_list = "|".join(config['caa-domains'])
+            aws_perspective_tf_region = aws_perspective_tf_region.replace("{{default-caa-domains}}", f"\"{default_caa_domains_list}\"")
+
             if not args.aws_perspective_tf_template.endswith(".tf.template"):
                 print(f"Error: invalid tf template name: {args.aws_perspective_tf_template}. Make sure all tf tempalte files end in '.tf.template'.")
                 exit()

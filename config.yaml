@@ -9,3 +9,12 @@ perspectives:
 
 # The AWS region name for the API deployment.
 api-region: us-east-2
+
+# The default number of perspectives to use.
+default-perspective-count: 6
+
+# The default quorum to use.
+default-quorum: 5
+
+caa-domains:
+  - example-ca.example.com

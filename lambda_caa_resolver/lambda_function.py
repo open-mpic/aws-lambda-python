@@ -3,6 +3,9 @@ import dns.resolver
 import json
 import os
 
+# Load the default CAA domain list.
+default_caa_domain_list = os.environ['default_caa_domains'].split("|")
+
 
 # pseudocode for CAA RRset search (RFC 8659):
 # RelevantCAASet(domain):
@@ -15,13 +18,28 @@ import os
 ISSUE_TAG = 'issue'
 ISSUEWILD_TAG = 'issuewild'
 
-
+# Todo: format perspective response to match API description.
 def lambda_handler(event, context):
 
     caa_params = event['caa-params']
-    caa_identifiers = caa_params['caa-identities']
+
+    # Assume the default system configured identifiers and override if sent in the API call.
+    caa_identifiers = default_caa_domain_list
+    if 'caa-domains' in caa_params:
+        caa_identifiers = caa_params['caa-domains']
+
     domain = dns.name.from_text(event['identifier'])
-    is_wc_domain = domain.to_text().startswith('*.')
+    
+
+    # Use the cert type field to check if the domain is a wildcard.
+    is_wc_domain = False
+    if 'certificate-type' in caa_params:
+        cert_type = caa_params['certificate-type']
+        if cert_type not in ['tls-server', 'tls-server:wildcard']:
+            raise ValueError(f"Invalid cert type: {cert_type}")
+        is_wc_domain = cert_type == 'tls-server:wildcard'
+
+
     caa_found = False
     valid_for_issue = True
     
@@ -64,6 +82,7 @@ def lambda_handler(event, context):
         else:
             caa_tags_seen[tag] = (rr.flags, [val])
     
+    # Todo: check this logic.
     for tag, (flags, val) in caa_tags_seen.items():
         if tag == ISSUE_TAG and not is_wc_domain:
             

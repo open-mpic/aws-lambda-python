@@ -4,7 +4,7 @@ import os
 import sys
 import requests
 
-
+# Todo: format perspective response to match API description.
 def lambda_handler(event, context):
 
     region = os.environ['AWS_REGION']
@@ -16,11 +16,11 @@ def lambda_handler(event, context):
     valid_params = event['validation-params']
 
 
-    if valid_method == 'http':
+    if valid_method == 'http-generic':
     
         challenge_path = valid_params['path']
         challenge_url = f"http://{identifier}/{challenge_path}"
-        expected = valid_params['expected-value']
+        expected = valid_params['expected-challenge']
 
         r = requests.get(challenge_url)
     
@@ -47,12 +47,12 @@ def lambda_handler(event, context):
                 'Error': r.reason
                 }
             }
-    elif valid_method == 'dns':
+    elif valid_method == 'dns-generic':
         
         challenge_prefix = valid_params['prefix']
         rdtype = dns.rdatatype.from_text(valid_params['record-type'])
         name_to_resolve = f'{challenge_prefix}.{identifier}'
-        expected = valid_params['expected-value']
+        expected = valid_params['expected-challenge']
         
         print(f'Resolving {rdtype.name} for {name_to_resolve}...')
         try:
