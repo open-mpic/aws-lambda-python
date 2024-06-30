@@ -12,6 +12,7 @@ validator_arn_list = os.environ['validator_arns'].split("|")
 caa_arn_list = os.environ['caa_arns'].split("|")
 default_perspective_count = int(os.environ['default_perspective_count'])
 default_quorum = int(os.environ['default_quorum'])
+enforce_distinct_rir_regions = int(os.environ['enforce_distinct_rir_regions']) == 1
 
 
 
@@ -161,8 +162,20 @@ def lambda_handler(event, context):
                 perspective_responses[optype].append(persp_resp)
 
     valid_by_op_type = {}
+    two_rir_regions_by_op_type = {}
     for optype in ['validation', 'caa']:
         valid_perspective_count = sum(valid_by_perspective_by_op_type[optype].values())
+        
+        # Create a list of valid perspectives.
+        valid_perspectives = [perspective for perspective in valid_by_perspective_by_op_type[optype] if valid_by_perspective_by_op_type[optype][perspective]]
+
+        # Create a list of RIRs that have a valid perspective.
+        valid_rirs = [perspective.split(".")[0] for perspective in valid_perspectives]
+
+        distinct_valid_rirs = set(valid_rirs)
+        print(len(distinct_valid_rirs))
+        two_rir_regions_by_op_type[optype] = len(distinct_valid_rirs) >= 2
+
         # Todo: optionally enforce 2 distinct RIR policy.
         print(f"overall OK to issue for {optype}? {valid_perspective_count >= quorum_count} num valid VPs: {valid_perspective_count} num to meet quorum: {quorum_count}" )
         valid_by_op_type[optype] = valid_perspective_count >= quorum_count
@@ -175,20 +188,21 @@ def lambda_handler(event, context):
     match request_path:
         case '/caa-lookup':
             resp_body['perspectives'] = perspective_responses['caa']
-            resp_body['is-valid'] = valid_by_op_type['caa']
+            resp_body['is-valid'] = valid_by_op_type['caa'] and (not enforce_distinct_rir_regions or two_rir_regions_by_op_type['caa'])
         case '/validation':
             resp_body['perspectives'] = perspective_responses['validation']
             resp_body['validation-details'] = body['validation-details']
             resp_body['validation-method'] = body['validation-method']
-            resp_body['is-valid'] = valid_by_op_type['validation']
+            resp_body['is-valid'] = valid_by_op_type['validation'] and (not enforce_distinct_rir_regions or two_rir_regions_by_op_type['validation'])
         case '/validation-with-caa-lookup':
             resp_body['perspectives-validation'] = perspective_responses['validation']
             resp_body['perspectives-caa'] = perspective_responses['caa']
             resp_body['validation-details'] = body['validation-details']
             resp_body['validation-method'] = body['validation-method']
-            resp_body['is-valid'] = valid_by_op_type['validation'] and valid_by_op_type['caa']
-            resp_body['is-valid-validation'] = valid_by_op_type['validation']
-            resp_body['is-valid-caa'] = valid_by_op_type['caa']
+            resp_body['is-valid-validation'] = valid_by_op_type['validation'] and (not enforce_distinct_rir_regions or two_rir_regions_by_op_type['validation'])
+            resp_body['is-valid-caa'] = valid_by_op_type['caa'] and (not enforce_distinct_rir_regions or two_rir_regions_by_op_type['caa'])
+            resp_body['is-valid'] = resp_body['is-valid-validation'] and resp_body['is-valid-caa']
+            
 
 
     return {

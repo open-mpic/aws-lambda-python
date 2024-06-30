@@ -16,5 +16,8 @@ default-perspective-count: 6
 # The default quorum to use.
 default-quorum: 5
 
+# Whether to enforce whether two distinct RIR regions must succeed.
+enforce-distinct-rir-regions: true
+
 caa-domains:
   - example-ca.example.com

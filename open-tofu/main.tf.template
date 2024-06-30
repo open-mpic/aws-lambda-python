@@ -68,6 +68,7 @@ resource "aws_lambda_function" "lambda_controller" {
         caa_arns = {{caa-resolver-arns-list}}
         default_perspective_count = {{default-perspective-count}}
         default_quorum = {{default-quorum}}
+        enforce_distinct_rir_regions = {{enforce-distinct-rir-regions}}
       }
     }
 
