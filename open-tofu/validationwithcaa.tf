@@ -21,6 +21,8 @@ resource "aws_api_gateway_method" "validationwithcaa" {
 
   authorization = "NONE"
 
+  api_key_required = true
+
 }
 
 

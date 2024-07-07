@@ -21,6 +21,8 @@ resource "aws_api_gateway_method" "validation" {
 
   authorization = "NONE"
 
+  api_key_required = true
+
 }
 
 

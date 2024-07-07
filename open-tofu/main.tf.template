@@ -115,3 +115,31 @@ resource "aws_lambda_permission" "lambda_permission_api" {
   # within API Gateway.
   source_arn = "${aws_api_gateway_rest_api.open_mpic_api.execution_arn}/*"
 }
+
+
+
+# Set up the API key for the API.
+resource "aws_api_gateway_api_key" "open_mpic" {
+  name = "open_mpic"
+}
+
+resource "aws_api_gateway_usage_plan_key" "prod_usage_key" {
+  key_id        = aws_api_gateway_api_key.open_mpic.id
+  key_type      = "API_KEY"
+  usage_plan_id = aws_api_gateway_usage_plan.prod_usage_plan.id
+}
+
+resource "aws_api_gateway_usage_plan" "prod_usage_plan" {
+  name         = "prod-usage-plan"
+  description  = "Production usage plan for Open MPIC"
+  product_code = "prod-open-mpic"
+
+  api_stages {
+    api_id = aws_api_gateway_rest_api.open_mpic_api.id
+    stage  = aws_api_gateway_deployment.deployment.stage_name
+  }
+
+  
+}
+
+

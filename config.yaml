@@ -1,4 +1,4 @@
-# A list of perspectives with the format <RIR>.<AWS-Region>
+# A list of perspectives with the format <RIR>.<AWS-Region> TODO link to pages.
 perspectives:
   - arin.us-east-2
   - arin.us-west-2
@@ -7,14 +7,14 @@ perspectives:
   - apnic.ap-northeast-2
   - apnic.ap-southeast-1
 
-# The AWS region name for the API deployment.
+# The AWS region name for the API gateway and controller.
 api-region: us-east-2
 
 # The default number of perspectives to use.
-default-perspective-count: 6
+default-perspective-count: 5
 
 # The default quorum to use.
-default-quorum: 5
+default-quorum: 4
 
 # Whether to enforce whether two distinct RIR regions must succeed.
 enforce-distinct-rir-regions: true
