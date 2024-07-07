@@ -5,6 +5,7 @@ import concurrent.futures
 from datetime import datetime
 import os
 import random
+import hashlib
 
 # Load lists of perspective names, validator arns, and caa arns from environment vars.
 perspective_name_list = os.environ['perspective_names'].split("|")
@@ -13,6 +14,7 @@ caa_arn_list = os.environ['caa_arns'].split("|")
 default_perspective_count = int(os.environ['default_perspective_count'])
 default_quorum = int(os.environ['default_quorum'])
 enforce_distinct_rir_regions = int(os.environ['enforce_distinct_rir_regions']) == 1
+hash_secret = os.environ['hash_secret']
 
 
 
@@ -88,6 +90,12 @@ def lambda_handler(event, context):
 
     # Extract the identifier.
     identifier = system_params['identifier']
+
+    # Seed the random generator with the hash secret concatinated to the identifier in all lower.
+    # This prevents the adversary from gaining an advantage by retrying and getting different vantage point sets.
+    random.seed(hashlib.sha256((hash_secret + identifier.lower()).encode('ASCII')).digest())
+
+
 
     regions = random_select_perspectives_considering_rir(perspective_name_list, default_perspective_count)
     if 'perspectives' in system_params and 'perspective-count' in system_params:

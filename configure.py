@@ -3,6 +3,8 @@
 import argparse
 import os
 import yaml
+import secrets
+import string
 
 
 def parse_args(raw_args):
@@ -67,6 +69,10 @@ def main(raw_args=None):
         main_tf_string = main_tf_string.replace("{{enforce-distinct-rir-regions}}", f"\"{1 if config['enforce-distinct-rir-regions'] else 0}\"")
         
 
+        # Store the secret key for the vantage points hash in an environment variable.
+        hash_secret = ''.join(secrets.choice(string.ascii_letters) for i in range(20))
+        main_tf_string = main_tf_string.replace("{{hash-secret}}", f"\"{hash_secret}\"")
+        
 
         # Derive the out file from the input file name.
         if not args.main_tf_template.endswith(".tf.template"):
