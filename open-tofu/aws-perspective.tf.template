@@ -1,7 +1,3 @@
-provider "aws" {
-  alias = "{{region}}"
-  region = "{{region}}"
-}
 
 # The python openmpic layer must be created in the region of the functions.
 resource "aws_lambda_layer_version" "python311-open-mpic-layer_{{region}}" {

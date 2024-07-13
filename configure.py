@@ -13,10 +13,14 @@ def parse_args(raw_args):
 
     parser.add_argument("-c", "--config",
                         default=f"{dirname}/config.yaml")
+    parser.add_argument("-r", "--available_regions",
+                        default=f"{dirname}/aws-available-regions.yaml")
     parser.add_argument("-m", "--main_tf_template",
                         default=f"{dirname}/open-tofu/main.tf.template")
     parser.add_argument("-a", "--aws_perspective_tf_template",
                         default=f"{dirname}/open-tofu/aws-perspective.tf.template")
+    parser.add_argument("-p", "--aws_provider_tf_template",
+                        default=f"{dirname}/open-tofu/aws-provider.tf.template")
     return parser.parse_args(raw_args)
 
 # Main function. Optional raw_args array for specifying command line arguments in calls from other python scripts. If raw_args=none, argparse will get the arguments from the command line.
@@ -32,7 +36,22 @@ def main(raw_args=None):
         except yaml.YAMLError as exc:
             print(f"Error loading YAML config at {args.config}. Project not configured. Error details: {exec}.")
             exit()
+    aws_available_regions = {}
+    with open(args.available_regions) as stream:
+        try:
+            aws_available_regions = yaml.safe_load(stream)['aws-available-regions']
+        except yaml.YAMLError as exc:
+            print(f"Error loading YAML config at {args.available_regions}. Project not configured. Error details: {exec}.")
+            exit()
 
+    # Remove all old files.
+    open_tofu_dir = '/'.join(args.aws_perspective_tf_template.split('/')[:-1])
+    print(open_tofu_dir)
+    for file in os.listdir(open_tofu_dir):
+        print(f"try {os.path.join(open_tofu_dir, file)}")
+        if file.endswith(".generated.tf"):
+            print(f"Removing {os.path.join(open_tofu_dir, file)}")
+            os.remove(os.path.join(open_tofu_dir, file))
 
     regions = [perspective.split('.')[1] for perspective in config['perspectives']] 
 
@@ -83,6 +102,19 @@ def main(raw_args=None):
 
         with open(out_file_name, 'w') as out_stream:
             out_stream.write(main_tf_string)
+
+
+    with open(args.aws_provider_tf_template) as stream:
+        aws_provider_tf = stream.read()
+        result_string = ""
+        for region in aws_available_regions:
+            result_string += aws_provider_tf.replace("{{region}}", region)
+            result_string += "\n"
+        out_file_name = f"{'.'.join(args.aws_provider_tf_template.split('.')[:-2])}.generated.tf"
+
+        with open(out_file_name, 'w') as out_stream:
+            out_stream.write(result_string)
+
 
     # Generate aws-perspective-template.generated.tf based on aws-perspective-template.tf.template.
     with open(args.aws_perspective_tf_template) as stream:
