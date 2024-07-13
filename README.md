@@ -16,7 +16,7 @@ All requirements for running the API are packaged and uploaded to AWS as a lambd
 1. Install layer dependencies. cd to the `layer` directory. Run `./1-install.sh` to create a virtual Python environment and install the project dependencies via pip.
 2. Package the AWS layer. In the `layer` directory, run `./2-package.sh`. This will make a file called `layer_content.zip` which will later be referenced by Open Tofu.
 3. Zip all functions. AWS Lambda functions are usually deployed from zip files. cd to the main project directory and then run `./zip-all.sh`
-4. Edit config.yaml to contain the proper values needed for the deployment. A default config.yaml for a 6-perspective deployment with the controller in us-east-2 is included in this repo.
+4. Create `config.yaml` in the root directory of the repo to contain the proper values needed for the deployment. A default config.yaml for a 6-perspective deployment with the controller in us-east-2 is included in this repo as `config.example.yaml`. This config can be made the active config by running `cp config.example.yaml config.yaml` in the root directory.
 5. Run `./configure.py` from the root directory of the repo to generate Open Tofu files from templates.
 7. Deploy the entire package with Open Tofu. cd to the `open-tofu` directory where .tf files are located. Then run `tofu init`. Then run `tofu apply` and type `yes` at the confirmation prompt.
 8. Get the URL of the deployed API endpoint by running `./get_api_url.py` in the root directory.
