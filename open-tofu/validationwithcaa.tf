@@ -6,7 +6,7 @@ resource "aws_api_gateway_resource" "validationwithcaa" {
 
   parent_id = aws_api_gateway_rest_api.open_mpic_api.root_resource_id
 
-  path_part = "validation-with-caa-lookup"
+  path_part = "validation-with-caa-check"
 
 }
 

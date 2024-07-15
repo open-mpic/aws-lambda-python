@@ -46,11 +46,9 @@ def main(raw_args=None):
 
     # Remove all old files.
     open_tofu_dir = '/'.join(args.aws_perspective_tf_template.split('/')[:-1])
-    print(open_tofu_dir)
     for file in os.listdir(open_tofu_dir):
-        print(f"try {os.path.join(open_tofu_dir, file)}")
         if file.endswith(".generated.tf"):
-            print(f"Removing {os.path.join(open_tofu_dir, file)}")
+            
             os.remove(os.path.join(open_tofu_dir, file))
 
     regions = [perspective.split('.')[1] for perspective in config['perspectives']] 

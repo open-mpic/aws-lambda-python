@@ -118,7 +118,7 @@ def lambda_handler(event, context):
     async_calls_to_invoke = []
     print(body)
     match request_path:
-        case '/caa-lookup':
+        case '/caa-check':
             input_args = {"identifier": identifier,
                           "caa-params": body['caa-details'] if 'caa-details' in body else {}}
             for region in regions:
@@ -132,7 +132,7 @@ def lambda_handler(event, context):
             for region in regions:
                 arn = func_arns['validations'][region]
                 async_calls_to_invoke.append(("validation", region, arn, input_args))
-        case '/validation-with-caa-lookup':
+        case '/validation-with-caa-check':
             for region in regions:
                 async_calls_to_invoke.append(("caa", region, func_arns['caa'][region], 
                                               {'identifier': identifier,
@@ -194,7 +194,7 @@ def lambda_handler(event, context):
     }
 
     match request_path:
-        case '/caa-lookup':
+        case '/caa-check':
             resp_body['perspectives'] = perspective_responses['caa']
             resp_body['is-valid'] = valid_by_op_type['caa'] and (not enforce_distinct_rir_regions or two_rir_regions_by_op_type['caa'])
         case '/validation':
@@ -202,7 +202,7 @@ def lambda_handler(event, context):
             resp_body['validation-details'] = body['validation-details']
             resp_body['validation-method'] = body['validation-method']
             resp_body['is-valid'] = valid_by_op_type['validation'] and (not enforce_distinct_rir_regions or two_rir_regions_by_op_type['validation'])
-        case '/validation-with-caa-lookup':
+        case '/validation-with-caa-check':
             resp_body['perspectives-validation'] = perspective_responses['validation']
             resp_body['perspectives-caa'] = perspective_responses['caa']
             resp_body['validation-details'] = body['validation-details']
