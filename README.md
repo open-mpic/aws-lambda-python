@@ -30,11 +30,11 @@ curl -H 'Content-Type: application/json' -H "x-api-key: $(./get_api_key.py)" \
       -d '{
   "api-version": "1.0.0",
   "system-params": {
-    "identifier": "torproject.org"
+    "identifier": "example.com"
   }
 }' \
       -X POST \
-      "$(./get_api_url.py)/caa-lookup"
+      "$(./get_api_url.py)/caa-check"
 ```
 
 The above sample must be run from the root directory of a deployed Open MPIC aws-lambda-python implementation for the bash command substitution to work. You can also run `./get_api_key.py` and `./get_api_url.py`, store these values and then substitute them into the above command. Once deployed, the API is globally accessible and authenticates requests via the `x-api-key` header, so the curl command with both of these values substituted can be run from any Internet-connected machine to trigger the API.
