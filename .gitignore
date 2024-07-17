@@ -11,6 +11,8 @@ layer/layer_content.zip
 # Config file.
 config.yaml
 
+# Deployment ID
+deployment.id
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
