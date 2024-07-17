@@ -21,12 +21,26 @@ def parse_args(raw_args):
                         default=f"{dirname}/open-tofu/aws-perspective.tf.template")
     parser.add_argument("-p", "--aws_provider_tf_template",
                         default=f"{dirname}/open-tofu/aws-provider.tf.template")
+    parser.add_argument("-d", "--deployment_id_file",
+                        default=f"{dirname}/deployment.id")
     return parser.parse_args(raw_args)
 
 # Main function. Optional raw_args array for specifying command line arguments in calls from other python scripts. If raw_args=none, argparse will get the arguments from the command line.
 def main(raw_args=None):
     # Get the arguments object.
     args = parse_args(raw_args)
+
+    # If the deployment id file does not exist, make a new one.
+    if not os.path.isfile(args.deployment_id_file):
+        with open(args.deployment_id_file, 'w') as stream:
+            deployment_id_to_write = ''.join(secrets.choice(string.digits) for i in range(10))
+            stream.write(deployment_id_to_write)
+    
+    # Read the deployment id.
+    deployment_id = 0
+    with open(args.deployment_id_file) as stream:
+        deployment_id = int(stream.read())
+
 
     # Load the config.
     config = {}
@@ -62,6 +76,8 @@ def main(raw_args=None):
         # Replace all the template vars used in the file.
         
         main_tf_string = main_tf_string.replace("{{api-region}}", config['api-region'])
+
+        main_tf_string = main_tf_string.replace("{{deployment-id}}", str(deployment_id))
         
         # Generate the region name list.
         perspective_names_list = "|".join(config['perspectives'])
@@ -124,6 +140,8 @@ def main(raw_args=None):
         for region in regions:
             aws_perspective_tf_region = aws_perspective_tf.replace("{{region}}", region)
             
+            # Replace the deployment id.
+            aws_perspective_tf_region = aws_perspective_tf_region.replace("{{deployment-id}}", str(deployment_id))
             # Construct the default CAA domain list.
             default_caa_domains_list = "|".join(config['caa-domains'])
             aws_perspective_tf_region = aws_perspective_tf_region.replace("{{default-caa-domains}}", f"\"{default_caa_domains_list}\"")
