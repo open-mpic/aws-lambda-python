@@ -51,7 +51,7 @@ def lambda_handler(event, context):
         
         challenge_prefix = valid_params['prefix']
         rdtype = dns.rdatatype.from_text(valid_params['record-type'])
-        name_to_resolve = f'{challenge_prefix}.{identifier}'
+        name_to_resolve = f'{challenge_prefix}.{identifier}' if len(challenge_prefix) > 0 else f'{identifier}'
         expected = valid_params['expected-challenge']
         
         print(f'Resolving {rdtype.name} for {name_to_resolve}...')
