@@ -1,0 +1,65 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "aws-lambda-python"
+dynamic = ["version"]
+description = 'MPIC standard API implementation leveraging AWS Lambda.'
+readme = "README.md"
+requires-python = "==3.11"
+license = "MIT"
+keywords = []
+authors = [
+  { name = "Henry Birge-Lee", email = "void@some.where" },
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = [
+  "pyyaml==6.0.1"
+]
+optional-dependencies.test = [
+    "pytest==8.2.2",
+    "pytest-cov==3.0.0",
+]
+
+[project.urls]
+Documentation = "https://github.com/open-mpic/aws-lambda-python"
+Issues = "https://github.com/open-mpic/aws-lambda-python/issues"
+Source = "https://github.com/open-mpic/aws-lambda-python"
+
+#[dirs.env]
+#virtual = ".hatch"
+
+[tool.hatch]
+version.path = "src/aws_lambda_python/__about__.py"
+envs.default.type = "virtual"
+envs.default.path = ".venv"
+build.sources = ["src"]
+build.targets.wheel.packages = ["src/aws_lambda_python"]
+
+#envs.types.extra-dependencies = [
+#  "mypy>=1.0.0",
+#  "pytest==8.2.2"
+#]
+#envs.types.scripts.check = "mypy --install-types --non-interactive {args:src/aws_lambda_python tests}"
+
+#[tool.coverage]
+#run.source_pkgs = ["aws_lambda_python", "tests"]
+#run.branch = true
+#run.parallel = true
+#run.omit = [
+#  "src/aws_lambda_python/__about__.py",
+#]
+#paths.aws_lambda_python = ["src/aws_lambda_python", "*/aws-lambda-python/src/aws_lambda_python"]
+#paths.tests = ["tests", "*/aws-lambda-python/tests"]
+#report.exclude_lines = [
+#  "no cov",
+#  "if __name__ == .__main__.:",
+#  "if TYPE_CHECKING:",
+#]

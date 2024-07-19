@@ -1,1 +1,2 @@
-pyyaml
+pyyaml==6.0.1
+pytest==8.2.2
