@@ -15,6 +15,19 @@ default_caa_domain_list = os.environ['default_caa_domains'].split("|")
 #       domain = Parent(domain)
 #      return Empty
 
+
+def check_value_list_permits_issuance(value_list, caa_domains):
+    for value in value_list:
+        # We currently do not have any parsing for CAA extensions, so we will never accept a value with a extension.
+        if ";" in value:
+            continue
+        # One of the CAA records in this set was an exact match on a CAA domain
+        if value in caa_domains:
+            return True
+    # If nothing matched, we cannot issue.
+    return False
+
+
 ISSUE_TAG = 'issue'
 ISSUEWILD_TAG = 'issuewild'
 
@@ -69,31 +82,32 @@ def lambda_handler(event, context):
         }
     
     
-    
-    caa_tags_seen = {}
-    
+    print("Generating tags")
+    issue_tags = []
+    issue_wild_tags = []
+    has_unknown_critical_flags = False
     for rr in rrset:
         tag = rr.tag.decode('utf-8')
         val = rr.value.decode('utf-8')
-        if tag in caa_tags_seen:
-            prev_flags, prev_vals = caa_tags_seen[tag]
-            prev_vals.append(val)
-            caa_tags_seen[tag] = (rr.flags | prev_flags, prev_vals)
-        else:
-            caa_tags_seen[tag] = (rr.flags, [val])
+        flags = rr.flags
+        if tag == ISSUE_TAG:
+            issue_tags.append(val)
+        elif tag == ISSUEWILD_TAG:
+            issue_wild_tags.append(val)
+        elif flags & 0b10000000:
+            has_unknown_critical_flags = True
     
-    # Todo: check this logic.
-    for tag, (flags, val) in caa_tags_seen.items():
-        if tag == ISSUE_TAG and not is_wc_domain:
-            
-            valid_for_issue &= any([id_ in val for id_ in caa_identifiers])
-            print(f'Hit processing for issue tag. Still valid to issue? {valid_for_issue}')
-        elif tag == ISSUEWILD_TAG and is_wc_domain:
-            valid_for_issue &= any([id_ in val for id_ in caa_identifiers])
-            print(f'Hit processing for issuewild tag. Still valid to issue? {valid_for_issue}')
-        elif flags & 0b10000000: # case for unknown tag, critical bit sent
-            valid_for_issue = False
-            
+
+    print("Computing Validity")
+    if has_unknown_critical_flags:
+        valid_for_issue = False
+    else:
+        if is_wc_domain and len(issue_wild_tags) > 0:
+            valid_for_issue = check_value_list_permits_issuance(issue_wild_tags, caa_identifiers)
+        else:
+            valid_for_issue = check_value_list_permits_issuance(issue_tags, caa_identifiers)
+
+
     
     return {
         'statusCode': 200,

@@ -161,6 +161,7 @@ def lambda_handler(event, context):
                 print(f'{region} generated an exception: {exc}')
             else:
                 persp_resp = json.loads(data['Payload'].read().decode('utf-8'))
+                print(persp_resp)
                 persp_resp_body = json.loads(persp_resp['body'])
                 if persp_resp_body['ValidForIssue']:
                     print(f'Perspective in {persp_resp_body["Region"]} was valid!')
