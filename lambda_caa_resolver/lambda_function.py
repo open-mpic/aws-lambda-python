@@ -22,7 +22,8 @@ def check_value_list_permits_issuance(value_list, caa_domains):
         if ";" in value:
             continue
         # One of the CAA records in this set was an exact match on a CAA domain
-        if value in caa_domains:
+        value_no_whitespace = value.strip()
+        if value_no_whitespace in caa_domains:
             return True
     # If nothing matched, we cannot issue.
     return False
@@ -82,7 +83,6 @@ def lambda_handler(event, context):
         }
     
     
-    print("Generating tags")
     issue_tags = []
     issue_wild_tags = []
     has_unknown_critical_flags = False
@@ -98,14 +98,16 @@ def lambda_handler(event, context):
             has_unknown_critical_flags = True
     
 
-    print("Computing Validity")
     if has_unknown_critical_flags:
         valid_for_issue = False
     else:
         if is_wc_domain and len(issue_wild_tags) > 0:
             valid_for_issue = check_value_list_permits_issuance(issue_wild_tags, caa_identifiers)
-        else:
+        elif len(issue_tags) > 0:
             valid_for_issue = check_value_list_permits_issuance(issue_tags, caa_identifiers)
+        else:
+            # We had no unknown critical tags and we found no issue tags. Issuance can proceed.
+            valid_for_issue = True
 
 
     
