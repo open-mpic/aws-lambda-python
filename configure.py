@@ -3,6 +3,8 @@
 import argparse
 import os
 import yaml
+import secrets
+import string
 
 
 def parse_args(raw_args):
@@ -11,16 +13,34 @@ def parse_args(raw_args):
 
     parser.add_argument("-c", "--config",
                         default=f"{dirname}/config.yaml")
+    parser.add_argument("-r", "--available_regions",
+                        default=f"{dirname}/aws-available-regions.yaml")
     parser.add_argument("-m", "--main_tf_template",
                         default=f"{dirname}/open-tofu/main.tf.template")
     parser.add_argument("-a", "--aws_perspective_tf_template",
                         default=f"{dirname}/open-tofu/aws-perspective.tf.template")
+    parser.add_argument("-p", "--aws_provider_tf_template",
+                        default=f"{dirname}/open-tofu/aws-provider.tf.template")
+    parser.add_argument("-d", "--deployment_id_file",
+                        default=f"{dirname}/deployment.id")
     return parser.parse_args(raw_args)
 
 # Main function. Optional raw_args array for specifying command line arguments in calls from other python scripts. If raw_args=none, argparse will get the arguments from the command line.
 def main(raw_args=None):
     # Get the arguments object.
     args = parse_args(raw_args)
+
+    # If the deployment id file does not exist, make a new one.
+    if not os.path.isfile(args.deployment_id_file):
+        with open(args.deployment_id_file, 'w') as stream:
+            deployment_id_to_write = ''.join(secrets.choice(string.digits) for i in range(10))
+            stream.write(deployment_id_to_write)
+    
+    # Read the deployment id.
+    deployment_id = 0
+    with open(args.deployment_id_file) as stream:
+        deployment_id = int(stream.read())
+
 
     # Load the config.
     config = {}
@@ -30,7 +50,20 @@ def main(raw_args=None):
         except yaml.YAMLError as exc:
             print(f"Error loading YAML config at {args.config}. Project not configured. Error details: {exec}.")
             exit()
+    aws_available_regions = {}
+    with open(args.available_regions) as stream:
+        try:
+            aws_available_regions = yaml.safe_load(stream)['aws-available-regions']
+        except yaml.YAMLError as exc:
+            print(f"Error loading YAML config at {args.available_regions}. Project not configured. Error details: {exec}.")
+            exit()
 
+    # Remove all old files.
+    open_tofu_dir = '/'.join(args.aws_perspective_tf_template.split('/')[:-1])
+    for file in os.listdir(open_tofu_dir):
+        if file.endswith(".generated.tf"):
+            
+            os.remove(os.path.join(open_tofu_dir, file))
 
     regions = [perspective.split('.')[1] for perspective in config['perspectives']] 
 
@@ -43,6 +76,8 @@ def main(raw_args=None):
         # Replace all the template vars used in the file.
         
         main_tf_string = main_tf_string.replace("{{api-region}}", config['api-region'])
+
+        main_tf_string = main_tf_string.replace("{{deployment-id}}", str(deployment_id))
         
         # Generate the region name list.
         perspective_names_list = "|".join(config['perspectives'])
@@ -67,6 +102,10 @@ def main(raw_args=None):
         main_tf_string = main_tf_string.replace("{{enforce-distinct-rir-regions}}", f"\"{1 if config['enforce-distinct-rir-regions'] else 0}\"")
         
 
+        # Store the secret key for the vantage points hash in an environment variable.
+        hash_secret = ''.join(secrets.choice(string.ascii_letters) for i in range(20))
+        main_tf_string = main_tf_string.replace("{{hash-secret}}", f"\"{hash_secret}\"")
+        
 
         # Derive the out file from the input file name.
         if not args.main_tf_template.endswith(".tf.template"):
@@ -78,6 +117,19 @@ def main(raw_args=None):
         with open(out_file_name, 'w') as out_stream:
             out_stream.write(main_tf_string)
 
+
+    with open(args.aws_provider_tf_template) as stream:
+        aws_provider_tf = stream.read()
+        result_string = ""
+        for region in aws_available_regions:
+            result_string += aws_provider_tf.replace("{{region}}", region)
+            result_string += "\n"
+        out_file_name = f"{'.'.join(args.aws_provider_tf_template.split('.')[:-2])}.generated.tf"
+
+        with open(out_file_name, 'w') as out_stream:
+            out_stream.write(result_string)
+
+
     # Generate aws-perspective-template.generated.tf based on aws-perspective-template.tf.template.
     with open(args.aws_perspective_tf_template) as stream:
 
@@ -88,6 +140,8 @@ def main(raw_args=None):
         for region in regions:
             aws_perspective_tf_region = aws_perspective_tf.replace("{{region}}", region)
             
+            # Replace the deployment id.
+            aws_perspective_tf_region = aws_perspective_tf_region.replace("{{deployment-id}}", str(deployment_id))
             # Construct the default CAA domain list.
             default_caa_domains_list = "|".join(config['caa-domains'])
             aws_perspective_tf_region = aws_perspective_tf_region.replace("{{default-caa-domains}}", f"\"{default_caa_domains_list}\"")

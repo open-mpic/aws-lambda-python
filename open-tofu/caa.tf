@@ -6,7 +6,7 @@ resource "aws_api_gateway_resource" "caa" {
 
   parent_id = aws_api_gateway_rest_api.open_mpic_api.root_resource_id
 
-  path_part = "caa-lookup"
+  path_part = "caa-check"
 
 }
 

@@ -8,6 +8,11 @@ layer/layer_content.zip
 # Generated tf files.
 *.generated.tf
 
+# Config file.
+config.yaml
+
+# Deployment ID
+deployment.id
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

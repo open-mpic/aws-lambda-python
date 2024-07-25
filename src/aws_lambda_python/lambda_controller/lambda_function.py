@@ -5,6 +5,7 @@ import concurrent.futures
 from datetime import datetime
 import os
 import random
+import hashlib
 
 VERSION = "1.0.0"
 
@@ -18,6 +19,7 @@ class MpicOrchestrator:
         self.default_perspective_count = int(os.environ['default_perspective_count'])
         self.default_quorum = int(os.environ['default_quorum'])
         self.enforce_distinct_rir_regions = int(os.environ['enforce_distinct_rir_regions']) == 1
+        self.hash_secret = os.environ['hash_secret']
 
         self.func_arns = {
             "validations": {self.perspective_name_list[i]: self.validator_arn_list[i] for i in
@@ -95,6 +97,10 @@ class MpicOrchestrator:
         # Extract the identifier.
         identifier = system_params['identifier']
 
+        # Seed the random generator with the hash secret concatenated with the identifier in all lowercase.
+        # This prevents the adversary from gaining an advantage by retrying and getting different vantage point sets.
+        random.seed(hashlib.sha256((self.hash_secret + identifier.lower()).encode('ASCII')).digest())
+
         regions = MpicOrchestrator.random_select_perspectives_considering_rir(self.perspective_name_list,
                                                                               self.default_perspective_count)
         if 'perspectives' in system_params and 'perspective-count' in system_params:
@@ -116,7 +122,7 @@ class MpicOrchestrator:
         async_calls_to_invoke = []
         print(body)
         match request_path:
-            case '/caa-lookup':
+            case '/caa-check':
                 input_args = {"identifier": identifier,
                               "caa-params": body['caa-details'] if 'caa-details' in body else {}}
                 for region in regions:
@@ -130,7 +136,7 @@ class MpicOrchestrator:
                 for region in regions:
                     arn = region_arns[region]
                     async_calls_to_invoke.append(("validation", region, arn, input_args))
-            case '/validation-with-caa-lookup':
+            case '/validation-with-caa-check':
                 for region in regions:
                     async_calls_to_invoke.append(("caa", region, self.func_arns['caa'][region],
                                                   {'identifier': identifier,
@@ -162,6 +168,7 @@ class MpicOrchestrator:
                     print(f'{region} generated an exception: {exc}')
                 else:
                     persp_resp = json.loads(data['Payload'].read().decode('utf-8'))
+                    print(persp_resp)  # Debugging
                     persp_resp_body = json.loads(persp_resp['body'])
                     if persp_resp_body['ValidForIssue']:
                         print(f'Perspective in {persp_resp_body["Region"]} was valid!')
@@ -197,7 +204,7 @@ class MpicOrchestrator:
         }
 
         match request_path:
-            case '/caa-lookup':
+            case '/caa-check':
                 resp_body['perspectives'] = perspective_responses['caa']
                 resp_body['is-valid'] = valid_by_op_type['caa'] and (
                         not self.enforce_distinct_rir_regions or two_rir_regions_by_op_type['caa'])
@@ -207,7 +214,7 @@ class MpicOrchestrator:
                 resp_body['validation-method'] = body['validation-method']
                 resp_body['is-valid'] = valid_by_op_type['validation'] and (
                         not self.enforce_distinct_rir_regions or two_rir_regions_by_op_type['validation'])
-            case '/validation-with-caa-lookup':
+            case '/validation-with-caa-check':
                 resp_body['perspectives-validation'] = perspective_responses['validation']
                 resp_body['perspectives-caa'] = perspective_responses['caa']
                 resp_body['validation-details'] = body['validation-details']
