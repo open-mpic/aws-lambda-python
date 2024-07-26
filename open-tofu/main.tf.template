@@ -53,11 +53,11 @@ resource "aws_iam_role_policy_attachment" "invoke-lambda-policy-attach" {
 
 # Init the lambda controller.
 resource "aws_lambda_function" "lambda_controller" {
-    filename      = "../lambda_controller/lambda_controller.zip"
+    filename      = "../{{source-path}}/lambda_controller/lambda_controller.zip"
     function_name = "open_mpic_lambda_controller_{{deployment-id}}"
     role          = aws_iam_role.open_mpic_lambda_role.arn
     handler       = "lambda_function.lambda_handler"
-    source_code_hash = filebase64sha256("../lambda_controller/lambda_controller.zip")
+    source_code_hash = filebase64sha256("../{{source-path}}/lambda_controller/lambda_controller.zip")
     runtime = "python3.11"
     timeout = 60
     layers = [aws_lambda_layer_version.python311-open-mpic-layer.arn]

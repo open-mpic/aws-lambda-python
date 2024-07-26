@@ -19,5 +19,8 @@ default-quorum: 5
 # Whether to enforce whether two distinct RIR regions must succeed.
 enforce-distinct-rir-regions: true
 
+# Path to source code for the functions
+source-path: /src/aws_lambda_python
+
 caa-domains:
   - example-ca.example.com

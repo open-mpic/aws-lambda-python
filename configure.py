@@ -106,6 +106,8 @@ def main(raw_args=None):
         hash_secret = ''.join(secrets.choice(string.ascii_letters) for i in range(20))
         main_tf_string = main_tf_string.replace("{{hash-secret}}", f"\"{hash_secret}\"")
         
+        # Set the source path for the lambda functions.
+        main_tf_string = main_tf_string.replace("{{source-path}}", f"{config['source-path']}")
 
         # Derive the out file from the input file name.
         if not args.main_tf_template.endswith(".tf.template"):
@@ -145,6 +147,9 @@ def main(raw_args=None):
             # Construct the default CAA domain list.
             default_caa_domains_list = "|".join(config['caa-domains'])
             aws_perspective_tf_region = aws_perspective_tf_region.replace("{{default-caa-domains}}", f"\"{default_caa_domains_list}\"")
+
+            # Set the source path for the lambda functions.
+            aws_perspective_tf_region = aws_perspective_tf_region.replace("{{source-path}}", f"{config['source-path']}")
 
             if not args.aws_perspective_tf_template.endswith(".tf.template"):
                 print(f"Error: invalid tf template name: {args.aws_perspective_tf_template}. Make sure all tf tempalte files end in '.tf.template'.")
