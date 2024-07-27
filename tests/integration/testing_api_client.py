@@ -21,7 +21,7 @@ class TestingApiClient:
             "x-api-key": self.api_key
         }
         response = self._session.post(self.service_base_url + "/" + url_suffix, headers=headers, data=data)
-        return response.json()
+        return response
 
     def close(self):
         self._session.close()

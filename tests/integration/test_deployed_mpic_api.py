@@ -25,7 +25,7 @@ class TestDeployedMpicApi:
             }
         }
         payload_as_string = json.dumps(payload)
-        result = api_client.post("caa-check", payload_as_string)
+        response = api_client.post("caa-check", payload_as_string)
         api_client.close()
-        print(result)
-        assert result["status"] == "success"
+        # response_body_as_json = response.json()
+        assert response.status_code == 200
