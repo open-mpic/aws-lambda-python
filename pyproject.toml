@@ -51,6 +51,19 @@ envs.default.path = ".venv"
 build.sources = ["src"]
 build.targets.wheel.packages = ["src/aws_lambda_python"]
 
+[tool.pytest.ini_options]
+testpaths = [
+    "tests/unit",
+    "tests/integration",
+]
+python_functions = [
+    "*_should_*",
+]
+markers = [
+    "integration: mark test as an integration test",
+    "unit: mark test as a unit test",  # optional
+]
+
 #envs.types.extra-dependencies = [
 #  "mypy>=1.0.0",
 #  "pytest==8.2.2"

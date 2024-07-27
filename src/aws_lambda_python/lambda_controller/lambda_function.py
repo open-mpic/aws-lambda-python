@@ -231,6 +231,8 @@ class MpicOrchestrator:
         }
 
 
-def lambda_handler(event):
+# noinspection PyUnusedLocal
+# for now we are not using context, but it is required by the lambda handler signature
+def lambda_handler(event, context):
     mpic_orchestrator = MpicOrchestrator()
     return mpic_orchestrator.orchestrate_mpic(event)

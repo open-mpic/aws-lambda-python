@@ -1,0 +1,8 @@
+api_region                = "us-east-2"
+deployment_id             = "7488419867"
+perspectives              = ["arin.us-east-2", "arin.us-west-2", "ripe.eu-central-1", "ripe.eu-west-2", "apnic.ap-northeast-2", "apnic.ap-southeast-1"]
+default_perspective_count = 6
+default_quorum            = 5
+enforce_distinct_rir_regions = true
+source_path               = "/src/aws_lambda_python"
+caa_domains               = ["mozilla.com"]
