@@ -11,8 +11,8 @@ rm -r layer/create_layer
 
 rm layer/layer_content.zip
 
-rm lambda_validator/lambda_validator.zip
+rm src/aws_lambda_python/lambda_validator/lambda_validator.zip
 
-rm lambda_controller/lambda_controller.zip
+rm src/aws_lambda_python/lambda_controller/lambda_controller.zip
 
-rm lambda_caa_resolver/lambda_caa_resolver.zip
+rm src/aws_lambda_python/lambda_caa_resolver/lambda_caa_resolver.zip
