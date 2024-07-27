@@ -47,14 +47,18 @@ class MpicOrchestrator:
 
     # Returns a random subset of perspectives with a goal of maximum RIR diversity to increase diversity.
     # Perspectives must be of the form 'RIR.AWS-region'.
-    @staticmethod
-    def random_select_perspectives_considering_rir(available_perspectives, count):
+    # TODO rename "identifier" to something more descriptive
+    def random_select_perspectives_considering_rir(self, available_perspectives, count, identifier):
         if count > len(available_perspectives):
             raise ValueError(
                 f"Count ({count}) must be <= the number of available perspectives ({available_perspectives})")
 
         # Compute the distinct list or RIRs from all perspectives being considered.
         rirs_available = list(set([perspective.split('.')[0] for perspective in available_perspectives]))
+
+        # Seed the random generator with the hash secret concatenated with the identifier in all lowercase.
+        # This prevents the adversary from gaining an advantage by retrying and getting different vantage point sets.
+        random.seed(hashlib.sha256((self.hash_secret + identifier.lower()).encode('ASCII')).digest())
 
         # Get a random ordering of RIRs
         random.shuffle(rirs_available)
@@ -94,27 +98,32 @@ class MpicOrchestrator:
         # Extract the system params object.
         system_params = body['system-params']
 
-        # Extract the identifier.
-        identifier = system_params['identifier']
-
-        # Seed the random generator with the hash secret concatenated with the identifier in all lowercase.
-        # This prevents the adversary from gaining an advantage by retrying and getting different vantage point sets.
-        random.seed(hashlib.sha256((self.hash_secret + identifier.lower()).encode('ASCII')).digest())
-
-        regions = MpicOrchestrator.random_select_perspectives_considering_rir(self.perspective_name_list,
-                                                                              self.default_perspective_count)
         if 'perspectives' in system_params and 'perspective-count' in system_params:
             return {
                 'statusCode': 400,
                 'body': json.dumps({'error': 'perspectives-and-perspective-count', 'error-msg': f"Perspectives cannot\
                                    be specified along with perspective count. Use one parameter or the other."})
             }
-        elif 'perspectives' in system_params:
-            regions = system_params['perspectives']
-        elif 'perspective-count' in system_params:
-            regions = self.random_select_perspectives_considering_rir(self.perspective_name_list,
-                                                                      system_params['perspective-count'])
 
+        # Extract the identifier. (Identifies what, exactly? the calling client? the request?)
+        identifier = system_params['identifier']
+
+        # Determine the perspectives to use.
+        if 'perspectives' in system_params:
+            perspectives_to_use = system_params['perspectives']
+        else:
+            if 'perspective-count' in system_params:
+                requested_perspective_count = system_params['perspective-count']
+            else:
+                requested_perspective_count = self.default_perspective_count
+
+            perspectives_to_use = self.random_select_perspectives_considering_rir(self.perspective_name_list,
+                                                                                  requested_perspective_count, identifier)
+
+        # TODO should we inspect system_params['perspectives'] for correctness against actually available perspectives?
+
+        # FIXME default_quorum should follow BRs -- if perspectives <=5, quorum is perspectives-1, else perspectives-2
+        # otherwise could have, for example, 10 perspectives and default quorum of 5 which is too low
         quorum_count = self.default_quorum
         if 'quorum-count' in system_params:
             quorum_count = system_params['quorum-count']
@@ -125,54 +134,54 @@ class MpicOrchestrator:
             case '/caa-check':
                 input_args = {"identifier": identifier,
                               "caa-params": body['caa-details'] if 'caa-details' in body else {}}
-                for region in regions:
-                    arn = self.func_arns['caa'][region]
-                    async_calls_to_invoke.append(("caa", region, arn, input_args))
+                for perspective in perspectives_to_use:
+                    arn = self.func_arns['caa'][perspective]
+                    async_calls_to_invoke.append(("caa", perspective, arn, input_args))
             case '/validation':
-                region_arns = self.func_arns['validations']
+                perspective_arns = self.func_arns['validations']
                 input_args = {'identifier': identifier,
                               'validation-method': body['validation-method'],
                               'validation-params': body['validation-details']}
-                for region in regions:
-                    arn = region_arns[region]
-                    async_calls_to_invoke.append(("validation", region, arn, input_args))
+                for perspective in perspectives_to_use:
+                    arn = perspective_arns[perspective]
+                    async_calls_to_invoke.append(("validation", perspective, arn, input_args))
             case '/validation-with-caa-check':
-                for region in regions:
-                    async_calls_to_invoke.append(("caa", region, self.func_arns['caa'][region],
+                for perspective in perspectives_to_use:
+                    async_calls_to_invoke.append(("caa", perspective, self.func_arns['caa'][perspective],
                                                   {'identifier': identifier,
                                                    'caa-params': body['caa-details'] if 'caa-details' in body else {}}))
-                    async_calls_to_invoke.append(("validation", region, self.func_arns['validations'][region],
+                    async_calls_to_invoke.append(("validation", perspective, self.func_arns['validations'][perspective],
                                                   {'identifier': identifier,
                                                    'validation-method': body['validation-method'],
                                                    'validation-params': body['validation-details']}))
 
-        num_perspectives = len(regions)
+        num_perspectives = len(perspectives_to_use)
         perspective_responses = {}
-        valid_by_perspective_by_op_type = {'validation': {r: False for r in regions},
-                                           'caa': {r: False for r in regions}}
+        valid_by_perspective_by_op_type = {'validation': {r: False for r in perspectives_to_use},
+                                           'caa': {r: False for r in perspectives_to_use}}
 
         # example code: https://docs.python.org/3/library/concurrent.futures.html
         with concurrent.futures.ThreadPoolExecutor(max_workers=num_perspectives) as executor:
             exec_begin = time.perf_counter()
-            future_to_dv = {executor.submit(self.thread_call, arn, region, args): (region, optype) for
-                            (optype, region, arn, args) in async_calls_to_invoke}
+            future_to_dv = {executor.submit(self.thread_call, arn, perspective, args): (perspective, optype) for
+                            (optype, perspective, arn, args) in async_calls_to_invoke}
             for future in concurrent.futures.as_completed(future_to_dv):
-                region, optype = future_to_dv[future]
+                perspective, optype = future_to_dv[future]
                 now = time.perf_counter()
                 print(
-                    f'Unpacking future result for {region} at time {str(datetime.now())}: {now - exec_begin:.2f} \
+                    f'Unpacking future result for {perspective} at time {str(datetime.now())}: {now - exec_begin:.2f} \
                     seconds from beginning')
                 try:
                     data = future.result()
                 except Exception as exc:
-                    print(f'{region} generated an exception: {exc}')
+                    print(f'{perspective} generated an exception: {exc}')
                 else:
                     persp_resp = json.loads(data['Payload'].read().decode('utf-8'))
                     print(persp_resp)  # Debugging
                     persp_resp_body = json.loads(persp_resp['body'])
                     if persp_resp_body['ValidForIssue']:
                         print(f'Perspective in {persp_resp_body["Region"]} was valid!')
-                    valid_by_perspective_by_op_type[optype][region] |= persp_resp_body['ValidForIssue']
+                    valid_by_perspective_by_op_type[optype][perspective] |= persp_resp_body['ValidForIssue']
                     if optype not in perspective_responses:
                         perspective_responses[optype] = []
                     perspective_responses[optype].append(persp_resp)
@@ -198,9 +207,11 @@ class MpicOrchestrator:
                 f"overall OK to issue for {optype}? {valid_perspective_count >= quorum_count} num valid VPs: {valid_perspective_count} num to meet quorum: {quorum_count}")
             valid_by_op_type[optype] = valid_perspective_count >= quorum_count
 
+        # TODO update API -- required-quorum-count is not there today and probably should be if it's dynamically derived
         resp_body = {
             "api-version": VERSION,
-            "system-params": system_params
+            "system-params": system_params,
+            "required-quorum-count": quorum_count,
         }
 
         match request_path:
