@@ -11,7 +11,7 @@ zip lambda_validator.zip lambda_function.py
 cd $SCRIPT_DIR
 
 cd "${FUNCTIONS_DIR}"/lambda_controller
-zip lambda_controller.zip lambda_function.py
+zip lambda_controller.zip mpic_orchestrator_lambda_function.py
 cd $SCRIPT_DIR
 
 cd "${FUNCTIONS_DIR}"/lambda_caa_resolver

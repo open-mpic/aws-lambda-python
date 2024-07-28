@@ -3,7 +3,7 @@ import json
 import pytest
 import os
 
-import aws_lambda_python.lambda_controller.lambda_function as lambda_function
+import aws_lambda_python.lambda_controller.mpic_orchestrator_lambda_function as lambda_function
 
 
 # noinspection PyMethodMayBeStatic
@@ -152,6 +152,23 @@ class TestMpicOrchestrator:
         result = lambda_function.lambda_handler(event, None)
         assert result["statusCode"] == 400
         assert "invalid-quorum-count" in result["body"]
+
+    # FIXME: This test is expected to fail; if identifier is missing what should happen?
+    @pytest.mark.xfail
+    def orchestrate_mpic_should_return_error_given_missing_identifier(self, set_env_variables):
+        payload = {
+            "api-version": "1.0.0",
+            "system-params": {"perspective-count": 3},
+            "caa-details": {"caa-domains": ["example.com"]}
+        }
+        # convert payload to json string
+        payload_as_string = json.dumps(payload)
+
+        event = {"path": "test_path", "body": payload_as_string}
+        result = lambda_function.lambda_handler(event, None)
+        assert result["statusCode"] == 400
+        assert "missing-identifier" in result["body"]
+
 
 if __name__ == '__main__':
     pytest.main()
