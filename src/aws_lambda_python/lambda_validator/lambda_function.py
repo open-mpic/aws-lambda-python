@@ -4,6 +4,8 @@ import os
 import sys
 import requests
 
+# TODO extract into a separate module to test
+
 # Todo: format perspective response to match API description.
 def lambda_handler(event, context):
 

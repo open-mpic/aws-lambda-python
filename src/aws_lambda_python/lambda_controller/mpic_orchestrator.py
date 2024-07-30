@@ -45,10 +45,13 @@ class MpicOrchestrator:
                 seconds to start boto client; ended at {str(datetime.now())}\n")
         return response
 
+    @staticmethod  # placeholder for future validation of request body
+    def validate_request_body(self, request_body):
+        return None  # TODO implement this
+
     # Returns a random subset of perspectives with a goal of maximum RIR diversity to increase diversity.
     # Perspectives must be of the form 'RIR.AWS-region'.
-    # TODO rename "identifier" to something more descriptive
-    def random_select_perspectives_considering_rir(self, available_perspectives, count, identifier):
+    def random_select_perspectives_considering_rir(self, available_perspectives, count, target_identifier):
         if count > len(available_perspectives):
             raise ValueError(
                 f"Count ({count}) must be <= the number of available perspectives ({available_perspectives})")
@@ -58,7 +61,8 @@ class MpicOrchestrator:
 
         # Seed the random generator with the hash secret concatenated with the identifier in all lowercase.
         # This prevents the adversary from gaining an advantage by retrying and getting different vantage point sets.
-        random.seed(hashlib.sha256((self.hash_secret + identifier.lower()).encode('ASCII')).digest())
+        # (An alternative would be to limit retries per identifier, which has its own pros/cons.)
+        random.seed(hashlib.sha256((self.hash_secret + target_identifier.lower()).encode('ASCII')).digest())
 
         # Get a random ordering of RIRs
         random.shuffle(rirs_available)
@@ -69,7 +73,6 @@ class MpicOrchestrator:
             for rir in rirs_available]
 
         # Chosen perspectives is populated with a random sample for each RIR until count is met.
-        # TODO ask about the "deterministic" part of the current API spec when it comes to selecting perspectives...
         chosen_perspectives = []
 
         # RIR index loops through the different RIRs and adds a single chosen perspective from each RIR on each iteration.
@@ -108,7 +111,7 @@ class MpicOrchestrator:
                                    be specified along with perspective count. Use one parameter or the other."})
             }
 
-        # Extract the identifier. (Identifies what, exactly? the calling client? the request?)
+        # Extract the target identifier (domain name or IP for which control is being validated)
         identifier = system_params['identifier']
 
         # Determine the perspectives to use.

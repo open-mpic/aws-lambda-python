@@ -52,6 +52,9 @@ build.sources = ["src"]
 build.targets.wheel.packages = ["src/aws_lambda_python"]
 
 [tool.pytest.ini_options]
+pythonpath = [
+    "src","."  # need root directory because it has some python files we are importing for integration tests
+]
 testpaths = [
     "tests/unit",
     "tests/integration",
@@ -62,6 +65,9 @@ python_functions = [
 markers = [
     "integration: mark test as an integration test",
     "unit: mark test as a unit test",  # optional
+]
+addopts = [
+    "--import-mode=prepend",  # explicit default, as the tests rely on it for proper import resolution
 ]
 
 #envs.types.extra-dependencies = [

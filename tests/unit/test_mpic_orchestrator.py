@@ -2,7 +2,6 @@ import json
 import pytest
 import os
 
-import aws_lambda_python.lambda_controller.mpic_orchestrator_lambda_function as lambda_function
 from aws_lambda_python.lambda_controller.mpic_orchestrator import MpicOrchestrator
 
 
@@ -47,7 +46,8 @@ class TestMpicOrchestrator:
             "caa-details": {"caa-domains": ["example.com"]}
         }
         event = {"path": "test_path", "body": json.dumps(body)}
-        result = lambda_function.lambda_handler(event, None)
+        mpic_orchestrator = MpicOrchestrator()
+        result = mpic_orchestrator.orchestrate_mpic(event)
         assert result["statusCode"] == 400
         assert "api-version-mismatch" in result["body"]
 
@@ -57,7 +57,8 @@ class TestMpicOrchestrator:
             "system-params": {"identifier": "test", "perspective-count": 3, "perspectives": "test1|test2|test3"}
         }
         event = {"path": "test_path", "body": json.dumps(body)}
-        result = lambda_function.lambda_handler(event, None)
+        mpic_orchestrator = MpicOrchestrator()
+        result = mpic_orchestrator.orchestrate_mpic(event)
         assert result["statusCode"] == 400
         assert "perspectives-and-perspective-count" in result["body"]
 
@@ -69,7 +70,8 @@ class TestMpicOrchestrator:
             "system-params": {"identifier": "test", "perspective-count": 0}
         }
         event = {"path": "test_path", "body": json.dumps(body)}
-        result = lambda_function.lambda_handler(event, None)
+        mpic_orchestrator = MpicOrchestrator()
+        result = mpic_orchestrator.orchestrate_mpic(event)
         assert result["statusCode"] == 400
         assert "invalid-perspective-count" in result["body"]
 
@@ -81,31 +83,22 @@ class TestMpicOrchestrator:
             "system-params": {"identifier": "test", "perspectives": "test1|test2|test3|test4"}
         }
         event = {"path": "test_path", "body": json.dumps(body)}
-        result = lambda_function.lambda_handler(event, None)
+        mpic_orchestrator = MpicOrchestrator()
+        result = mpic_orchestrator.orchestrate_mpic(event)
         assert result["statusCode"] == 400
         assert "invalid-perspectives" in result["body"]
 
     # FIXME: This test is expected to fail because the code does not validate quorum count
     @pytest.mark.xfail
-    def orchestrate_mpic_should_return_error_given_quorum_count_too_high(self, set_env_variables):
+    @pytest.mark.parametrize("quorum_count", [4, 1])
+    def orchestrate_mpic_should_return_error_given_invalid_quorum_count(self, set_env_variables, quorum_count):
         body = {
             "api-version": "1.0.0",
-            "system-params": {"identifier": "test", "perspective-count": 3, "quorum": 4}
+            "system-params": {"identifier": "test", "perspective-count": 3, "quorum": quorum_count}
         }
         event = {"path": "test_path", "body": json.dumps(body)}
-        result = lambda_function.lambda_handler(event, None)
-        assert result["statusCode"] == 400
-        assert "invalid-quorum-count" in result["body"]
-
-    # FIXME: This test is expected to fail because the code does not validate quorum count
-    @pytest.mark.xfail
-    def orchestrate_mpic_should_return_error_given_quorum_count_too_low(self, set_env_variables):
-        body = {
-            "api-version": "1.0.0",
-            "system-params": {"identifier": "test", "perspective-count": 3, "quorum": 1}
-        }
-        event = {"path": "test_path", "body": json.dumps(body)}
-        result = lambda_function.lambda_handler(event, None)
+        mpic_orchestrator = MpicOrchestrator()
+        result = mpic_orchestrator.orchestrate_mpic(event)
         assert result["statusCode"] == 400
         assert "invalid-quorum-count" in result["body"]
 
@@ -119,7 +112,8 @@ class TestMpicOrchestrator:
             "system-params": {"identifier": "test", "perspective-count": requested_perspective_count},
         }
         event = {"path": "test_path", "body": json.dumps(body)}
-        result = lambda_function.lambda_handler(event, None)
+        mpic_orchestrator = MpicOrchestrator()
+        result = mpic_orchestrator.orchestrate_mpic(event)
         assert result["statusCode"] == 200
         assert "required-quorum-count" in result["body"]
         body_as_dict = json.loads(result["body"])
@@ -134,24 +128,39 @@ class TestMpicOrchestrator:
             "system-params": {"perspective-count": 3}
         }
         event = {"path": "test_path", "body": json.dumps(body)}
-        result = lambda_function.lambda_handler(event, None)
+        mpic_orchestrator = MpicOrchestrator()
+        result = mpic_orchestrator.orchestrate_mpic(event)
         assert result["statusCode"] == 400
         assert "missing-identifier" in result["body"]
 
-    def collect_async_calls_to_issue_should_create_list_of_only_caa_calls_given_caa_check_request_path(self, set_env_variables):
+    def collect_async_calls_to_issue_should_have_only_caa_calls_given_caa_check_request_path(self, set_env_variables):
         body = {
             "api-version": "1.0.0",
-            "system-params": {"identifier": "test", "perspective-count": 3},
+            "system-params": {"identifier": "test"},
             "caa-details": {"caa-domains": ["example.com"]}
         }
         perspectives_to_use = os.getenv("perspective_names").split("|")
-        # convert payload to json string
         mpic_orchestrator = MpicOrchestrator()
         call_list = mpic_orchestrator.collect_async_calls_to_issue("/caa-check", body, perspectives_to_use)
         # get length of call_list and assert it's 6
         assert len(call_list) == 6
-        # map each result to its first field (0 index), then convert that map to a set to force uniqueness,then assert that set only contains 'caa'
+        # ensure each call is of type "caa" (first element in call tuple)
         assert set(map(lambda result: result[0], call_list)) == {"caa"}
+
+    def collect_async_calls_to_issue_should_have_only_validator_calls_given_validation_request_path(self, set_env_variables):
+        body = {
+            "api-version": "1.0.0",
+            "system-params": {"identifier": "test"},
+            "validation-method": "test-method",
+            "validation-details": "test-details"
+        }
+        perspectives_to_use = os.getenv("perspective_names").split("|")
+        mpic_orchestrator = MpicOrchestrator()
+        call_list = mpic_orchestrator.collect_async_calls_to_issue("/validation", body, perspectives_to_use)
+        # get length of call_list and assert it's 6
+        assert len(call_list) == 6
+        # ensure each call is of type "validation" (first element in call tuple)
+        assert set(map(lambda result: result[0], call_list)) == {"validation"}
 
 
 if __name__ == '__main__':
