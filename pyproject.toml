@@ -51,6 +51,12 @@ envs.default.path = ".venv"
 build.sources = ["src"]
 build.targets.wheel.packages = ["src/aws_lambda_python"]
 
+[tool.hatch.envs.hatch-test]
+features = [
+    "test",
+    "provided"
+]
+
 [tool.pytest.ini_options]
 pythonpath = [
     "src","."  # need root directory because it has some python files we are importing for integration tests
