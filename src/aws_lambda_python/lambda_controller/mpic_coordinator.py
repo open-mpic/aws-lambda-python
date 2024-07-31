@@ -10,7 +10,7 @@ import hashlib
 VERSION = "1.0.0"  # TODO do we need to externalize this to an environment variable? it's a bit hidden here
 
 
-class MpicOrchestrator:
+class MpicCoordinator:
     def __init__(self):
         # Load lists of perspective names, validator arns, and caa arns from environment vars.
         self.perspective_name_list = os.environ['perspective_names'].split("|")
@@ -46,7 +46,7 @@ class MpicOrchestrator:
         return response
 
     @staticmethod  # placeholder for future validation of request body
-    def validate_request_body(self, request_body):
+    def validate_request_body(request_body):
         return None  # TODO implement this
 
     # Returns a random subset of perspectives with a goal of maximum RIR diversity to increase diversity.
@@ -86,7 +86,7 @@ class MpicOrchestrator:
             rir_index %= len(rirs_available)
         return chosen_perspectives
 
-    def orchestrate_mpic(self, event):
+    def coordinate_mpic(self, event):
         request_path = event["path"]
         body = json.loads(event["body"])
 

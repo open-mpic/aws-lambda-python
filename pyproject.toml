@@ -32,7 +32,7 @@ provided = [
 ]
 test = [
     "pytest==8.2.2",
-    "pytest-cov==3.0.0",
+    "pytest-cov==5.0.0",
     "pytest-mock==3.14.0",
 ]
 
@@ -46,10 +46,19 @@ Source = "https://github.com/open-mpic/aws-lambda-python"
 
 [tool.hatch]
 version.path = "src/aws_lambda_python/__about__.py"
-envs.default.type = "virtual"
-envs.default.path = ".venv"
 build.sources = ["src"]
 build.targets.wheel.packages = ["src/aws_lambda_python"]
+
+[tool.hatch.envs.default]
+skip-install = false
+type="virtual"
+path="venv"
+
+[tool.hatch.envs.test]
+features = [
+    "test",
+    "provided"
+]
 
 [tool.hatch.envs.hatch-test]
 features = [

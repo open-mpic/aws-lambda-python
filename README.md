@@ -30,13 +30,10 @@ Pytest is used for unit testing. To run the tests, use any of the following comm
 python -m pytest tests/unit
 ```
 ```
-pytest tests/unit
-```
-```
 hatch test tests/unit
 ```
 ```
-hatch run pytest tests/unit
+hatch run test:pytest tests/unit
 ```
 
 Tests are configured in `pyproject.toml` 
