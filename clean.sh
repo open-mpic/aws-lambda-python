@@ -15,6 +15,6 @@ rm layer/layer_content.zip
 
 rm "${FUNCTIONS_DIR}"/lambda_validator/lambda_validator.zip
 
-rm "${FUNCTIONS_DIR}"/lambda_controller/lambda_controller.zip
+rm "${FUNCTIONS_DIR}"/lambda_mpic_coordinator/lambda_mpic_coordinator.zip
 
 rm "${FUNCTIONS_DIR}"/lambda_caa_resolver/lambda_caa_resolver.zip

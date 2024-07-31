@@ -11,7 +11,9 @@ requires-python = "==3.11.9"
 license = "MIT"
 keywords = []
 authors = [
-  { name = "Henry Birge-Lee", email = "void@some.where" },
+    { name = "Henry Birge-Lee", email = "henrybirgelee@gmail.com" },
+    { name = "Grace Cimaszewski", email = "ghc2@princeton.edu"},
+    { name = "Dmitry Sharkov", email = "dmitry.sharkov@sectigo.com" }
 ]
 classifiers = [
   "Development Status :: 4 - Beta",

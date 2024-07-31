@@ -2,7 +2,7 @@ import json
 import pytest
 import os
 
-from aws_lambda_python.lambda_controller.mpic_coordinator import MpicCoordinator
+from aws_lambda_python.lambda_mpic_coordinator.mpic_coordinator import MpicCoordinator
 
 
 # noinspection PyMethodMayBeStatic

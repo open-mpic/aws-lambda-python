@@ -1,5 +1,5 @@
 src/aws_lambda_python/lambda_validator/lambda_validator.zip
-src/aws_lambda_python/lambda_controller/lambda_controller.zip
+src/aws_lambda_python/lambda_mpic_coordinator/lambda_mpic_coordinator.zip
 src/aws_lambda_python/lambda_caa_resolver/lambda_caa_resolver.zip
 
 layer/create_layer

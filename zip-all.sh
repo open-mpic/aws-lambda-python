@@ -10,8 +10,8 @@ cd "${FUNCTIONS_DIR}"/lambda_validator # Change to the directory of the lambda f
 zip lambda_validator.zip lambda_function.py
 cd $SCRIPT_DIR
 
-cd "${FUNCTIONS_DIR}"/lambda_controller
-zip -r lambda_controller.zip .
+cd "${FUNCTIONS_DIR}"/lambda_mpic_coordinator
+zip -r lambda_mpic_coordinator.zip .
 cd $SCRIPT_DIR
 
 cd "${FUNCTIONS_DIR}"/lambda_caa_resolver
