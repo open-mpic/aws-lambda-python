@@ -45,13 +45,9 @@ class MpicCoordinator:
                 seconds to start boto client; ended at {str(datetime.now())}\n")
         return response
 
-    @staticmethod  # placeholder for future validation of request body
-    def validate_request_body(request_body):
-        return None  # TODO implement this
-
     # Returns a random subset of perspectives with a goal of maximum RIR diversity to increase diversity.
     # Perspectives must be of the form 'RIR.AWS-region'.
-    def random_select_perspectives_considering_rir(self, available_perspectives, count, target_identifier):
+    def random_select_perspectives_considering_rir(self, available_perspectives, count, domain_or_ip_target):
         if count > len(available_perspectives):
             raise ValueError(
                 f"Count ({count}) must be <= the number of available perspectives ({available_perspectives})")
@@ -62,7 +58,7 @@ class MpicCoordinator:
         # Seed the random generator with the hash secret concatenated with the identifier in all lowercase.
         # This prevents the adversary from gaining an advantage by retrying and getting different vantage point sets.
         # (An alternative would be to limit retries per identifier, which has its own pros/cons.)
-        random.seed(hashlib.sha256((self.hash_secret + target_identifier.lower()).encode('ASCII')).digest())
+        random.seed(hashlib.sha256((self.hash_secret + domain_or_ip_target.lower()).encode('ASCII')).digest())
 
         # Get a random ordering of RIRs
         random.shuffle(rirs_available)

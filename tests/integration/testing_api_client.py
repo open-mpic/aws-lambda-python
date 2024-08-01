@@ -8,8 +8,8 @@ class TestingApiClient:
     def __init__(self):
         self.service_base_url = get_api_url.extract_api_url(None)
         self.api_key = get_api_key.extract_api_key(None)
-        print("URL:%s", self.service_base_url)
-        print("API Key:%s", self.api_key)
+        print("\nURL: ", self.service_base_url)
+        print("\nAPI Key: ", self.api_key)
         self._session = requests.Session()
 
     def get(self, url_suffix):

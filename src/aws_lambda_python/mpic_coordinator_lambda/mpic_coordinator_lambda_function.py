@@ -1,10 +1,4 @@
-import os
-import sys
-
-sys.path.append(os.path.join(os.path.dirname(__file__)))
-
-# TODO consider tossing this into a layer
-from mpic_coordinator import MpicCoordinator  # noqa: E402
+from aws_lambda_python.mpic_coordinator.mpic_coordinator import MpicCoordinator
 coordinator = MpicCoordinator()
 
 

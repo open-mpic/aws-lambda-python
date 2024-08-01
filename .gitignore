@@ -1,9 +1,12 @@
-src/aws_lambda_python/lambda_validator/lambda_validator.zip
-src/aws_lambda_python/lambda_mpic_coordinator/lambda_mpic_coordinator.zip
-src/aws_lambda_python/lambda_caa_resolver/lambda_caa_resolver.zip
+lambda_validator.zip
+mpic_coordinator_lambda.zip
+lambda_caa_resolver.zip
+mpic_coordinator_layer.zip
 
-layer/create_layer
-layer/layer_content.zip
+layer/create_layer_virtualenv
+layer/*_layer_content
+layer/*_layer_content.zip
+layer/mpic_coordinator_layer_content.zip
 
 # Generated tf files.
 *.generated.tf
@@ -15,7 +18,7 @@ config.yaml
 deployment.id
 
 # Byte-compiled / optimized / DLL files
-__pycache__/
+**/__pycache__/
 *.py[cod]
 *$py.class
 
@@ -218,3 +221,6 @@ terraform.rc
 
 # custom directory for Hatch virtual environments
 .hatch/
+
+# MacOS specific files
+.DS_Store

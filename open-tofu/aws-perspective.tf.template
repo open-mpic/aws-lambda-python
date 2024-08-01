@@ -1,9 +1,9 @@
 
 # The python openmpic layer must be created in the region of the functions.
 resource "aws_lambda_layer_version" "python311-open-mpic-layer_{{region}}" {
-    filename            = "../layer/layer_content.zip"
+    filename            = "../layer/python311_layer_content.zip"
     layer_name          = "python311-open-mpic-layer_{{region}}_{{deployment-id}}"
-    source_code_hash    = "${filebase64sha256("../layer/layer_content.zip")}"
+    source_code_hash    = "${filebase64sha256("../layer/python311_layer_content.zip")}"
     compatible_runtimes = ["python3.11"]
     provider = aws.{{region}}
 }
@@ -19,7 +19,6 @@ resource "aws_lambda_function" "lambda_validator_{{region}}" {
     provider = aws.{{region}}
     
 }
-
 
 resource "aws_lambda_function" "lambda_caa_resolver_{{region}}" {
     filename      = "../{{source-path}}/lambda_caa_resolver/lambda_caa_resolver.zip"
