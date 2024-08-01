@@ -22,14 +22,14 @@ class MpicCoordinator:
         self.hash_secret = os.environ['hash_secret']
 
         self.func_arns = {
-            "validations": {self.perspective_name_list[i]: self.validator_arn_list[i] for i in
+            'validations': {self.perspective_name_list[i]: self.validator_arn_list[i] for i in
                             range(len(self.perspective_name_list))},
-            "caa": {self.perspective_name_list[i]: self.caa_arn_list[i] for i in range(len(self.perspective_name_list))}
+            'caa': {self.perspective_name_list[i]: self.caa_arn_list[i] for i in range(len(self.perspective_name_list))}
         }
 
     @staticmethod
     def thread_call(lambda_arn, region, input_params):
-        print(f'Started lambda call for region {region} at {str(datetime.now())}')
+        print(f"Started lambda call for region {region} at {str(datetime.now())}")
 
         tic_init = time.perf_counter()
         client = boto3.client('lambda', region.split(".")[1])
@@ -142,8 +142,8 @@ class MpicCoordinator:
                 perspective, optype = future_to_dv[future]
                 now = time.perf_counter()
                 print(
-                    f'Unpacking future result for {perspective} at time {str(datetime.now())}: {now - exec_begin:.2f} \
-                    seconds from beginning')
+                    f"Unpacking future result for {perspective} at time {str(datetime.now())}: {now - exec_begin:.2f} \
+                    seconds from beginning")
                 try:
                     data = future.result()
                 except Exception as exc:
@@ -153,7 +153,7 @@ class MpicCoordinator:
                     print(persp_resp)  # Debugging
                     persp_resp_body = json.loads(persp_resp['body'])
                     if persp_resp_body['ValidForIssue']:
-                        print(f'Perspective in {persp_resp_body["Region"]} was valid!')
+                        print(f"Perspective in {persp_resp_body['Region']} was valid!")
                     valid_by_perspective_by_op_type[optype][perspective] |= persp_resp_body['ValidForIssue']
                     if optype not in perspective_responses:
                         perspective_responses[optype] = []
@@ -182,9 +182,9 @@ class MpicCoordinator:
 
         # TODO update API -- required-quorum-count is not there today and probably should be if it's dynamically derived
         resp_body = {
-            "api-version": VERSION,
-            "system-params": system_params,
-            "required-quorum-count": quorum_count,
+            'api-version': VERSION,
+            'system-params': system_params,
+            'required-quorum-count': quorum_count,
         }
 
         match request_path:
@@ -226,11 +226,11 @@ class MpicCoordinator:
 
         match request_path:
             case '/caa-check':
-                input_args = {"identifier": identifier,
-                              "caa-params": body['caa-details'] if 'caa-details' in body else {}}
+                input_args = {'identifier': identifier,
+                              'caa-params': body['caa-details'] if 'caa-details' in body else {}}
                 for perspective in perspectives_to_use:
                     arn = self.func_arns['caa'][perspective]
-                    async_calls_to_invoke.append(("caa", perspective, arn, input_args))
+                    async_calls_to_invoke.append(('caa', perspective, arn, input_args))
             case '/validation':
                 perspective_arns = self.func_arns['validations']
                 input_args = {'identifier': identifier,
@@ -238,13 +238,13 @@ class MpicCoordinator:
                               'validation-params': body['validation-details']}
                 for perspective in perspectives_to_use:
                     arn = perspective_arns[perspective]
-                    async_calls_to_invoke.append(("validation", perspective, arn, input_args))
+                    async_calls_to_invoke.append(('validation', perspective, arn, input_args))
             case '/validation-with-caa-check':
                 for perspective in perspectives_to_use:
                     async_calls_to_invoke.append(("caa", perspective, self.func_arns['caa'][perspective],
                                                   {'identifier': identifier,
                                                    'caa-params': body['caa-details'] if 'caa-details' in body else {}}))
-                    async_calls_to_invoke.append(("validation", perspective, self.func_arns['validations'][perspective],
+                    async_calls_to_invoke.append(('validation', perspective, self.func_arns['validations'][perspective],
                                                   {'identifier': identifier,
                                                    'validation-method': body['validation-method'],
                                                    'validation-params': body['validation-details']}))

@@ -28,27 +28,36 @@ class MpicRequestValidator:
         match request_path:
             case '/caa-check':
                 if 'caa-details' in request_body:
-                    if 'certificate-type' not in request_body['caa-details']:
-                        request_body_validation_issues.append('missing-certificate-type-in-caa-details')
-                    else:
-                        certificate_type = request_body['caa-details']['certificate-type']
-                        # check if certificate_type is not in CertificateType enum
-                        if certificate_type not in iter(CertificateType):
-                            request_body_validation_issues.append('invalid-certificate-type-in-caa-details')
+                    MpicRequestValidator.validate_caa_check_request_details(request_body, request_body_validation_issues)
             case '/validation':
-                if 'validation-method' not in request_body:
-                    request_body_validation_issues.append('missing-validation-method')
-                elif request_body['validation-method'] not in iter(DcvValidationMethod):
-                    request_body_validation_issues.append('invalid-validation-method')
-                else:
-                    match request_body['validation-method']:
-                        case DcvValidationMethod.DNS_GENERIC:
-                            if 'validation-details' not in request_body:  # TODO should we enforce this for all methods?
-                                request_body_validation_issues.append('missing-validation-details')
-                            else:
-                                validation_details = request_body['validation-details']
-                                if 'path' not in validation_details:
-                                    request_body_validation_issues.append('missing-path-in-validation-details')
+                MpicRequestValidator.validate_dcv_check_request_details(request_body, request_body_validation_issues)
 
         # returns true if no validation issues found, false otherwise; includes list of validation issues found
         return len(request_body_validation_issues) == 0, request_body_validation_issues
+
+    @staticmethod
+    def validate_caa_check_request_details(request_body, request_body_validation_issues) -> None:
+        if 'caa-details' in request_body:
+            if 'certificate-type' not in request_body['caa-details']:
+                request_body_validation_issues.append('missing-certificate-type-in-caa-details')
+            else:
+                certificate_type = request_body['caa-details']['certificate-type']
+                # check if certificate_type is not in CertificateType enum
+                if certificate_type not in iter(CertificateType):
+                    request_body_validation_issues.append('invalid-certificate-type-in-caa-details')
+
+    @staticmethod
+    def validate_dcv_check_request_details(request_body, request_body_validation_issues) -> None:
+        if 'validation-method' not in request_body:
+            request_body_validation_issues.append('missing-validation-method')
+        elif request_body['validation-method'] not in iter(DcvValidationMethod):
+            request_body_validation_issues.append('invalid-validation-method')
+        else:
+            match request_body['validation-method']:
+                case DcvValidationMethod.DNS_GENERIC:
+                    if 'validation-details' not in request_body:  # TODO should we enforce this for all methods?
+                        request_body_validation_issues.append('missing-validation-details')
+                    else:
+                        validation_details = request_body['validation-details']
+                        if 'prefix' not in validation_details:
+                            request_body_validation_issues.append('missing-prefix-in-validation-details')

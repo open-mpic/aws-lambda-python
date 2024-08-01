@@ -12,4 +12,5 @@ cp -r ../src/aws_lambda_python/mpic_coordinator mpic_coordinator_layer_content/p
 cd mpic_coordinator_layer_content
 py_exclude=('*.pyc' '*__pycache__*')
 zip -r ../mpic_coordinator_layer_content.zip python -x "${py_exclude[@]}" # Zip the mpic_coordinator lambda layer
+rm -r python # clean up, mostly not to bother the IDE which will find this duplicate code!
 
