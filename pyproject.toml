@@ -62,19 +62,25 @@ features = [
     "provided"
 ]
 
+[tool.hatch.envs.test.scripts]
+unit = "pytest"
+integration = "pytest tests/integration"
+coverage = "pytest --cov=src/aws_lambda_python --cov-report=term-missing --cov-report=html"
+
 [tool.hatch.envs.hatch-test]
 features = [
     "test",
     "provided"
 ]
+default-args = ["tests/unit"]
+randomize = true
 
 [tool.pytest.ini_options]
 pythonpath = [
     "src","."  # need root directory because it has some python files we are importing for integration tests
 ]
 testpaths = [
-    "tests/unit",
-    "tests/integration",
+    "tests/unit"
 ]
 python_functions = [
     "*_should_*",
@@ -87,23 +93,21 @@ addopts = [
     "--import-mode=prepend",  # explicit default, as the tests rely on it for proper import resolution
 ]
 
-#envs.types.extra-dependencies = [
-#  "mypy>=1.0.0",
-#  "pytest==8.2.2"
-#]
-#envs.types.scripts.check = "mypy --install-types --non-interactive {args:src/aws_lambda_python tests}"
+[tool.coverage.run]
+source = [
+    "src/aws_lambda_python"
+]
 
-#[tool.coverage]
-#run.source_pkgs = ["aws_lambda_python", "tests"]
+[tool.coverage.report]
+include_namespace_packages = true
+omit = [
+    "*/src/aws_lambda_python/__about__.py",
+    "src/aws_lambda_python/mpic_coordinator/domain/*",
+]
+
 #run.branch = true
 #run.parallel = true
 #run.omit = [
-#  "src/aws_lambda_python/__about__.py",
+#    "src/aws_lambda_python/__about__.py",
 #]
-#paths.aws_lambda_python = ["src/aws_lambda_python", "*/aws-lambda-python/src/aws_lambda_python"]
-#paths.tests = ["tests", "*/aws-lambda-python/tests"]
-#report.exclude_lines = [
-#  "no cov",
-#  "if __name__ == .__main__.:",
-#  "if TYPE_CHECKING:",
-#]
+

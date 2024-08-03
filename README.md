@@ -55,10 +55,14 @@ Pytest is used for unit testing. To run the tests, use any of the following comm
 python -m pytest tests/unit
 ```
 ```
-hatch test tests/unit
+hatch test
 ```
 ```
-hatch run test:pytest tests/unit
+hatch run test:unit
+```
+To generate an HTML coverage report (located in `htmlcov/index.html`), run:
+```
+hatch run test:coverage
 ```
 
 Tests are configured in `pyproject.toml` 
@@ -74,7 +78,7 @@ python -m pytest tests/integration
 hatch test tests/integration
 ```
 ```
-hatch run pytest tests/integration
+hatch run test:integration
 ```
 Note: integration tests cannot currently be invoked by running `pytest tests/integration` because `PYTHONPATH` is not set correctly in that case.
 

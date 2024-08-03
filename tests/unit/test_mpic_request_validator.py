@@ -72,6 +72,13 @@ class TestMpicRequestValidator:
         assert is_body_valid is False
         assert 'contains-both-perspectives-and-perspective-count' in body_validation_issues
 
+    def validate_request_body_should_return_false_and_message_given_missing_certificate_type_for_caa_check(self):
+        body = self.__create_valid_caa_check_request()
+        del body['caa-details']['certificate-type']
+        is_body_valid, body_validation_issues = MpicRequestValidator.validate_request_body('/caa-check', body)
+        assert is_body_valid is False
+        assert 'missing-certificate-type-in-caa-details' in body_validation_issues
+
     def validate_request_body_should_return_false_and_message_given_invalid_certificate_type_specified(self):
         body = self.__create_valid_caa_check_request()
         body['caa-details']['certificate-type'] = 'invalid-certificate-type'
@@ -94,12 +101,21 @@ class TestMpicRequestValidator:
         assert is_body_valid is False
         assert 'invalid-validation-method' in body_validation_issues
 
-    def validate_request_body_should_return_false_and_message_given_missing_validation_details_for_dns_validation(self):
+    def validate_request_body_should_return_false_and_message_given_missing_validation_details_for_dcv(self):
         body = self.__create_valid_dcv_check_request()
         del body['validation-details']
         is_body_valid, body_validation_issues = MpicRequestValidator.validate_request_body('/validation', body)
         assert is_body_valid is False
         assert 'missing-validation-details' in body_validation_issues
+
+    @pytest.mark.parametrize('validation_method', [DcvValidationMethod.DNS_GENERIC, DcvValidationMethod.HTTP_GENERIC,
+                                                   DcvValidationMethod.TLS_USING_ALPN])
+    def validate_request_body_should_return_false_and_message_given_missing_expected_challenge_for_dcv(self, validation_method):
+        body = self.__create_valid_dcv_check_request(validation_method)
+        del body['validation-details']['expected-challenge']
+        is_body_valid, body_validation_issues = MpicRequestValidator.validate_request_body('/validation', body)
+        assert is_body_valid is False
+        assert 'missing-expected-challenge-in-validation-details' in body_validation_issues
 
     def validate_request_body_should_return_false_and_message_given_missing_prefix_for_dns_validation(self):
         body = self.__create_valid_dcv_check_request(DcvValidationMethod.DNS_GENERIC)
@@ -107,6 +123,20 @@ class TestMpicRequestValidator:
         is_body_valid, body_validation_issues = MpicRequestValidator.validate_request_body('/validation', body)
         assert is_body_valid is False
         assert 'missing-prefix-in-validation-details' in body_validation_issues
+
+    def validate_request_body_should_return_false_and_message_given_missing_record_type_for_dns_validation(self):
+        body = self.__create_valid_dcv_check_request(DcvValidationMethod.DNS_GENERIC)
+        del body['validation-details']['record-type']
+        is_body_valid, body_validation_issues = MpicRequestValidator.validate_request_body('/validation', body)
+        assert is_body_valid is False
+        assert 'missing-record-type-in-validation-details' in body_validation_issues
+
+    def validate_request_body_should_return_false_and_message_given_missing_path_for_http_validation(self):
+        body = self.__create_valid_dcv_check_request(DcvValidationMethod.HTTP_GENERIC)
+        del body['validation-details']['path']
+        is_body_valid, body_validation_issues = MpicRequestValidator.validate_request_body('/validation', body)
+        assert is_body_valid is False
+        assert 'missing-path-in-validation-details' in body_validation_issues
 
 
 if __name__ == '__main__':
