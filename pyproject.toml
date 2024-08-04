@@ -36,6 +36,8 @@ test = [
     "pytest==8.2.2",
     "pytest-cov==5.0.0",
     "pytest-mock==3.14.0",
+    "pytest-html==4.1.1",
+    "pytest-spec==3.2.0",
 ]
 
 [project.urls]
@@ -77,7 +79,7 @@ randomize = true
 
 [tool.pytest.ini_options]
 pythonpath = [
-    "src","."  # need root directory because it has some python files we are importing for integration tests
+    "src","."  # need root directory because it has some python utility files we are importing for integration tests
 ]
 testpaths = [
     "tests/unit"
@@ -91,7 +93,11 @@ markers = [
 ]
 addopts = [
     "--import-mode=prepend",  # explicit default, as the tests rely on it for proper import resolution
+    "--html=testreports/index.html",  # generate html report (warning: uses an aging plugin, 11-2023)
+    "--spec"  # show test names in a more readable format in the console (warning: uses an aging plugin, 5-2021)
 ]
+spec_header_format = "Spec for {test_case} ({path}):"
+spec_test_format = "{result} {docstring_summary}"  # defaults to {name} if docstring is not present in test
 
 [tool.coverage.run]
 source = [

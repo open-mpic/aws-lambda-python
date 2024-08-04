@@ -6,7 +6,6 @@ mpic_coordinator_layer.zip
 layer/create_layer_virtualenv
 layer/*_layer_content
 layer/*_layer_content.zip
-layer/mpic_coordinator_layer_content.zip
 
 # Generated tf files.
 *.generated.tf
@@ -69,6 +68,7 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 cover/
+testreports/
 
 # Translations
 *.mo

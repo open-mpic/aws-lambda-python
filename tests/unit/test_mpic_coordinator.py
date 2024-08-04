@@ -26,21 +26,21 @@ class TestMpicCoordinator:
             yield class_scoped_monkeypatch  # restore the environment afterward
 
     @pytest.mark.parametrize('requested_perspective_count, expected_unique_rirs', [(2, 2), (3, 3), (4, 3)])
-    def random_select_perspectives_considering_rir_should_select_diverse_rirs_given_list_where_some_share_same_rir(
+    def random_select_perspectives_considering_rir__should_select_diverse_rirs_given_list_where_some_share_same_rir(
             self, set_env_variables, requested_perspective_count, expected_unique_rirs):
         perspectives = os.getenv('perspective_names').split('|')  # same split logic as in actual calling code
         mpic_coordinator = MpicCoordinator()
         selected_perspectives = mpic_coordinator.random_select_perspectives_considering_rir(perspectives, requested_perspective_count, 'test_identifier')
         assert len(set(map(lambda p: p.split('.')[0], selected_perspectives))) == expected_unique_rirs  # expect 3 unique rirs from setup data
 
-    def random_select_perspectives_considering_rir_should_throw_error_given_requested_count_exceeds_total_perspectives(
+    def random_select_perspectives_considering_rir__should_throw_error_given_requested_count_exceeds_total_perspectives(
             self, set_env_variables):
         perspectives = os.getenv('perspective_names').split('|')
         mpic_coordinator = MpicCoordinator()
         with pytest.raises(ValueError):
             mpic_coordinator.random_select_perspectives_considering_rir(perspectives, 10, 'test_identifier')  # expect error
 
-    def coordinate_mpic_should_return_error_given_failed_api_version_check(self, set_env_variables):
+    def coordinate_mpic__should_return_error_given_failed_api_version_check(self, set_env_variables):
         body = {
             'api-version': '0.0.0',  # invalid version
             'system-params': {'identifier': 'test', 'perspective-count': 3},
@@ -52,7 +52,7 @@ class TestMpicCoordinator:
         assert result['statusCode'] == 400
         assert 'api-version-mismatch' in result['body']
 
-    def coordinate_mpic_should_return_error_given_perspectives_and_perspective_count_both_specified(self, set_env_variables):
+    def coordinate_mpic__should_return_error_given_perspectives_and_perspective_count_both_specified(self, set_env_variables):
         body = {
             'api-version': '1.0.0',
             'system-params': {'identifier': 'test', 'perspective-count': 3, 'perspectives': 'test1|test2|test3'}
@@ -65,7 +65,7 @@ class TestMpicCoordinator:
 
     # FIXME: This test is expected to fail because the code does not check for invalid perspective count
     @pytest.mark.xfail
-    def coordinate_mpic_should_return_error_given_invalid_perspective_count(self, set_env_variables):
+    def coordinate_mpic__should_return_error_given_invalid_perspective_count(self, set_env_variables):
         body = {
             'api-version': '1.0.0',
             'system-params': {'identifier': 'test', 'perspective-count': 0}
@@ -78,7 +78,7 @@ class TestMpicCoordinator:
 
     # FIXME: This test is expected to fail because the code does not check for invalid perspective list
     @pytest.mark.xfail
-    def coordinate_mpic_should_return_error_given_invalid_perspective_list(self, set_env_variables):
+    def coordinate_mpic__should_return_error_given_invalid_perspective_list(self, set_env_variables):
         body = {
             'api-version': '1.0.0',
             'system-params': {'identifier': 'test', 'perspectives': 'test1|test2|test3|test4'}
@@ -92,7 +92,7 @@ class TestMpicCoordinator:
     # FIXME: This test is expected to fail because the code does not validate quorum count
     @pytest.mark.xfail
     @pytest.mark.parametrize('quorum_count', [4, 1])
-    def coordinate_mpic_should_return_error_given_invalid_quorum_count(self, set_env_variables, quorum_count):
+    def coordinate_mpic__should_return_error_given_invalid_quorum_count(self, set_env_variables, quorum_count):
         body = {
             'api-version': '1.0.0',
             'system-params': {'identifier': 'test', 'perspective-count': 3, 'quorum': quorum_count}
@@ -106,7 +106,7 @@ class TestMpicCoordinator:
     # FIXME: This test is expected to fail because the code does not dynamically calculate required quorum size
     @pytest.mark.xfail
     @pytest.mark.parametrize('requested_perspective_count, expected_quorum_size', [(4, 3), (5, 4), (6, 4)])
-    def coordinate_mpic_should_dynamically_set_required_quorum_count_given_no_quorum_specified(
+    def coordinate_mpic__should_dynamically_set_required_quorum_count_given_no_quorum_specified(
             self, set_env_variables, requested_perspective_count, expected_quorum_size):
         body = {
             'api-version': '1.0.0',
@@ -123,7 +123,7 @@ class TestMpicCoordinator:
 
     # FIXME: This test is expected to fail; if identifier is missing what should happen? (ditto for all other fields)
     @pytest.mark.xfail
-    def coordinate_mpic_should_return_error_given_missing_identifier(self, set_env_variables):
+    def coordinate_mpic__should_return_error_given_missing_identifier(self, set_env_variables):
         body = {
             'api-version': '1.0.0',
             'system-params': {'perspective-count': 3}
@@ -134,7 +134,7 @@ class TestMpicCoordinator:
         assert result['statusCode'] == 400
         assert 'missing-identifier' in result['body']
 
-    def collect_async_calls_to_issue_should_have_only_caa_calls_given_caa_check_request_path(self, set_env_variables):
+    def collect_async_calls_to_issue__should_have_only_caa_calls_given_caa_check_request_path(self, set_env_variables):
         body = {
             'api-version': '1.0.0',
             'system-params': {'identifier': 'test'},
@@ -147,7 +147,7 @@ class TestMpicCoordinator:
         # ensure each call is of type 'caa' (first element in call tuple)
         assert set(map(lambda result: result[0], call_list)) == {'caa'}
 
-    def collect_async_calls_to_issue_should_have_only_validator_calls_given_validation_request_path(self, set_env_variables):
+    def collect_async_calls_to_issue__should_have_only_validator_calls_given_validation_request_path(self, set_env_variables):
         body = {
             'api-version': '1.0.0',
             'system-params': {'identifier': 'test'},
@@ -162,7 +162,7 @@ class TestMpicCoordinator:
         assert set(map(lambda result: result[0], call_list)) == {'validation'}
 
     @pytest.mark.xfail  # FIXME: This test is expected to fail; there is no way to easily inspect caa domains used
-    def collect_async_calls_to_issue_should_use_default_caa_domains_if_none_specified(self, set_env_variables):
+    def collect_async_calls_to_issue__should_use_default_caa_domains_if_none_specified(self, set_env_variables):
         body = {
             'api-version': '1.0.0',
             'system-params': {'identifier': 'test'}
