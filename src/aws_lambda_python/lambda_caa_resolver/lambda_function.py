@@ -3,6 +3,8 @@ import dns.resolver
 import json
 import os
 
+# TODO extract into a separate module to test
+
 # Load the default CAA domain list.
 default_caa_domain_list = os.environ['default_caa_domains'].split("|")
 

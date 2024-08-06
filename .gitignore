@@ -1,9 +1,11 @@
-lambda_validator/lambda_validator.zip
-lambda_controller/lambda_controller.zip
-lambda_caa_resolver/lambda_caa_resolver.zip
+lambda_validator.zip
+mpic_coordinator_lambda.zip
+lambda_caa_resolver.zip
+mpic_coordinator_layer.zip
 
-layer/create_layer
-layer/layer_content.zip
+layer/create_layer_virtualenv
+layer/*_layer_content
+layer/*_layer_content.zip
 
 # Generated tf files.
 *.generated.tf
@@ -15,7 +17,7 @@ config.yaml
 deployment.id
 
 # Byte-compiled / optimized / DLL files
-__pycache__/
+**/__pycache__/
 *.py[cod]
 *$py.class
 
@@ -66,6 +68,7 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 cover/
+testreports/
 
 # Translations
 *.mo
@@ -175,7 +178,8 @@ cython_debug/
 #  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
-#.idea/
+.idea/
+# (nuclear option is fine for now -Dmitry Sharkov)
 
 # Local .terraform directories
 **/.terraform/*
@@ -214,3 +218,9 @@ override.tf.json
 # Ignore CLI configuration files
 .terraformrc
 terraform.rc
+
+# custom directory for Hatch virtual environments
+.hatch/
+
+# MacOS specific files
+.DS_Store

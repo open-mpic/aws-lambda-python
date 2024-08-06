@@ -39,9 +39,7 @@ resource "aws_api_gateway_integration" "validation_integration" {
 
   type = "AWS_PROXY"
 
-  uri = aws_lambda_function.lambda_controller.invoke_arn
-
-
+  uri = aws_lambda_function.mpic_coordinator_lambda.invoke_arn
 
 }
 

@@ -1,14 +1,22 @@
-# Init a defaualt aws provider for the api deployment.
+# Init a default aws provider for the api deployment.
 provider "aws" {
   region                  = "{{api-region}}"
   profile                 = "default"
 }
 
-# Python openmpic layer.
+# Python open-mpic layer (contains third party libraries)
 resource "aws_lambda_layer_version" "python311-open-mpic-layer" {
-    filename            = "../layer/layer_content.zip"
+    filename            = "../layer/python311_layer_content.zip"
     layer_name          = "python_311_open_mpic_layer_{{deployment-id}}"
-    source_code_hash    = "${filebase64sha256("../layer/layer_content.zip")}"
+    source_code_hash    = "${filebase64sha256("../layer/python311_layer_content.zip")}"
+    compatible_runtimes = ["python3.11"]
+}
+
+# Mpic Coordinator layer for the mpic coordinator lambda (contains supporting first-party source code)
+resource "aws_lambda_layer_version" "mpic-coordinator-layer" {
+    filename            = "../layer/mpic_coordinator_layer_content.zip"
+    layer_name          = "mpic-coordinator-layer_{{deployment-id}}"
+    source_code_hash    = "${filebase64sha256("../layer/mpic_coordinator_layer_content.zip")}"
     compatible_runtimes = ["python3.11"]
 }
 
@@ -50,17 +58,19 @@ resource "aws_iam_role_policy_attachment" "invoke-lambda-policy-attach" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaRole"
 }
 
-
-# Init the lambda controller.
-resource "aws_lambda_function" "lambda_controller" {
-    filename      = "../lambda_controller/lambda_controller.zip"
-    function_name = "open_mpic_lambda_controller_{{deployment-id}}"
+# Init the mpic coordinator lambda.
+resource "aws_lambda_function" "mpic_coordinator_lambda" {
+    filename      = "../{{source-path}}/mpic_coordinator_lambda/mpic_coordinator_lambda.zip"
+    function_name = "open_mpic_lambda_coordinator_{{deployment-id}}"
     role          = aws_iam_role.open_mpic_lambda_role.arn
-    handler       = "lambda_function.lambda_handler"
-    source_code_hash = filebase64sha256("../lambda_controller/lambda_controller.zip")
+    handler       = "mpic_coordinator_lambda_function.lambda_handler"
+    source_code_hash = filebase64sha256("../{{source-path}}/mpic_coordinator_lambda/mpic_coordinator_lambda.zip")
     runtime = "python3.11"
     timeout = 60
-    layers = [aws_lambda_layer_version.python311-open-mpic-layer.arn]
+    layers = [
+        aws_lambda_layer_version.python311-open-mpic-layer.arn,
+        aws_lambda_layer_version.mpic-coordinator-layer.arn
+    ]
     environment {
       variables = {
         perspective_names = {{perspective-names-list}}
@@ -72,9 +82,7 @@ resource "aws_lambda_function" "lambda_controller" {
         hash_secret = {{hash-secret}}
       }
     }
-
 }
-
 
 resource "aws_api_gateway_rest_api" "open_mpic_api" {
   name = "open-mpic-api-{{deployment-id}}"
@@ -84,40 +92,28 @@ resource "aws_api_gateway_rest_api" "open_mpic_api" {
   }
 }
 
-
-
-
 resource "aws_api_gateway_deployment" "deployment" {
-
   depends_on = [
-
     aws_api_gateway_integration.validation_integration,
     aws_api_gateway_integration.caa_integration,
     aws_api_gateway_integration.validationwithcaa_integration,
-    
   ]
-
-
 
   rest_api_id = aws_api_gateway_rest_api.open_mpic_api.id
 
   stage_name = "v1"
-
 }
-
 
 resource "aws_lambda_permission" "lambda_permission_api" {
   statement_id  = "AllowOpenMPICAPIInvoke"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.lambda_controller.function_name
+  function_name = aws_lambda_function.mpic_coordinator_lambda.function_name
   principal     = "apigateway.amazonaws.com"
 
   # The /* part allows invocation from any stage, method and resource path
   # within API Gateway.
   source_arn = "${aws_api_gateway_rest_api.open_mpic_api.execution_arn}/*"
 }
-
-
 
 # Set up the API key for the API.
 resource "aws_api_gateway_api_key" "open_mpic" {
@@ -139,8 +135,6 @@ resource "aws_api_gateway_usage_plan" "prod_usage_plan" {
     api_id = aws_api_gateway_rest_api.open_mpic_api.id
     stage  = aws_api_gateway_deployment.deployment.stage_name
   }
-
-  
 }
 
 
