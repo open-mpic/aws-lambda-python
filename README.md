@@ -8,9 +8,8 @@ As this API runs serverless in the cloud, it is not installed but rather deploye
 All requirements for running the API are packaged and uploaded to AWS as a lambda layer. However, the machine deploying the API must have the following requirements
 - The AWS CLI (https://aws.amazon.com/cli/) installed with default profile login credentials. The script currently uses the "default" profile to deploy the API to. If you have multiple AWS profiles, ensure the one you want to use for the API in listed as default in ~/.aws/credentials. You can alternatively change the AWS module parameters in main.tf to use an alternate profile.
 - Open Tofu (https://opentofu.org/) is installed. This is an open-source fork of Terraform and the configs in this project are largely interoperable between the two.
-- Python3.11 which can be run with the command `python3.11`
+- Python 3.11.9 which can be run with the command `python3.11` and `python3`. [pyenv](https://github.com/pyenv/pyenv) is one option for getting this specific version of python and not modifying any other python installs on the system.
 - Bash. Several deployment scripts are written for bash.
-- A Python3 install linked to the command python3 and the requirements from requirements.txt (in the root directory) installed. These requirements are for the configure.py script (run on the local machine) and are distinct from the requirements in layer/requirements.txt which are requirements for the AWS Lambda Functions run in the cloud.
 - Hatch (https://hatch.pypa.io/) for building and running the project. This is a Python project manager that can be installed via `pip install hatch`.
 
 ## Deployment Steps
@@ -27,7 +26,7 @@ All requirements for running the API are packaged and uploaded to AWS as a lambd
 The following is an example of a test API call that uses bash command substitution to fill in the proper values for the API URL and the API key.
 
 ```
-curl -H 'Content-Type: application/json' -H "x-api-key: $(./get_api_key.py)" \
+curl -H 'Content-Type: application/json' -H "x-api-key: $(hatch run ./get_api_key.py)" \
       -d '{
   "api-version": "1.0.0",
   "system-params": {
@@ -35,10 +34,10 @@ curl -H 'Content-Type: application/json' -H "x-api-key: $(./get_api_key.py)" \
   }
 }' \
       -X POST \
-      "$(./get_api_url.py)/caa-check"
+      "$(hatch run ./get_api_url.py)/caa-check"
 ```
 
-The above sample must be run from the root directory of a deployed Open MPIC aws-lambda-python implementation for the bash command substitution to work. You can also run `./get_api_key.py` and `./get_api_url.py`, store these values and then substitute them into the above command. Once deployed, the API is globally accessible and authenticates requests via the `x-api-key` header, so the curl command with both of these values substituted can be run from any Internet-connected machine to trigger the API.
+The above sample must be run from the root directory of a deployed Open MPIC aws-lambda-python implementation for the bash command substitution to work. You can also run `hatch run ./get_api_key.py` and `hatch run ./get_api_url.py`, store these values and then substitute them into the above command. Once deployed, the API is globally accessible and authenticates requests via the `x-api-key` header, so the curl command with both of these values substituted can be run from any Internet-connected machine to trigger the API.
 
 The API is compliant with the [Open MPIC Specification](https://github.com/open-mpic/open-mpic-specification) with the exception of authentication. The API specification uses Bearer header authentication, but this implementation authorizes requests based on the `x-api-key` header. This is because `x-api-key` header authentication is integrated into AWS API Gateway allowing only authenticated requests to trigger lambda calls that incur costs. Unauthenticated requests are terminated by the API Gateway instead of having to be passed to Python code.
 
