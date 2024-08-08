@@ -40,6 +40,7 @@ class TestMpicCoordinator:
         with pytest.raises(ValueError):
             mpic_coordinator.random_select_perspectives_considering_rir(perspectives, 10, 'test_identifier')  # expect error
 
+    # TODO remove some of these validation tests once the request validator is complete; keep a couple to test proper integration
     def coordinate_mpic__should_return_error_given_failed_api_version_check(self, set_env_variables):
         body = {
             'api-version': '0.0.0',  # invalid version

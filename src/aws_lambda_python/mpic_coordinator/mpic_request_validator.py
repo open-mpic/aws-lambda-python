@@ -3,9 +3,9 @@ from aws_lambda_python.mpic_coordinator.domain.dcv_validation_method import DcvV
 
 
 class MpicRequestValidator:
-    @staticmethod  # placeholder for future validation of request body
-    #  returns a list of validation issues found in the request body; if empty, request body is valid
-    def validate_request_body(request_path, request_body):
+    @staticmethod
+    # returns a list of validation issues found in the request body; if empty, request body is valid
+    def is_request_body_valid(request_path, request_body):
         request_body_validation_issues = []
 
         # enforce presence of required fields
@@ -38,10 +38,10 @@ class MpicRequestValidator:
     @staticmethod
     def validate_caa_check_request_details(request_body, request_body_validation_issues) -> None:
         if 'caa-details' in request_body:
+            # TODO is there a default certificate type we should use if not specified? (then field _can_ be missing)
             if 'certificate-type' not in request_body['caa-details']:
                 request_body_validation_issues.append('missing-certificate-type-in-caa-details')
             else:
-                # TODO is there a default certificate type we should use if not specified?
                 certificate_type = request_body['caa-details']['certificate-type']
                 # check if certificate_type is not in CertificateType enum
                 if certificate_type not in iter(CertificateType):
