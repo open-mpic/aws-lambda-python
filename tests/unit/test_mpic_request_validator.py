@@ -4,6 +4,7 @@ import pytest
 
 from aws_lambda_python.mpic_coordinator.domain.dcv_validation_method import DcvValidationMethod
 from aws_lambda_python.mpic_coordinator.domain.dns_record_type import DnsRecordType
+from aws_lambda_python.mpic_coordinator.messages.validation_messages import ValidationMessages
 from aws_lambda_python.mpic_coordinator.mpic_request_validator import MpicRequestValidator
 
 
@@ -51,7 +52,25 @@ class TestMpicRequestValidator:
         del body['api-version']  # remove api-version field
         is_body_valid, body_validation_issues = MpicRequestValidator.is_request_body_valid('/caa-check', body)
         assert is_body_valid is False
-        assert 'missing-api-version' in body_validation_issues
+        assert ValidationMessages.MISSING_API_VERSION.key in [issue.issue_type for issue in body_validation_issues]
+
+    @pytest.mark.parametrize('api_version', ['0.0.1', '5.0.0', '1;0;0', '1.', '100', 'bad-api-version'])  # ~=1.0.0 is valid
+    def is_request_body_valid__should_return_false_and_message_given_invalid_api_version(self, api_version):
+        body = self.__create_valid_caa_check_request()
+        body['api-version'] = api_version
+        is_body_valid, body_validation_issues = MpicRequestValidator.is_request_body_valid('/caa-check', body)
+        assert is_body_valid is False
+        assert ValidationMessages.INVALID_API_VERSION.key in [issue.issue_type for issue in body_validation_issues]
+        # get the message for the first issue with the key 'invalid-api-version'
+        invalid_api_version_issue = next(issue for issue in body_validation_issues if issue.issue_type == ValidationMessages.INVALID_API_VERSION.key)
+        assert api_version in invalid_api_version_issue.message
+
+    @pytest.mark.parametrize('request_path', ['/invalid-path'])  # do any other path types need testing?
+    def is_request_body_valid__should_return_false_and_message_given_unsupported_request_path(self, request_path):
+        body = self.__create_valid_caa_check_request()
+        is_body_valid, body_validation_issues = MpicRequestValidator.is_request_body_valid(request_path, body)
+        assert is_body_valid is False
+        assert 'unsupported-request-path' in body_validation_issues
 
     def is_request_body_valid__should_return_false_and_message_given_missing_system_params(self):
         body = self.__create_valid_caa_check_request()

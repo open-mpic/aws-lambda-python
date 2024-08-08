@@ -7,7 +7,7 @@ import os
 import random
 import hashlib
 
-VERSION = "1.0.0"  # TODO do we need to externalize this to an environment variable? it's a bit hidden here
+VERSION = "1.0.0"  # TODO do we need to externalize this? it's a bit hidden here
 
 
 class MpicCoordinator:
@@ -86,7 +86,9 @@ class MpicCoordinator:
         request_path = event["path"]
         body = json.loads(event["body"])
 
-        # TODO should we check for missing api-version, system-params, and other required fields here?
+        # TODO validate request here (then can remove some of the below checks which will become redundant)
+
+        # TODO error messages probably should live in their own class, otherwise the code will get cumbersome quickly
 
         # Begin with an API version check.
         request_api_version_split = body['api-version'].split('.')

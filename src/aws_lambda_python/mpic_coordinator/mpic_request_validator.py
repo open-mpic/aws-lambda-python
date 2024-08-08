@@ -1,16 +1,22 @@
+import re
 from aws_lambda_python.mpic_coordinator.domain.certificate_type import CertificateType
 from aws_lambda_python.mpic_coordinator.domain.dcv_validation_method import DcvValidationMethod
+from aws_lambda_python.mpic_coordinator.messages.validation_messages import ValidationMessages
+from aws_lambda_python.mpic_coordinator.validation_issue import ValidationIssue
 
 
 class MpicRequestValidator:
     @staticmethod
     # returns a list of validation issues found in the request body; if empty, request body is valid
+    # TODO return upon finding first validation issue? or accumulate issues? accumulating is more "helpful" to caller
     def is_request_body_valid(request_path, request_body):
         request_body_validation_issues = []
 
         # enforce presence of required fields
         if 'api-version' not in request_body:
-            request_body_validation_issues.append('missing-api-version')
+            request_body_validation_issues.append(ValidationIssue(ValidationMessages.MISSING_API_VERSION))
+        else:
+            MpicRequestValidator.validate_api_version(request_body['api-version'], request_body_validation_issues)
 
         if 'system-params' not in request_body:
             request_body_validation_issues.append('missing-system-params')
@@ -31,6 +37,8 @@ class MpicRequestValidator:
                     MpicRequestValidator.validate_caa_check_request_details(request_body, request_body_validation_issues)
             case '/validation':
                 MpicRequestValidator.validate_dcv_check_request_details(request_body, request_body_validation_issues)
+            case _:
+                request_body_validation_issues.append('unsupported-request-path')
 
         # returns true if no validation issues found, false otherwise; includes list of validation issues found
         return len(request_body_validation_issues) == 0, request_body_validation_issues
@@ -50,8 +58,6 @@ class MpicRequestValidator:
 
     @staticmethod
     def validate_dcv_check_request_details(request_body, request_body_validation_issues) -> None:
-        # TODO should we return early upon finding any validation issue? or try to accumulate issues?
-        # accumulating issues is more "helpful," but makes the validation logic a bit more clunky
         if 'validation-method' not in request_body:
             request_body_validation_issues.append('missing-validation-method')
         elif request_body['validation-method'] not in iter(DcvValidationMethod):
@@ -78,3 +84,13 @@ class MpicRequestValidator:
                     case DcvValidationMethod.TLS_USING_ALPN:
                         if 'expected-challenge' not in validation_details:
                             request_body_validation_issues.append('missing-expected-challenge-in-validation-details')
+
+    @staticmethod
+    def validate_api_version(api_version, request_body_validation_issues) -> None:
+        # check if api_version matches regex pattern for API versions that look like 1.0.0
+        if not re.match(r'^\d+(\.\d+)+$', api_version):
+            request_body_validation_issues.append(ValidationIssue(ValidationMessages.INVALID_API_VERSION, api_version))
+        else:
+            request_api_major_version = api_version.split('.')
+            if int(request_api_major_version[0]) != 1:
+                request_body_validation_issues.append(ValidationIssue(ValidationMessages.INVALID_API_VERSION, api_version))
