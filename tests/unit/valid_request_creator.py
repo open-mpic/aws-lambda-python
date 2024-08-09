@@ -13,17 +13,31 @@ class ValidRequestCreator:
 
     @staticmethod
     def create_valid_dcv_check_request(validation_method=DcvValidationMethod.DNS_GENERIC):
+        return {
+            'api-version': '1.0.0',
+            'system-params': {'identifier': 'test', 'perspective-count': 6, 'quorum': 4},
+            'validation-method': validation_method,
+            'validation-details': ValidRequestCreator.create_validation_details(validation_method)
+        }
+
+    @staticmethod
+    def create_valid_dcv_with_caa_check_request(validation_method=DcvValidationMethod.DNS_GENERIC):
+        return {
+            'api-version': '1.0.0',
+            'system-params': {'identifier': 'test', 'perspective-count': 6, 'quorum': 4},
+            'caa-details': {'certificate-type': 'tls-server'},
+            'validation-method': validation_method,
+            'validation-details': ValidRequestCreator.create_validation_details(validation_method)
+        }
+
+    @classmethod
+    def create_validation_details(cls, validation_method):
         validation_details = {}
         match validation_method:
             case DcvValidationMethod.DNS_GENERIC:
                 validation_details = {'prefix': 'test', 'record-type': DnsRecordType.A, 'expected-challenge': 'test'}
             case DcvValidationMethod.HTTP_GENERIC:
-                validation_details = {'path': 'http://example.com', 'expected-challenge': 'test'}  # noqa (not https)
+                validation_details = {'path': 'http://example.com', 'expected-challenge': 'test'}
             case DcvValidationMethod.TLS_USING_ALPN:
                 validation_details = {'expected-challenge': 'test'}
-        return {
-            'api-version': '1.0.0',
-            'system-params': {'identifier': 'test', 'perspective-count': 6, 'quorum': 4},
-            'validation-method': validation_method,
-            'validation-details': validation_details
-        }
+        return validation_details

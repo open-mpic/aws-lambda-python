@@ -3,6 +3,7 @@ import sys
 import pytest
 
 from aws_lambda_python.mpic_coordinator.domain.dcv_validation_method import DcvValidationMethod
+from aws_lambda_python.mpic_coordinator.domain.request_paths import RequestPaths
 from aws_lambda_python.mpic_coordinator.messages.validation_messages import ValidationMessages
 from aws_lambda_python.mpic_coordinator.mpic_request_validator import MpicRequestValidator
 from valid_request_creator import ValidRequestCreator
@@ -16,7 +17,7 @@ class TestMpicRequestValidator:
 
     def is_request_body_valid__should_return_true_and_empty_message_list_given_valid_caa_check_request_with_perspective_count(self):
         body = ValidRequestCreator.create_valid_caa_check_request()
-        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid('/caa-check', body, self.known_perspectives)
+        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid(RequestPaths.CAA_CHECK, body, self.known_perspectives)
         assert is_body_valid is True
         assert len(validation_issues) == 0
 
@@ -24,7 +25,7 @@ class TestMpicRequestValidator:
         body = ValidRequestCreator.create_valid_caa_check_request()
         body['system-params']['perspectives'] = self.known_perspectives[:6]
         del body['system-params']['perspective-count']
-        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid('/caa-check', body, self.known_perspectives)
+        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid(RequestPaths.CAA_CHECK, body, self.known_perspectives)
         assert is_body_valid is True
         assert len(validation_issues) == 0
 
@@ -32,14 +33,20 @@ class TestMpicRequestValidator:
                                                    DcvValidationMethod.TLS_USING_ALPN])
     def is_request_body_valid__should_return_true_and_empty_message_list_given_valid_dcv_check_request(self, validation_method):
         body = ValidRequestCreator.create_valid_dcv_check_request(validation_method)
-        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid('/validation', body, self.known_perspectives)
+        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid(RequestPaths.DCV_CHECK, body, self.known_perspectives)
+        assert is_body_valid is True
+        assert len(validation_issues) == 0
+
+    def is_request_body_valid__should_return_true_and_empty_message_list_given_valid_dcv_with_caa_check_request(self):
+        body = ValidRequestCreator.create_valid_dcv_with_caa_check_request()
+        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid(RequestPaths.DCV_WITH_CAA_CHECK, body, self.known_perspectives)
         assert is_body_valid is True
         assert len(validation_issues) == 0
 
     def is_request_body_valid__should_return_false_and_message_given_missing_api_version(self):
         body = ValidRequestCreator.create_valid_caa_check_request()
         del body['api-version']  # remove api-version field
-        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid('/caa-check', body, self.known_perspectives)
+        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid(RequestPaths.CAA_CHECK, body, self.known_perspectives)
         assert is_body_valid is False
         assert ValidationMessages.MISSING_API_VERSION.key in [issue.issue_type for issue in validation_issues]
 
@@ -47,7 +54,7 @@ class TestMpicRequestValidator:
     def is_request_body_valid__should_return_false_and_message_given_invalid_api_version(self, api_version):
         body = ValidRequestCreator.create_valid_caa_check_request()
         body['api-version'] = api_version
-        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid('/caa-check', body, self.known_perspectives)
+        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid(RequestPaths.CAA_CHECK, body, self.known_perspectives)
         assert is_body_valid is False
         assert ValidationMessages.INVALID_API_VERSION.key in [issue.issue_type for issue in validation_issues]
         invalid_api_version_issue = next(issue for issue in validation_issues if issue.issue_type == ValidationMessages.INVALID_API_VERSION.key)
@@ -65,7 +72,7 @@ class TestMpicRequestValidator:
     def is_request_body_valid__should_return_false_and_message_given_missing_system_params(self):
         body = ValidRequestCreator.create_valid_caa_check_request()
         del body['system-params']  # remove system-params field
-        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid('/caa-check', body, self.known_perspectives)
+        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid(RequestPaths.CAA_CHECK, body, self.known_perspectives)
         assert is_body_valid is False
         assert ValidationMessages.MISSING_SYSTEM_PARAMS.key in [issue.issue_type for issue in validation_issues]
 
@@ -73,7 +80,7 @@ class TestMpicRequestValidator:
     def is_request_body_valid__should_return_false_and_message_given_missing_identifier(self):
         body = ValidRequestCreator.create_valid_caa_check_request()
         del body['system-params']['identifier']  # remove identifier field
-        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid('/caa-check', body, self.known_perspectives)
+        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid(RequestPaths.CAA_CHECK, body, self.known_perspectives)
         assert is_body_valid is False
         assert ValidationMessages.MISSING_DOMAIN_OR_IP_TARGET.key in [issue.issue_type for issue in validation_issues]
 
@@ -81,7 +88,7 @@ class TestMpicRequestValidator:
         body = ValidRequestCreator.create_valid_caa_check_request()
         body['system-params']['perspectives'] = self.known_perspectives[:6]
         body['system-params']['perspective-count'] = 2
-        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid('/caa-check', body, self.known_perspectives)
+        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid(RequestPaths.CAA_CHECK, body, self.known_perspectives)
         assert is_body_valid is False
         assert ValidationMessages.PERSPECTIVES_WITH_PERSPECTIVE_COUNT.key in [issue.issue_type for issue in validation_issues]
 
@@ -89,7 +96,7 @@ class TestMpicRequestValidator:
     def is_request_body_valid__should_return_false_and_message_given_invalid_perspective_count(self, perspective_count):
         body = ValidRequestCreator.create_valid_caa_check_request()
         body['system-params']['perspective-count'] = perspective_count
-        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid('/caa-check', body, self.known_perspectives)
+        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid(RequestPaths.CAA_CHECK, body, self.known_perspectives)
         assert is_body_valid is False
         assert ValidationMessages.INVALID_PERSPECTIVE_COUNT.key in [issue.issue_type for issue in validation_issues]
         invalid_perspective_count_issue = next(issue for issue in validation_issues if issue.issue_type == ValidationMessages.INVALID_PERSPECTIVE_COUNT.key)
@@ -99,7 +106,7 @@ class TestMpicRequestValidator:
         body = ValidRequestCreator.create_valid_caa_check_request()
         del body['system-params']['perspective-count']
         body['system-params']['perspectives'] = ['bad_p1', 'bad_p2', 'bad_p3', 'bad_p4', 'bad_p5', 'bad_p6']
-        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid('/caa-check', body, self.known_perspectives)
+        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid(RequestPaths.CAA_CHECK, body, self.known_perspectives)
         assert is_body_valid is False
         assert ValidationMessages.INVALID_PERSPECTIVE_LIST.key in [issue.issue_type for issue in validation_issues]
 
@@ -108,7 +115,7 @@ class TestMpicRequestValidator:
     def is_request_body_valid__should_return_false_and_message_given_invalid_quorum_count(self, quorum_count):
         body = ValidRequestCreator.create_valid_caa_check_request()
         body['system-params']['quorum'] = quorum_count
-        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid('/caa-check', body, self.known_perspectives)
+        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid(RequestPaths.CAA_CHECK, body, self.known_perspectives)
         assert is_body_valid is False
         assert ValidationMessages.INVALID_QUORUM_COUNT.key in [issue.issue_type for issue in validation_issues]
         invalid_quorum_count_issue = next(issue for issue in validation_issues if issue.issue_type == ValidationMessages.INVALID_QUORUM_COUNT.key)
@@ -117,7 +124,7 @@ class TestMpicRequestValidator:
     def is_request_body_valid__should_return_false_and_message_given_invalid_certificate_type_specified(self):
         body = ValidRequestCreator.create_valid_caa_check_request()
         body['caa-details']['certificate-type'] = 'invalid-certificate-type'
-        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid('/caa-check', body, self.known_perspectives)
+        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid(RequestPaths.CAA_CHECK, body, self.known_perspectives)
         assert is_body_valid is False
         assert ValidationMessages.INVALID_CERTIFICATE_TYPE.key in [issue.issue_type for issue in validation_issues]
         invalid_certificate_type_issue = next(issue for issue in validation_issues if issue.issue_type == ValidationMessages.INVALID_CERTIFICATE_TYPE.key)
@@ -126,7 +133,7 @@ class TestMpicRequestValidator:
     def is_request_body_valid__should_return_false_and_message_given_missing_validation_method_for_dcv(self):
         body = ValidRequestCreator.create_valid_dcv_check_request()
         del body['validation-method']
-        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid('/validation', body, self.known_perspectives)
+        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid(RequestPaths.DCV_CHECK, body, self.known_perspectives)
         assert is_body_valid is False
         assert ValidationMessages.MISSING_VALIDATION_METHOD.key in [issue.issue_type for issue in validation_issues]
 
@@ -134,7 +141,7 @@ class TestMpicRequestValidator:
         body = ValidRequestCreator.create_valid_dcv_check_request()
         # noinspection PyTypedDict
         body['validation-method'] = 'invalid-validation-method'
-        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid('/validation', body, self.known_perspectives)
+        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid(RequestPaths.DCV_CHECK, body, self.known_perspectives)
         assert is_body_valid is False
         assert ValidationMessages.INVALID_VALIDATION_METHOD.key in [issue.issue_type for issue in validation_issues]
         invalid_validation_method_issue = next(issue for issue in validation_issues if issue.issue_type == ValidationMessages.INVALID_VALIDATION_METHOD.key)
@@ -143,7 +150,7 @@ class TestMpicRequestValidator:
     def is_request_body_valid__should_return_false_and_message_given_missing_validation_details_for_dcv(self):
         body = ValidRequestCreator.create_valid_dcv_check_request()
         del body['validation-details']
-        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid('/validation', body, self.known_perspectives)
+        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid(RequestPaths.DCV_CHECK, body, self.known_perspectives)
         assert is_body_valid is False
         assert ValidationMessages.MISSING_VALIDATION_DETAILS.key in [issue.issue_type for issue in validation_issues]
 
@@ -152,28 +159,28 @@ class TestMpicRequestValidator:
     def is_request_body_valid__should_return_false_and_message_given_missing_expected_challenge_for_dcv(self, validation_method):
         body = ValidRequestCreator.create_valid_dcv_check_request(validation_method)
         del body['validation-details']['expected-challenge']
-        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid('/validation', body, self.known_perspectives)
+        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid(RequestPaths.DCV_CHECK, body, self.known_perspectives)
         assert is_body_valid is False
         assert ValidationMessages.MISSING_EXPECTED_CHALLENGE.key in [issue.issue_type for issue in validation_issues]
 
     def is_request_body_valid__should_return_false_and_message_given_missing_prefix_for_dns_validation(self):
         body = ValidRequestCreator.create_valid_dcv_check_request(DcvValidationMethod.DNS_GENERIC)
         del body['validation-details']['prefix']
-        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid('/validation', body, self.known_perspectives)
+        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid(RequestPaths.DCV_CHECK, body, self.known_perspectives)
         assert is_body_valid is False
         assert ValidationMessages.MISSING_PREFIX.key in [issue.issue_type for issue in validation_issues]
 
     def is_request_body_valid__should_return_false_and_message_given_missing_record_type_for_dns_validation(self):
         body = ValidRequestCreator.create_valid_dcv_check_request(DcvValidationMethod.DNS_GENERIC)
         del body['validation-details']['record-type']
-        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid('/validation', body, self.known_perspectives)
+        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid(RequestPaths.DCV_CHECK, body, self.known_perspectives)
         assert is_body_valid is False
         assert ValidationMessages.MISSING_RECORD_TYPE.key in [issue.issue_type for issue in validation_issues]
 
     def is_request_body_valid__should_return_false_and_message_given_missing_path_for_http_validation(self):
         body = ValidRequestCreator.create_valid_dcv_check_request(DcvValidationMethod.HTTP_GENERIC)
         del body['validation-details']['path']
-        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid('/validation', body, self.known_perspectives)
+        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid(RequestPaths.DCV_CHECK, body, self.known_perspectives)
         assert is_body_valid is False
         assert ValidationMessages.MISSING_PATH.key in [issue.issue_type for issue in validation_issues]
 
@@ -181,7 +188,7 @@ class TestMpicRequestValidator:
         body = ValidRequestCreator.create_valid_caa_check_request()
         del body['api-version']
         del body['system-params']['identifier']
-        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid('/caa-check', body, self.known_perspectives)
+        is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid(RequestPaths.CAA_CHECK, body, self.known_perspectives)
         assert is_body_valid is False
         assert len(validation_issues) == 2
         assert ValidationMessages.MISSING_API_VERSION.key in [issue.issue_type for issue in validation_issues]

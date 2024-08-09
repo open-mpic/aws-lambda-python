@@ -2,6 +2,7 @@ import numbers
 import re
 from aws_lambda_python.mpic_coordinator.domain.certificate_type import CertificateType
 from aws_lambda_python.mpic_coordinator.domain.dcv_validation_method import DcvValidationMethod
+from aws_lambda_python.mpic_coordinator.domain.request_paths import RequestPaths
 from aws_lambda_python.mpic_coordinator.messages.validation_messages import ValidationMessages
 from aws_lambda_python.mpic_coordinator.validation_issue import ValidationIssue
 
@@ -39,10 +40,10 @@ class MpicRequestValidator:
         # for example, if request_path == '/caa-check', then enforce that 'caa-details' is present
         # and that 'validation-details' is not present
         match request_path:
-            case '/caa-check':
+            case RequestPaths.CAA_CHECK | RequestPaths.DCV_WITH_CAA_CHECK:
                 if 'caa-details' in request_body:
                     MpicRequestValidator.validate_caa_check_request_details(request_body, request_body_validation_issues)
-            case '/validation':
+            case RequestPaths.DCV_CHECK | RequestPaths.DCV_WITH_CAA_CHECK:
                 MpicRequestValidator.validate_dcv_check_request_details(request_body, request_body_validation_issues)
             case _:
                 request_body_validation_issues.append(ValidationIssue(ValidationMessages.UNSUPPORTED_REQUEST_PATH, request_path))

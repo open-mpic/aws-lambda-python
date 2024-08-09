@@ -178,8 +178,9 @@ class MpicCoordinator:
         # TODO update API -- required-quorum-count is not there today and probably should be if it's dynamically derived
         resp_body = {
             'api-version': VERSION,
-            'system-params': system_params,
-            'required-quorum-count': quorum_count,
+            'request-system-params': system_params,  # TODO rename this field in API
+            'number-of-perspectives-used': perspective_count,  # TODO add this field to API
+            'required-quorum-count-used': quorum_count,  # TODO add this field to API
         }
 
         match request_path:
