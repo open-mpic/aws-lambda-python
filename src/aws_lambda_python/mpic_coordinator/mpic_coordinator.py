@@ -7,6 +7,9 @@ import os
 import random
 import hashlib
 
+from aws_lambda_python.mpic_coordinator.messages.validation_messages import ValidationMessages
+from aws_lambda_python.mpic_coordinator.mpic_request_validator import MpicRequestValidator
+
 VERSION = "1.0.0"  # TODO do we need to externalize this? it's a bit hidden here
 
 
@@ -86,30 +89,18 @@ class MpicCoordinator:
         request_path = event["path"]
         body = json.loads(event["body"])
 
-        # TODO validate request here (then can remove some of the below checks which will become redundant)
-
-        # TODO error messages probably should live in their own class, otherwise the code will get cumbersome quickly
-
-        # Begin with an API version check.
-        request_api_version_split = body['api-version'].split('.')
-        if int(request_api_version_split[0]) != 1 or int(request_api_version_split[1]) > 0:
+        is_request_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid(request_path, body, self.perspective_name_list)
+        if not is_request_body_valid:
             return {
                 'statusCode': 400,
-                'body': json.dumps({'error': 'api-version-mismatch', 'error-msg': f"Sent API Version\
-                        {body['api-version']} is not compatible with system API version {VERSION}."})
+                'body': json.dumps({'error': ValidationMessages.REQUEST_VALIDATION_FAILED.key,
+                                    'validation-issues': [issue.__dict__ for issue in validation_issues]})
             }
 
         # Extract the system params object.
         system_params = body['system-params']
 
-        if 'perspectives' in system_params and 'perspective-count' in system_params:
-            return {
-                'statusCode': 400,
-                'body': json.dumps({'error': 'perspectives-and-perspective-count', 'error-msg': f"Perspectives cannot\
-                                   be specified along with perspective count. Use one parameter or the other."})
-            }
-
-        # Extract the target identifier (domain name or IP for which control is being validated)
+        # Extract the target identifier (domain name or IP for which control is being validated) TODO rename this field
         identifier = system_params['identifier']
 
         # Determine the perspectives to use.
@@ -118,8 +109,6 @@ class MpicCoordinator:
         else:
             perspective_count = system_params['perspective-count'] if 'perspective-count' in system_params else self.default_perspective_count
             perspectives_to_use = self.random_select_perspectives_considering_rir(self.perspective_name_list, perspective_count, identifier)
-
-        # TODO should we inspect system_params['perspectives'] for correctness against actually available perspectives?
 
         # FIXME default_quorum should follow BRs -- if perspectives <=5, quorum is perspectives-1, else perspectives-2
         # otherwise could have, for example, 10 perspectives and default quorum of 5 which is too low
@@ -217,11 +206,7 @@ class MpicCoordinator:
         }
 
     def collect_async_calls_to_issue(self, request_path, body, perspectives_to_use):
-        print(body)  # debugging
-        # TODO should we validate call details such as validation-method, validation-details, caa-details, etc.?
-
         identifier = body['system-params']['identifier']  # should have already checked for validity by this point
-
         async_calls_to_invoke = []
 
         # TODO are validation-method and validation-details required but caa-details NOT required?

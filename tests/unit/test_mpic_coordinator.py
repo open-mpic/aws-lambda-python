@@ -2,7 +2,9 @@ import json
 import pytest
 import os
 
+from aws_lambda_python.mpic_coordinator.messages.validation_messages import ValidationMessages
 from aws_lambda_python.mpic_coordinator.mpic_coordinator import MpicCoordinator
+from valid_request_creator import ValidRequestCreator
 
 
 # noinspection PyMethodMayBeStatic
@@ -40,72 +42,42 @@ class TestMpicCoordinator:
         with pytest.raises(ValueError):
             mpic_coordinator.random_select_perspectives_considering_rir(perspectives, 10, 'test_identifier')  # expect error
 
-    # TODO remove some of these validation tests once the request validator is complete; keep a couple to test proper integration
     def coordinate_mpic__should_return_error_given_failed_api_version_check(self, set_env_variables):
-        body = {
-            'api-version': '0.0.0',  # invalid version
-            'system-params': {'identifier': 'test', 'perspective-count': 3},
-            'caa-details': {'caa-domains': ['example.com']}
-        }
-        event = {'path': 'test_path', 'body': json.dumps(body)}
+        body = ValidRequestCreator.create_valid_caa_check_request()
+        body['api-version'] = '0.0.0'
+        event = {'path': '/caa-check', 'body': json.dumps(body)}
         mpic_coordinator = MpicCoordinator()
         result = mpic_coordinator.coordinate_mpic(event)
         assert result['statusCode'] == 400
-        assert 'api-version-mismatch' in result['body']
+        response_body = json.loads(result['body'])
+        assert response_body['error'] == ValidationMessages.REQUEST_VALIDATION_FAILED.key
+        assert any(issue['issue_type'] == ValidationMessages.INVALID_API_VERSION.key for issue in response_body['validation-issues'])
 
     def coordinate_mpic__should_return_error_given_perspectives_and_perspective_count_both_specified(self, set_env_variables):
-        body = {
-            'api-version': '1.0.0',
-            'system-params': {'identifier': 'test', 'perspective-count': 3, 'perspectives': 'test1|test2|test3'}
-        }
-        event = {'path': 'test_path', 'body': json.dumps(body)}
+        body = ValidRequestCreator.create_valid_caa_check_request()
+        body['system-params']['perspectives'] = 'test1|test2'
+        event = {'path': '/caa-check', 'body': json.dumps(body)}
         mpic_coordinator = MpicCoordinator()
         result = mpic_coordinator.coordinate_mpic(event)
         assert result['statusCode'] == 400
-        assert 'perspectives-and-perspective-count' in result['body']
+        response_body = json.loads(result['body'])
+        assert response_body['error'] == ValidationMessages.REQUEST_VALIDATION_FAILED.key
+        assert any(issue['issue_type'] == ValidationMessages.PERSPECTIVES_WITH_PERSPECTIVE_COUNT.key for issue in response_body['validation-issues'])
 
-    # FIXME: This test is expected to fail because the code does not check for invalid perspective count
-    @pytest.mark.xfail
-    def coordinate_mpic__should_return_error_given_invalid_perspective_count(self, set_env_variables):
-        body = {
-            'api-version': '1.0.0',
-            'system-params': {'identifier': 'test', 'perspective-count': 0}
-        }
-        event = {'path': 'test_path', 'body': json.dumps(body)}
-        mpic_coordinator = MpicCoordinator()
-        result = mpic_coordinator.coordinate_mpic(event)
-        assert result['statusCode'] == 400
-        assert 'invalid-perspective-count' in result['body']
-
-    # FIXME: This test is expected to fail because the code does not check for invalid perspective list
-    @pytest.mark.xfail
     def coordinate_mpic__should_return_error_given_invalid_perspective_list(self, set_env_variables):
-        body = {
-            'api-version': '1.0.0',
-            'system-params': {'identifier': 'test', 'perspectives': 'test1|test2|test3|test4'}
-        }
-        event = {'path': 'test_path', 'body': json.dumps(body)}
+        body = ValidRequestCreator.create_valid_caa_check_request()
+        del body['system-params']['perspective-count']  # remove perspective count to avoid conflict with perspectives
+        body['system-params']['perspectives'] = 'test1|test2|test3|test4'
+        event = {'path': '/caa-check', 'body': json.dumps(body)}
         mpic_coordinator = MpicCoordinator()
         result = mpic_coordinator.coordinate_mpic(event)
         assert result['statusCode'] == 400
-        assert 'invalid-perspectives' in result['body']
+        response_body = json.loads(result['body'])
+        assert response_body['error'] == ValidationMessages.REQUEST_VALIDATION_FAILED.key
+        assert any(issue['issue_type'] == ValidationMessages.INVALID_PERSPECTIVE_LIST.key for issue in response_body['validation-issues'])
 
-    # FIXME: This test is expected to fail because the code does not validate quorum count
-    @pytest.mark.xfail
-    @pytest.mark.parametrize('quorum_count', [4, 1])
-    def coordinate_mpic__should_return_error_given_invalid_quorum_count(self, set_env_variables, quorum_count):
-        body = {
-            'api-version': '1.0.0',
-            'system-params': {'identifier': 'test', 'perspective-count': 3, 'quorum': quorum_count}
-        }
-        event = {'path': 'test_path', 'body': json.dumps(body)}
-        mpic_coordinator = MpicCoordinator()
-        result = mpic_coordinator.coordinate_mpic(event)
-        assert result['statusCode'] == 400
-        assert 'invalid-quorum-count' in result['body']
-
-    # FIXME: This test is expected to fail because the code does not dynamically calculate required quorum size
-    @pytest.mark.xfail
+    # FIXME: This test misbehaves for now because the code does not dynamically calculate required quorum size
+    @pytest.mark.skip
     @pytest.mark.parametrize('requested_perspective_count, expected_quorum_size', [(4, 3), (5, 4), (6, 4)])
     def coordinate_mpic__should_dynamically_set_required_quorum_count_given_no_quorum_specified(
             self, set_env_variables, requested_perspective_count, expected_quorum_size):
@@ -113,7 +85,7 @@ class TestMpicCoordinator:
             'api-version': '1.0.0',
             'system-params': {'identifier': 'test', 'perspective-count': requested_perspective_count},
         }
-        event = {'path': 'test_path', 'body': json.dumps(body)}
+        event = {'path': '/caa-check', 'body': json.dumps(body)}
         mpic_coordinator = MpicCoordinator()
         result = mpic_coordinator.coordinate_mpic(event)
         assert result['statusCode'] == 200
@@ -121,19 +93,6 @@ class TestMpicCoordinator:
         body_as_dict = json.loads(result['body'])
         actual_quorum_count = body_as_dict['required-quorum-count']
         assert actual_quorum_count == expected_quorum_size
-
-    # FIXME: This test is expected to fail; if identifier is missing what should happen? (ditto for all other fields)
-    @pytest.mark.xfail
-    def coordinate_mpic__should_return_error_given_missing_identifier(self, set_env_variables):
-        body = {
-            'api-version': '1.0.0',
-            'system-params': {'perspective-count': 3}
-        }
-        event = {'path': 'test_path', 'body': json.dumps(body)}
-        mpic_coordinator = MpicCoordinator()
-        result = mpic_coordinator.coordinate_mpic(event)
-        assert result['statusCode'] == 400
-        assert 'missing-identifier' in result['body']
 
     def collect_async_calls_to_issue__should_have_only_caa_calls_given_caa_check_request_path(self, set_env_variables):
         body = {
@@ -162,7 +121,7 @@ class TestMpicCoordinator:
         # ensure each call is of type 'validation' (first element in call tuple)
         assert set(map(lambda result: result[0], call_list)) == {'validation'}
 
-    @pytest.mark.xfail  # FIXME: This test is expected to fail; there is no way to easily inspect caa domains used
+    @pytest.mark.skip  # FIXME: this test isn't ready; there is no way to easily inspect caa domains used
     def collect_async_calls_to_issue__should_use_default_caa_domains_if_none_specified(self, set_env_variables):
         body = {
             'api-version': '1.0.0',
