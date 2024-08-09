@@ -22,7 +22,7 @@ class TestMpicRequestValidator:
 
     def is_request_body_valid__should_return_true_and_empty_message_list_given_valid_caa_check_request_with_perspective_list(self):
         body = ValidRequestCreator.create_valid_caa_check_request()
-        body['system-params']['perspectives'] = '|'.join(self.known_perspectives[:6])
+        body['system-params']['perspectives'] = self.known_perspectives[:6]
         del body['system-params']['perspective-count']
         is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid('/caa-check', body, self.known_perspectives)
         assert is_body_valid is True
@@ -79,7 +79,7 @@ class TestMpicRequestValidator:
 
     def is_request_body_valid__should_return_false_and_message_given_both_perspective_and_perspective_count_present(self):
         body = ValidRequestCreator.create_valid_caa_check_request()
-        body['system-params']['perspectives'] = '|'.join(self.known_perspectives[:6])
+        body['system-params']['perspectives'] = self.known_perspectives[:6]
         body['system-params']['perspective-count'] = 2
         is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid('/caa-check', body, self.known_perspectives)
         assert is_body_valid is False
@@ -98,7 +98,7 @@ class TestMpicRequestValidator:
     def is_request_body_valid__should_return_false_and_message_given_invalid_perspective_list(self):
         body = ValidRequestCreator.create_valid_caa_check_request()
         del body['system-params']['perspective-count']
-        body['system-params']['perspectives'] = 'bad_p1|bad_p2|bad_p3|bad_p4|bad_p5|bad_p6'
+        body['system-params']['perspectives'] = ['bad_p1', 'bad_p2', 'bad_p3', 'bad_p4', 'bad_p5', 'bad_p6']
         is_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid('/caa-check', body, self.known_perspectives)
         assert is_body_valid is False
         assert ValidationMessages.INVALID_PERSPECTIVE_LIST.key in [issue.issue_type for issue in validation_issues]

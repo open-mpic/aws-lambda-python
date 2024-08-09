@@ -89,6 +89,8 @@ class MpicCoordinator:
         request_path = event["path"]
         body = json.loads(event["body"])
 
+        # TODO validate the request path?
+
         is_request_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid(request_path, body, self.perspective_name_list)
         if not is_request_body_valid:
             return {
@@ -101,14 +103,17 @@ class MpicCoordinator:
         system_params = body['system-params']
 
         # Extract the target identifier (domain name or IP for which control is being validated) TODO rename this field
-        identifier = system_params['identifier']
+        domain_or_ip_target = system_params['identifier']
 
-        # Determine the perspectives to use.
+        # Determine the perspectives and perspective count to use for this request.
+        perspective_count = self.default_perspective_count
         if 'perspectives' in system_params:
             perspectives_to_use = system_params['perspectives']
+            perspective_count = len(perspectives_to_use)
         else:
-            perspective_count = system_params['perspective-count'] if 'perspective-count' in system_params else self.default_perspective_count
-            perspectives_to_use = self.random_select_perspectives_considering_rir(self.perspective_name_list, perspective_count, identifier)
+            if 'perspective-count' in system_params:
+                perspective_count = system_params['perspective-count']
+            perspectives_to_use = self.random_select_perspectives_considering_rir(self.perspective_name_list, perspective_count, domain_or_ip_target)
 
         # FIXME default_quorum should follow BRs -- if perspectives <=5, quorum is perspectives-1, else perspectives-2
         # otherwise could have, for example, 10 perspectives and default quorum of 5 which is too low
@@ -119,13 +124,12 @@ class MpicCoordinator:
         # Collect async calls to invoke for each perspective.
         async_calls_to_invoke = self.collect_async_calls_to_issue(request_path, body, perspectives_to_use)
 
-        num_perspectives = len(perspectives_to_use)
         perspective_responses = {}
         valid_by_perspective_by_op_type = {'validation': {r: False for r in perspectives_to_use},
                                            'caa': {r: False for r in perspectives_to_use}}
 
         # example code: https://docs.python.org/3/library/concurrent.futures.html
-        with concurrent.futures.ThreadPoolExecutor(max_workers=num_perspectives) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=perspective_count) as executor:
             exec_begin = time.perf_counter()
             future_to_dv = {executor.submit(self.thread_call, arn, perspective, args): (perspective, optype) for
                             (optype, perspective, arn, args) in async_calls_to_invoke}

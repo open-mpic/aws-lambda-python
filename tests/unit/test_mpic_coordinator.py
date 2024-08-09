@@ -38,43 +38,23 @@ class TestMpicCoordinator:
     def random_select_perspectives_considering_rir__should_throw_error_given_requested_count_exceeds_total_perspectives(
             self, set_env_variables):
         perspectives = os.getenv('perspective_names').split('|')
+        excessive_count = len(perspectives) + 1
         mpic_coordinator = MpicCoordinator()
         with pytest.raises(ValueError):
-            mpic_coordinator.random_select_perspectives_considering_rir(perspectives, 10, 'test_identifier')  # expect error
+            mpic_coordinator.random_select_perspectives_considering_rir(perspectives, excessive_count, 'test_identifier')  # expect error
 
-    def coordinate_mpic__should_return_error_given_failed_api_version_check(self, set_env_variables):
+    @pytest.mark.parametrize('field_to_delete, error_message_to_find', [('api-version', ValidationMessages.MISSING_API_VERSION.key),
+                                                                        ('system-params', ValidationMessages.MISSING_SYSTEM_PARAMS.key)])
+    def coordinate_mpic__should_return_error_given_invalid_request_body(self, set_env_variables, field_to_delete, error_message_to_find):
         body = ValidRequestCreator.create_valid_caa_check_request()
-        body['api-version'] = '0.0.0'
+        del body[field_to_delete]
         event = {'path': '/caa-check', 'body': json.dumps(body)}
         mpic_coordinator = MpicCoordinator()
         result = mpic_coordinator.coordinate_mpic(event)
         assert result['statusCode'] == 400
         response_body = json.loads(result['body'])
         assert response_body['error'] == ValidationMessages.REQUEST_VALIDATION_FAILED.key
-        assert any(issue['issue_type'] == ValidationMessages.INVALID_API_VERSION.key for issue in response_body['validation-issues'])
-
-    def coordinate_mpic__should_return_error_given_perspectives_and_perspective_count_both_specified(self, set_env_variables):
-        body = ValidRequestCreator.create_valid_caa_check_request()
-        body['system-params']['perspectives'] = 'test1|test2'
-        event = {'path': '/caa-check', 'body': json.dumps(body)}
-        mpic_coordinator = MpicCoordinator()
-        result = mpic_coordinator.coordinate_mpic(event)
-        assert result['statusCode'] == 400
-        response_body = json.loads(result['body'])
-        assert response_body['error'] == ValidationMessages.REQUEST_VALIDATION_FAILED.key
-        assert any(issue['issue_type'] == ValidationMessages.PERSPECTIVES_WITH_PERSPECTIVE_COUNT.key for issue in response_body['validation-issues'])
-
-    def coordinate_mpic__should_return_error_given_invalid_perspective_list(self, set_env_variables):
-        body = ValidRequestCreator.create_valid_caa_check_request()
-        del body['system-params']['perspective-count']  # remove perspective count to avoid conflict with perspectives
-        body['system-params']['perspectives'] = 'test1|test2|test3|test4'
-        event = {'path': '/caa-check', 'body': json.dumps(body)}
-        mpic_coordinator = MpicCoordinator()
-        result = mpic_coordinator.coordinate_mpic(event)
-        assert result['statusCode'] == 400
-        response_body = json.loads(result['body'])
-        assert response_body['error'] == ValidationMessages.REQUEST_VALIDATION_FAILED.key
-        assert any(issue['issue_type'] == ValidationMessages.INVALID_PERSPECTIVE_LIST.key for issue in response_body['validation-issues'])
+        assert any(issue['issue_type'] == error_message_to_find for issue in response_body['validation-issues'])
 
     # FIXME: This test misbehaves for now because the code does not dynamically calculate required quorum size
     @pytest.mark.skip

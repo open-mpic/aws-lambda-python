@@ -29,7 +29,7 @@ class MpicRequestValidator:
             if 'perspectives' in request_body['system-params'] and 'perspective-count' in request_body['system-params']:
                 request_body_validation_issues.append(ValidationIssue(ValidationMessages.PERSPECTIVES_WITH_PERSPECTIVE_COUNT))
             elif 'perspectives' in request_body['system-params']:
-                requested_perspectives = request_body['system-params']['perspectives'].split('|')
+                requested_perspectives = request_body['system-params']['perspectives']
                 MpicRequestValidator.validate_requested_perspectives(requested_perspectives, known_perspectives, request_body_validation_issues)
             elif 'perspective-count' in request_body['system-params']:
                 requested_perspective_count = request_body['system-params']['perspective-count']
