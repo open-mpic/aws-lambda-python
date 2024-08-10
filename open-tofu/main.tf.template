@@ -77,7 +77,6 @@ resource "aws_lambda_function" "mpic_coordinator_lambda" {
         validator_arns = {{validator-arns-list}}
         caa_arns = {{caa-resolver-arns-list}}
         default_perspective_count = {{default-perspective-count}}
-        default_quorum = {{default-quorum}}
         enforce_distinct_rir_regions = {{enforce-distinct-rir-regions}}
         hash_secret = {{hash-secret}}
       }
