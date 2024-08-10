@@ -32,10 +32,17 @@ class MpicRequestValidator:
                 request_validation_issues.append(ValidationIssue(ValidationMessages.PERSPECTIVES_WITH_PERSPECTIVE_COUNT))
             elif 'perspectives' in request_body['system-params']:
                 requested_perspectives = request_body['system-params']['perspectives']
-                MpicRequestValidator.validate_requested_perspectives(requested_perspectives, known_perspectives, request_validation_issues)
+                requested_perspective_count = len(requested_perspectives)
+                if MpicRequestValidator.are_requested_perspectives_valid(requested_perspectives, known_perspectives):
+                    MpicRequestValidator.validate_quorum_count(requested_perspective_count, request_body, request_validation_issues)
+                else:
+                    request_validation_issues.append(ValidationIssue(ValidationMessages.INVALID_PERSPECTIVE_LIST))
             elif 'perspective-count' in request_body['system-params']:
                 requested_perspective_count = request_body['system-params']['perspective-count']
-                MpicRequestValidator.validate_requested_perspective_count(requested_perspective_count, known_perspectives, request_validation_issues)
+                if MpicRequestValidator.is_requested_perspective_count_valid(requested_perspective_count, known_perspectives):
+                    MpicRequestValidator.validate_quorum_count(requested_perspective_count, request_body, request_validation_issues)
+                else:
+                    request_validation_issues.append(ValidationIssue(ValidationMessages.INVALID_PERSPECTIVE_COUNT, requested_perspective_count))
 
         # enforce additional validation rules based on request path
         match request_path:
@@ -107,13 +114,26 @@ class MpicRequestValidator:
                 request_validation_issues.append(ValidationIssue(ValidationMessages.INVALID_API_VERSION, api_version))
 
     @staticmethod
-    def validate_requested_perspectives(requested_perspectives, known_perspectives, request_validation_issues) -> None:
+    def are_requested_perspectives_valid(requested_perspectives, known_perspectives) -> bool:
         # check if requested_perspectives is a subset of known_perspectives
-        if not all(perspective in known_perspectives for perspective in requested_perspectives):
-            request_validation_issues.append(ValidationIssue(ValidationMessages.INVALID_PERSPECTIVE_LIST))
+        return all(perspective in known_perspectives for perspective in requested_perspectives)
 
     @staticmethod
-    def validate_requested_perspective_count(requested_perspective_count, known_perspectives, request_validation_issues) -> None:
+    def is_requested_perspective_count_valid(requested_perspective_count, known_perspectives) -> bool:
         # check if requested_perspective_count is an integer, at least 2, and at most the number of known_perspectives
-        if not (isinstance(requested_perspective_count, int) and 2 <= requested_perspective_count <= len(known_perspectives)):
-            request_validation_issues.append(ValidationIssue(ValidationMessages.INVALID_PERSPECTIVE_COUNT, requested_perspective_count))
+        return isinstance(requested_perspective_count, int) and 2 <= requested_perspective_count <= len(known_perspectives)
+
+    @staticmethod
+    def validate_quorum_count(requested_perspective_count, request_body, request_validation_issues) -> None:
+        if 'quorum-count' in request_body['system-params']:
+            quorum_count = request_body['system-params']['quorum-count']
+            # quorum_count of 0 is OK; it signals log-only mode
+            # quorum_count can be no less than perspectives-1 if perspectives <= 5
+            # quorum_count can be no less than perspectives-2 if perspectives > 5
+            quorum_is_valid = (isinstance(quorum_count, int) and (
+                                quorum_count == 0 or
+                                (requested_perspective_count - 1 <= quorum_count <= requested_perspective_count <= 5) or
+                                (4 <= requested_perspective_count - 2 <= quorum_count <= requested_perspective_count)
+                              ))
+            if not quorum_is_valid:
+                request_validation_issues.append(ValidationIssue(ValidationMessages.INVALID_QUORUM_COUNT, quorum_count))

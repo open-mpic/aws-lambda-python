@@ -65,7 +65,6 @@ class TestMpicCoordinator:
             'api-version': API_VERSION,
             'system-params': {'identifier': 'test'},
         }
-        event = {'path': RequestPath.CAA_CHECK, 'body': json.dumps(body)}
         mpic_coordinator = MpicCoordinator()
         required_quorum_count = mpic_coordinator.determine_required_quorum_count(body['system-params'], requested_perspective_count)
         assert required_quorum_count == expected_quorum_size
@@ -75,7 +74,6 @@ class TestMpicCoordinator:
             'api-version': API_VERSION,
             'system-params': {'identifier': 'test', 'quorum-count': 5}
         }
-        event = {'path': RequestPath.CAA_CHECK, 'body': json.dumps(body)}
         mpic_coordinator = MpicCoordinator()
         required_quorum_count = mpic_coordinator.determine_required_quorum_count(body['system-params'], 6)
         assert required_quorum_count == 5

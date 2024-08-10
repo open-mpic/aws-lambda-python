@@ -129,15 +129,14 @@ class MpicCoordinator:
 
     # Configures the async lambda function calls to issue for the check request.
     def collect_async_calls_to_issue(self, request_path, body, perspectives_to_use) -> list[RemoteCheckCallConfiguration]:
-        domain_or_ip_target = body['system-params'][
-            'identifier']  # should have already checked for validity by this point
+        domain_or_ip_target = body['system-params']['identifier']  # should have checked for validity by this point
         async_calls_to_issue = []
 
         # TODO are validation-method and validation-details required but caa-details NOT required?
 
         if request_path in (RequestPath.CAA_CHECK, RequestPath.DCV_WITH_CAA_CHECK):
             input_args = {'identifier': domain_or_ip_target,
-                          'caa-params': body['caa-details'] if 'caa-details' in body else {}}
+                          'caa-params': body['caa-details'] if 'caa-details' in body else {}}  # TODO why 'params' vs 'details'?
             for perspective in perspectives_to_use:
                 arn = self.arns_per_perspective_per_check_type[CheckType.CAA][perspective]
                 call_config = RemoteCheckCallConfiguration(CheckType.CAA, perspective, arn, input_args)
@@ -146,7 +145,7 @@ class MpicCoordinator:
         if request_path in (RequestPath.DCV_CHECK, RequestPath.DCV_WITH_CAA_CHECK):
             input_args = {'identifier': domain_or_ip_target,
                           'validation-method': body['validation-method'],
-                          'validation-params': body['validation-details']}
+                          'validation-params': body['validation-details']}  # TODO why 'params' vs 'details'?
             for perspective in perspectives_to_use:
                 arn = self.arns_per_perspective_per_check_type[CheckType.DCV][perspective]
                 call_config = RemoteCheckCallConfiguration(CheckType.DCV, perspective, arn, input_args)

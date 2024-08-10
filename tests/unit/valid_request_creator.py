@@ -1,3 +1,4 @@
+from aws_lambda_python.mpic_coordinator.config.service_config import API_VERSION
 from aws_lambda_python.mpic_coordinator.domain.dcv_validation_method import DcvValidationMethod
 from aws_lambda_python.mpic_coordinator.domain.dns_record_type import DnsRecordType
 
@@ -6,7 +7,7 @@ class ValidRequestCreator:
     @staticmethod
     def create_valid_caa_check_request():
         return {
-            'api-version': '1.0.0',
+            'api-version': API_VERSION,
             'system-params': {'identifier': 'test', 'perspective-count': 6, 'quorum-count': 4},
             'caa-details': {'certificate-type': 'tls-server'}
         }
@@ -14,7 +15,7 @@ class ValidRequestCreator:
     @staticmethod
     def create_valid_dcv_check_request(validation_method=DcvValidationMethod.DNS_GENERIC):
         return {
-            'api-version': '1.0.0',
+            'api-version': API_VERSION,
             'system-params': {'identifier': 'test', 'perspective-count': 6, 'quorum-count': 4},
             'validation-method': validation_method,
             'validation-details': ValidRequestCreator.create_validation_details(validation_method)
@@ -23,7 +24,7 @@ class ValidRequestCreator:
     @staticmethod
     def create_valid_dcv_with_caa_check_request(validation_method=DcvValidationMethod.DNS_GENERIC):
         return {
-            'api-version': '1.0.0',
+            'api-version': API_VERSION,
             'system-params': {'identifier': 'test', 'perspective-count': 6, 'quorum-count': 4},
             'caa-details': {'certificate-type': 'tls-server'},
             'validation-method': validation_method,
