@@ -110,16 +110,22 @@ class TestMpicRequestValidator:
         assert is_request_valid is False
         assert ValidationMessages.INVALID_PERSPECTIVE_LIST.key in [issue.issue_type for issue in validation_issues]
 
-    @pytest.mark.xfail  # TODO enable test when validation logic for quorum count is implemented
-    @pytest.mark.parametrize('quorum_count', [1, 0, -1, 10, 'abc', sys.maxsize+1])
+    @pytest.mark.parametrize('quorum_count', [1, -1, 10, 'abc', sys.maxsize+1])
     def is_request_valid__should_return_false_and_message_given_invalid_quorum_count(self, quorum_count):
         body = ValidRequestCreator.create_valid_caa_check_request()
-        body['system-params']['quorum'] = quorum_count
+        body['system-params']['quorum-count'] = quorum_count
         is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.CAA_CHECK, body, self.known_perspectives)
         assert is_request_valid is False
         assert ValidationMessages.INVALID_QUORUM_COUNT.key in [issue.issue_type for issue in validation_issues]
         invalid_quorum_count_issue = next(issue for issue in validation_issues if issue.issue_type == ValidationMessages.INVALID_QUORUM_COUNT.key)
         assert str(quorum_count) in invalid_quorum_count_issue.message
+
+    def is_request_valid__should_allow_quorum_count_of_zero(self):
+        body = ValidRequestCreator.create_valid_caa_check_request()
+        body['system-params']['quorum-count'] = 0
+        is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.CAA_CHECK, body, self.known_perspectives)
+        assert is_request_valid is True
+        assert len(validation_issues) == 0
 
     def is_request_valid__should_return_false_and_message_given_invalid_certificate_type_specified(self):
         body = ValidRequestCreator.create_valid_caa_check_request()
