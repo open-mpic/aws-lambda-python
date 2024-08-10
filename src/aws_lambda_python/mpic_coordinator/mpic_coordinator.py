@@ -10,9 +10,10 @@ import hashlib
 
 from aws_lambda_python.mpic_coordinator.domain.check_type import CheckType
 from aws_lambda_python.mpic_coordinator.domain.remote_check_call_configuration import RemoteCheckCallConfiguration
-from aws_lambda_python.mpic_coordinator.domain.request_paths import RequestPaths
+from aws_lambda_python.mpic_coordinator.domain.request_path import RequestPath
 from aws_lambda_python.mpic_coordinator.messages.validation_messages import ValidationMessages
 from aws_lambda_python.mpic_coordinator.mpic_request_validator import MpicRequestValidator
+from aws_lambda_python.mpic_coordinator.mpic_response_builder import MpicResponseBuilder
 
 VERSION: Final[str] = '1.0.0'  # TODO do we need to externalize this? it's a bit hidden here
 
@@ -24,38 +25,66 @@ class MpicCoordinator:
         self.validator_arn_list = os.environ['validator_arns'].split("|")
         self.caa_arn_list = os.environ['caa_arns'].split("|")
         self.default_perspective_count = int(os.environ['default_perspective_count'])
-        self.default_quorum = int(os.environ['default_quorum'])
         self.enforce_distinct_rir_regions = int(os.environ['enforce_distinct_rir_regions']) == 1
         self.hash_secret = os.environ['hash_secret']
 
         # Create a dictionary of ARNs per check type per perspective to simplify lookup in the future.
         # (Assumes known_perspectives list, validator_arn_list, and caa_arn_list are the same length.)
-        self.arns_per_check = {
+        self.arns_per_perspective_per_check_type = {
             CheckType.DCV: {self.known_perspectives[i]: self.validator_arn_list[i] for i in range(len(self.known_perspectives))},
             CheckType.CAA: {self.known_perspectives[i]: self.caa_arn_list[i] for i in range(len(self.known_perspectives))}
         }
 
-    @staticmethod
-    def thread_call(call_config: RemoteCheckCallConfiguration):
-        print(f"Started lambda call for region {call_config.perspective} at {str(datetime.now())}")
+    def coordinate_mpic(self, event):
+        request_path = event['path']
+        body = json.loads(event['body'])
 
-        tic_init = time.perf_counter()
-        client = boto3.client('lambda', call_config.perspective.split(".")[1])
-        tic = time.perf_counter()
-        response = client.invoke(
-            FunctionName=call_config.lambda_arn,
-            InvocationType='RequestResponse',
-            Payload=json.dumps(call_config.args)
-        )
-        toc = time.perf_counter()
+        is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(request_path, body, self.known_perspectives)
 
-        print(f"Response in region {call_config.perspective} took {toc - tic:0.4f} seconds to get response; \
-              {tic - tic_init:.2f} seconds to start boto client; ended at {str(datetime.now())}\n")
+        if not is_request_valid:
+            return {
+                'statusCode': 400,
+                'body': json.dumps({'error': ValidationMessages.REQUEST_VALIDATION_FAILED.key,
+                                    'validation-issues': [issue.__dict__ for issue in validation_issues]})
+            }
+
+        system_params = body['system-params']
+        domain_or_ip_target = system_params['identifier']  # domain or IP for which control is being validated TODO rename key
+
+        # Determine the perspectives and perspective count to use for this request.
+        perspective_count = self.default_perspective_count
+        if 'perspectives' in system_params:
+            perspectives_to_use = system_params['perspectives']
+            perspective_count = len(perspectives_to_use)
+        else:
+            if 'perspective-count' in system_params:
+                perspective_count = system_params['perspective-count']
+            perspectives_to_use = self.select_random_perspectives_across_rirs(self.known_perspectives,
+                                                                              perspective_count,
+                                                                              domain_or_ip_target)
+
+        quorum_count = self.determine_required_quorum_count(system_params, perspective_count)
+
+        # Collect async calls to invoke for each perspective.
+        async_calls_to_issue = self.collect_async_calls_to_issue(request_path, body, perspectives_to_use)
+
+        perspective_responses_per_check_type, validity_per_perspective_per_check_type = (
+            self.issue_async_calls_and_collect_responses(perspectives_to_use, async_calls_to_issue))
+
+        valid_by_check_type = {}
+        for check_type in [CheckType.CAA, CheckType.DCV]:
+            valid_perspective_count = sum(validity_per_perspective_per_check_type[check_type].values())
+
+            # No requirement to enforce distinct RIRs per valid perspective. (TODO remove related option from config.yaml)
+            valid_by_check_type[check_type] = valid_perspective_count >= quorum_count
+
+        response = MpicResponseBuilder.build_response(request_path, body, perspective_count, quorum_count,
+                                                      perspective_responses_per_check_type, valid_by_check_type)
         return response
 
     # Returns a random subset of perspectives with a goal of maximum RIR diversity to increase diversity.
     # Perspectives must be of the form 'RIR.AWS-region'.
-    def random_select_perspectives_considering_rir(self, available_perspectives, count, domain_or_ip_target):
+    def select_random_perspectives_across_rirs(self, available_perspectives, count, domain_or_ip_target):
         if count > len(available_perspectives):
             raise ValueError(
                 f"Count ({count}) must be <= the number of available perspectives ({available_perspectives})")
@@ -71,15 +100,14 @@ class MpicCoordinator:
         # Get a random ordering of RIRs
         random.shuffle(rirs_available)
 
-        # Create a list of the list of each perspective included in a specific RIR.
+        # Create a list of lists, grouping perspectives by their RIR.
         perspectives_in_each_rir = [
             [perspective for perspective in available_perspectives if perspective.split('.')[0] == rir]
-            for rir in rirs_available]
-
-        # Chosen perspectives is populated with a random sample for each RIR until count is met.
-        chosen_perspectives = []
+            for rir in rirs_available
+        ]
 
         # RIR index loops through the different RIRs and adds a single chosen perspective from each RIR on each iteration.
+        chosen_perspectives = []
         rir_index = 0
         while len(chosen_perspectives) < count:
             if len(perspectives_in_each_rir[rir_index]) >= 1:
@@ -90,107 +118,16 @@ class MpicCoordinator:
             rir_index %= len(rirs_available)
         return chosen_perspectives
 
-    def coordinate_mpic(self, event):
-        request_path = event['path']
-        body = json.loads(event['body'])
-
-        # TODO validate the request path?
-
-        is_request_body_valid, validation_issues = MpicRequestValidator.is_request_body_valid(request_path, body,
-                                                                                              self.known_perspectives)
-        if not is_request_body_valid:
-            return {
-                'statusCode': 400,
-                'body': json.dumps({'error': ValidationMessages.REQUEST_VALIDATION_FAILED.key,
-                                    'validation-issues': [issue.__dict__ for issue in validation_issues]})
-            }
-
-        # Extract the system params object.
-        system_params = body['system-params']
-
-        # Extract the target identifier (domain name or IP for which control is being validated) TODO rename this field
-        domain_or_ip_target = system_params['identifier']
-
-        # Determine the perspectives and perspective count to use for this request.
-        perspective_count = self.default_perspective_count
-        if 'perspectives' in system_params:
-            perspectives_to_use = system_params['perspectives']
-            perspective_count = len(perspectives_to_use)
-        else:
-            if 'perspective-count' in system_params:
-                perspective_count = system_params['perspective-count']
-            perspectives_to_use = self.random_select_perspectives_considering_rir(self.known_perspectives,
-                                                                                  perspective_count,
-                                                                                  domain_or_ip_target)
-
-        # FIXME default_quorum should follow BRs -- if perspectives <=5, quorum is perspectives-1, else perspectives-2
-        # otherwise could have, for example, 10 perspectives and default quorum of 5 which is too low
-        quorum_count = self.default_quorum
+    # Determines the minimum required quorum size if none is specified in the request.
+    @staticmethod
+    def determine_required_quorum_count(system_params, perspective_count):
         if 'quorum-count' in system_params:
-            quorum_count = system_params['quorum-count']
+            required_quorum_count = system_params['quorum-count']
+        else:
+            required_quorum_count = perspective_count - 1 if perspective_count <= 5 else perspective_count - 2
+        return required_quorum_count
 
-        # Collect async calls to invoke for each perspective.
-        async_calls_to_issue = self.collect_async_calls_to_issue(request_path, body, perspectives_to_use)
-
-        perspective_responses_per_check_type, validity_per_perspective_per_check_type = (
-            self.issue_async_calls_and_collect_responses(perspectives_to_use, async_calls_to_issue))
-
-        valid_by_check_type = {}
-        two_rir_regions_by_check_type = {}
-        for check_type in [CheckType.CAA, CheckType.DCV]:
-            valid_perspective_count = sum(validity_per_perspective_per_check_type[check_type].values())
-
-            # Create a list of valid perspectives.
-            valid_perspectives = [perspective for perspective in validity_per_perspective_per_check_type[check_type] if
-                                  validity_per_perspective_per_check_type[check_type][perspective]]
-
-            # Create a list of RIRs that have a valid perspective.
-            valid_rirs = [perspective.split(".")[0] for perspective in valid_perspectives]
-
-            distinct_valid_rirs = set(valid_rirs)
-            print(len(distinct_valid_rirs))
-            two_rir_regions_by_check_type[check_type] = len(distinct_valid_rirs) >= 2
-
-            # TODO optionally enforce 2 distinct RIR policy.
-
-            valid_by_check_type[check_type] = valid_perspective_count >= quorum_count
-
-        # TODO update API -- required-quorum-count is not there today and probably should be if it's dynamically derived
-        resp_body = {
-            'api-version': VERSION,
-            'request-system-params': system_params,  # TODO rename this field in API
-            'number-of-perspectives-used': perspective_count,  # TODO add this field to API
-            'required-quorum-count-used': quorum_count,  # TODO add this field to API
-        }
-        # TODO add number of retries once retry logic is in place
-
-        match request_path:
-            case RequestPaths.CAA_CHECK:
-                resp_body['perspectives'] = perspective_responses_per_check_type[CheckType.CAA]
-                resp_body['is-valid'] = valid_by_check_type[CheckType.CAA] and (
-                        not self.enforce_distinct_rir_regions or two_rir_regions_by_check_type[CheckType.CAA])
-            case RequestPaths.DCV_CHECK:
-                resp_body['perspectives'] = perspective_responses_per_check_type[CheckType.DCV]
-                resp_body['validation-details'] = body['validation-details']
-                resp_body['validation-method'] = body['validation-method']
-                resp_body['is-valid'] = valid_by_check_type[CheckType.DCV] and (
-                        not self.enforce_distinct_rir_regions or two_rir_regions_by_check_type[CheckType.DCV])
-            case RequestPaths.DCV_WITH_CAA_CHECK:
-                resp_body['perspectives-validation'] = perspective_responses_per_check_type['validation']
-                resp_body['perspectives-caa'] = perspective_responses_per_check_type['caa']
-                resp_body['validation-details'] = body['validation-details']
-                resp_body['validation-method'] = body['validation-method']
-                resp_body['is-valid-validation'] = valid_by_check_type[CheckType.DCV] and (
-                        not self.enforce_distinct_rir_regions or two_rir_regions_by_check_type[CheckType.DCV])
-                resp_body['is-valid-caa'] = valid_by_check_type[CheckType.CAA] and (
-                        not self.enforce_distinct_rir_regions or two_rir_regions_by_check_type[CheckType.CAA])
-                resp_body['is-valid'] = resp_body['is-valid-validation'] and resp_body['is-valid-caa']
-
-        return {
-            'statusCode': 200,
-            'body': json.dumps(resp_body)
-        }
-
+    # Configures the async lambda function calls to issue for the check request.
     def collect_async_calls_to_issue(self, request_path, body, perspectives_to_use) -> list[RemoteCheckCallConfiguration]:
         domain_or_ip_target = body['system-params'][
             'identifier']  # should have already checked for validity by this point
@@ -198,26 +135,26 @@ class MpicCoordinator:
 
         # TODO are validation-method and validation-details required but caa-details NOT required?
 
-        if request_path in (RequestPaths.CAA_CHECK, RequestPaths.DCV_WITH_CAA_CHECK):
+        if request_path in (RequestPath.CAA_CHECK, RequestPath.DCV_WITH_CAA_CHECK):
             input_args = {'identifier': domain_or_ip_target,
                           'caa-params': body['caa-details'] if 'caa-details' in body else {}}
             for perspective in perspectives_to_use:
-                arn = self.arns_per_check[CheckType.CAA][perspective]
+                arn = self.arns_per_perspective_per_check_type[CheckType.CAA][perspective]
                 call_config = RemoteCheckCallConfiguration(CheckType.CAA, perspective, arn, input_args)
                 async_calls_to_issue.append(call_config)
 
-        if request_path in (RequestPaths.DCV_CHECK, RequestPaths.DCV_WITH_CAA_CHECK):
-            perspective_arns = self.arns_per_check[CheckType.DCV]
+        if request_path in (RequestPath.DCV_CHECK, RequestPath.DCV_WITH_CAA_CHECK):
             input_args = {'identifier': domain_or_ip_target,
                           'validation-method': body['validation-method'],
                           'validation-params': body['validation-details']}
             for perspective in perspectives_to_use:
-                arn = perspective_arns[perspective]
+                arn = self.arns_per_perspective_per_check_type[CheckType.DCV][perspective]
                 call_config = RemoteCheckCallConfiguration(CheckType.DCV, perspective, arn, input_args)
                 async_calls_to_issue.append(call_config)
 
         return async_calls_to_issue
 
+    # Issues the async calls to the lambda functions and collects the responses.
     def issue_async_calls_and_collect_responses(self, perspectives_to_use, async_calls_to_issue) -> (dict, dict):
         perspective_responses_per_check_type = {}
         validity_per_perspective_per_check_type = {CheckType.CAA: {r: False for r in perspectives_to_use},
@@ -254,3 +191,21 @@ class MpicCoordinator:
                         perspective_responses_per_check_type[check_type] = []
                     perspective_responses_per_check_type[check_type].append(perspective_response)
         return perspective_responses_per_check_type, validity_per_perspective_per_check_type
+
+    @staticmethod
+    def thread_call(call_config: RemoteCheckCallConfiguration):
+        print(f"Started lambda call for region {call_config.perspective} at {str(datetime.now())}")
+
+        tic_init = time.perf_counter()
+        client = boto3.client('lambda', call_config.perspective.split(".")[1])
+        tic = time.perf_counter()
+        response = client.invoke(
+            FunctionName=call_config.lambda_arn,
+            InvocationType='RequestResponse',
+            Payload=json.dumps(call_config.input_args)
+        )
+        toc = time.perf_counter()
+
+        print(f"Response in region {call_config.perspective} took {toc - tic:0.4f} seconds to get response; \
+              {tic - tic_init:.2f} seconds to start boto client; ended at {str(datetime.now())}\n")
+        return response

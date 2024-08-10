@@ -37,7 +37,7 @@ class ValidRequestCreator:
             case DcvValidationMethod.DNS_GENERIC:
                 validation_details = {'prefix': 'test', 'record-type': DnsRecordType.A, 'expected-challenge': 'test'}
             case DcvValidationMethod.HTTP_GENERIC:
-                validation_details = {'path': 'http://example.com', 'expected-challenge': 'test'}
+                validation_details = {'path': 'http://example.com', 'expected-challenge': 'test'}  # noqa E501 (http)
             case DcvValidationMethod.TLS_USING_ALPN:
                 validation_details = {'expected-challenge': 'test'}
         return validation_details
