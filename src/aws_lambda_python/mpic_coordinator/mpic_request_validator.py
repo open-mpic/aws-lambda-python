@@ -36,14 +36,16 @@ class MpicRequestValidator:
                 requested_perspective_count = request_body['system-params']['perspective-count']
                 MpicRequestValidator.validate_requested_perspective_count(requested_perspective_count, known_perspectives, request_body_validation_issues)
 
-        # have a switch based on request path to enforce additional validation rules
-        # for example, if request_path == '/caa-check', then enforce that 'caa-details' is present
-        # and that 'validation-details' is not present
+        # enforce additional validation rules based on request path
         match request_path:
-            case RequestPaths.CAA_CHECK | RequestPaths.DCV_WITH_CAA_CHECK:
+            case RequestPaths.CAA_CHECK:
                 if 'caa-details' in request_body:
                     MpicRequestValidator.validate_caa_check_request_details(request_body, request_body_validation_issues)
-            case RequestPaths.DCV_CHECK | RequestPaths.DCV_WITH_CAA_CHECK:
+            case RequestPaths.DCV_CHECK:
+                MpicRequestValidator.validate_dcv_check_request_details(request_body, request_body_validation_issues)
+            case RequestPaths.DCV_WITH_CAA_CHECK:
+                if 'caa-details' in request_body:
+                    MpicRequestValidator.validate_caa_check_request_details(request_body, request_body_validation_issues)
                 MpicRequestValidator.validate_dcv_check_request_details(request_body, request_body_validation_issues)
             case _:
                 request_body_validation_issues.append(ValidationIssue(ValidationMessages.UNSUPPORTED_REQUEST_PATH, request_path))
@@ -93,12 +95,13 @@ class MpicRequestValidator:
 
     @staticmethod
     def validate_api_version(api_version, request_body_validation_issues) -> None:
+        # follow SemVer guidelines: https://semver.org/ (major version, minor version, patch version)
         # check if api_version matches regex pattern for API versions that look like 1.0.0
         if not re.match(r'^\d+(\.\d+)+$', api_version):
             request_body_validation_issues.append(ValidationIssue(ValidationMessages.INVALID_API_VERSION, api_version))
         else:
             request_api_major_version = api_version.split('.')
-            if int(request_api_major_version[0]) != 1:
+            if int(request_api_major_version[0]) != 1:  # check if major version is 1; ignore minor and patch versions
                 request_body_validation_issues.append(ValidationIssue(ValidationMessages.INVALID_API_VERSION, api_version))
 
     @staticmethod

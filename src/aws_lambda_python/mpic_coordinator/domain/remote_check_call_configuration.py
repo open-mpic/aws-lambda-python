@@ -1,0 +1,9 @@
+from aws_lambda_python.mpic_coordinator.domain.check_type import CheckType
+
+
+class RemoteCheckCallConfiguration:
+    def __init__(self, check_type: CheckType, perspective: str, lambda_arn: str, args: dict):
+        self.check_type = check_type
+        self.lambda_arn = lambda_arn
+        self.perspective = perspective
+        self.args = args

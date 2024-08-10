@@ -2,6 +2,7 @@ import json
 import pytest
 import os
 
+from aws_lambda_python.mpic_coordinator.domain.request_paths import RequestPaths
 from aws_lambda_python.mpic_coordinator.messages.validation_messages import ValidationMessages
 from aws_lambda_python.mpic_coordinator.mpic_coordinator import MpicCoordinator
 from valid_request_creator import ValidRequestCreator
@@ -82,12 +83,12 @@ class TestMpicCoordinator:
         }
         perspectives_to_use = os.getenv('perspective_names').split('|')
         mpic_coordinator = MpicCoordinator()
-        call_list = mpic_coordinator.collect_async_calls_to_issue('/caa-check', body, perspectives_to_use)
+        call_list = mpic_coordinator.collect_async_calls_to_issue(RequestPaths.CAA_CHECK, body, perspectives_to_use)
         assert len(call_list) == 6
-        # ensure each call is of type 'caa' (first element in call tuple)
-        assert set(map(lambda result: result[0], call_list)) == {'caa'}
+        # ensure each call is of type 'caa'
+        assert set(map(lambda call_result: call_result.check_type, call_list)) == {'caa'}
 
-    def collect_async_calls_to_issue__should_have_only_validator_calls_given_validation_request_path(self, set_env_variables):
+    def collect_async_calls_to_issue__should_have_only_dcv_calls_given_dcv_request_path(self, set_env_variables):
         body = {
             'api-version': '1.0.0',
             'system-params': {'identifier': 'test'},
@@ -96,10 +97,25 @@ class TestMpicCoordinator:
         }
         perspectives_to_use = os.getenv('perspective_names').split('|')
         mpic_coordinator = MpicCoordinator()
-        call_list = mpic_coordinator.collect_async_calls_to_issue('/validation', body, perspectives_to_use)
+        call_list = mpic_coordinator.collect_async_calls_to_issue(RequestPaths.DCV_CHECK, body, perspectives_to_use)
         assert len(call_list) == 6
-        # ensure each call is of type 'validation' (first element in call tuple)
-        assert set(map(lambda result: result[0], call_list)) == {'validation'}
+        # ensure each call is of type 'dcv'
+        assert set(map(lambda call_result: call_result.check_type, call_list)) == {'dcv'}
+
+    def collect_async_calls_to_issue__should_have_caa_and_dcv_calls_given_dcv_with_caa_request_path(self, set_env_variables):
+        body = {
+            'api-version': '1.0.0',
+            'system-params': {'identifier': 'test'},
+            'caa-details': {'caa-domains': ['example.com']},
+            'validation-method': 'test-method',
+            'validation-details': 'test-details'
+        }
+        perspectives_to_use = os.getenv('perspective_names').split('|')
+        mpic_coordinator = MpicCoordinator()
+        call_list = mpic_coordinator.collect_async_calls_to_issue(RequestPaths.DCV_WITH_CAA_CHECK, body, perspectives_to_use)
+        assert len(call_list) == 12
+        # ensure the list contains both 'caa' and 'dcv' calls
+        assert set(map(lambda call_result: call_result.check_type, call_list)) == {'caa', 'dcv'}
 
     @pytest.mark.skip  # FIXME: this test isn't ready; there is no way to easily inspect caa domains used
     def collect_async_calls_to_issue__should_use_default_caa_domains_if_none_specified(self, set_env_variables):
