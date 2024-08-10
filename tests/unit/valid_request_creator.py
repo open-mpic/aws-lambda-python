@@ -7,7 +7,7 @@ class ValidRequestCreator:
     def create_valid_caa_check_request():
         return {
             'api-version': '1.0.0',
-            'system-params': {'identifier': 'test', 'perspective-count': 6, 'quorum': 4},
+            'system-params': {'identifier': 'test', 'perspective-count': 6, 'quorum-count': 4},
             'caa-details': {'certificate-type': 'tls-server'}
         }
 
@@ -15,7 +15,7 @@ class ValidRequestCreator:
     def create_valid_dcv_check_request(validation_method=DcvValidationMethod.DNS_GENERIC):
         return {
             'api-version': '1.0.0',
-            'system-params': {'identifier': 'test', 'perspective-count': 6, 'quorum': 4},
+            'system-params': {'identifier': 'test', 'perspective-count': 6, 'quorum-count': 4},
             'validation-method': validation_method,
             'validation-details': ValidRequestCreator.create_validation_details(validation_method)
         }
@@ -24,7 +24,7 @@ class ValidRequestCreator:
     def create_valid_dcv_with_caa_check_request(validation_method=DcvValidationMethod.DNS_GENERIC):
         return {
             'api-version': '1.0.0',
-            'system-params': {'identifier': 'test', 'perspective-count': 6, 'quorum': 4},
+            'system-params': {'identifier': 'test', 'perspective-count': 6, 'quorum-count': 4},
             'caa-details': {'certificate-type': 'tls-server'},
             'validation-method': validation_method,
             'validation-details': ValidRequestCreator.create_validation_details(validation_method)

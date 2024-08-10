@@ -59,7 +59,6 @@ class TestMpicCoordinator:
         assert response_body['error'] == ValidationMessages.REQUEST_VALIDATION_FAILED.key
         assert any(issue['issue_type'] == error_message_to_find for issue in response_body['validation-issues'])
 
-    @pytest.mark.skip
     @pytest.mark.parametrize('requested_perspective_count, expected_quorum_size', [(4, 3), (5, 4), (6, 4)])
     def determine_required_quorum_count__should_dynamically_set_required_quorum_count_given_no_quorum_specified(
             self, set_env_variables, requested_perspective_count, expected_quorum_size):
@@ -69,12 +68,18 @@ class TestMpicCoordinator:
         }
         event = {'path': RequestPath.CAA_CHECK, 'body': json.dumps(body)}
         mpic_coordinator = MpicCoordinator()
-        result = mpic_coordinator.determine_required_quorum_count(body['system-params'], requested_perspective_count)
-        assert result['statusCode'] == 200
-        assert 'required-quorum-count' in result['body']
-        body_as_dict = json.loads(result['body'])
-        actual_quorum_count = body_as_dict['required-quorum-count']
-        assert actual_quorum_count == expected_quorum_size
+        required_quorum_count = mpic_coordinator.determine_required_quorum_count(body['system-params'], requested_perspective_count)
+        assert required_quorum_count == expected_quorum_size
+
+    def determine_required_quorum_count__should_use_specified_quorum_count_given_quorum_specified(self, set_env_variables):
+        body = {
+            'api-version': API_VERSION,
+            'system-params': {'identifier': 'test', 'quorum-count': 5}
+        }
+        event = {'path': RequestPath.CAA_CHECK, 'body': json.dumps(body)}
+        mpic_coordinator = MpicCoordinator()
+        required_quorum_count = mpic_coordinator.determine_required_quorum_count(body['system-params'], 6)
+        assert required_quorum_count == 5
 
     def collect_async_calls_to_issue__should_have_only_caa_calls_given_caa_check_request_path(self, set_env_variables):
         body = {
