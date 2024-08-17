@@ -94,10 +94,9 @@ def main(raw_args=None):
         main_tf_string = main_tf_string.replace("{{caa-resolver-arns-list}}", f"\"{arn_caa_resolver_list}\"")
         
 
-        # Replace default perspective count and default quorum.
+        # Replace default perspective count.
         main_tf_string = main_tf_string.replace("{{default-perspective-count}}", f"\"{config['default-perspective-count']}\"")
-        main_tf_string = main_tf_string.replace("{{default-quorum}}", f"\"{config['default-quorum']}\"")
-        
+
         # Replace enforce distinct rir regions.
         main_tf_string = main_tf_string.replace("{{enforce-distinct-rir-regions}}", f"\"{1 if config['enforce-distinct-rir-regions'] else 0}\"")
         
