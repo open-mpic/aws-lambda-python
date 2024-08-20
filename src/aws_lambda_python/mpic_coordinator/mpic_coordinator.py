@@ -9,7 +9,7 @@ import random
 import hashlib
 
 from aws_lambda_python.mpic_coordinator.domain.check_type import CheckType
-from aws_lambda_python.mpic_coordinator.domain.mpic_command import MpicCommand
+from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicRequest
 from aws_lambda_python.mpic_coordinator.domain.remote_check_call_configuration import RemoteCheckCallConfiguration
 from aws_lambda_python.mpic_coordinator.domain.request_path import RequestPath
 from aws_lambda_python.mpic_coordinator.messages.validation_messages import ValidationMessages
@@ -39,11 +39,11 @@ class MpicCoordinator:
     def coordinate_mpic(self, event):
         request_path = event['path']
 
-        mpic_command = MpicCommand.from_json(event['body'])
+        mpic_command = MpicRequest.from_json(event['body'])
 
         body = json.loads(event['body'])
 
-        is_command_valid, validation_issues = MpicRequestValidator.is_command_valid(request_path, mpic_command, self.known_perspectives)
+        is_command_valid, validation_issues = MpicRequestValidator.is_request_valid(request_path, mpic_command, self.known_perspectives)
 
         if not is_command_valid:
             return {

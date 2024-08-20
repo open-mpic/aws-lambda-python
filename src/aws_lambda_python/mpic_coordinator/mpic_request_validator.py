@@ -3,70 +3,69 @@ import re
 from aws_lambda_python.mpic_coordinator.config.service_config import API_VERSION
 from aws_lambda_python.common_domain.certificate_type import CertificateType
 from aws_lambda_python.common_domain.dcv_validation_method import DcvValidationMethod
-from aws_lambda_python.mpic_coordinator.domain.mpic_command import MpicCommand
+from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicRequest
 from aws_lambda_python.mpic_coordinator.domain.request_path import RequestPath
 from aws_lambda_python.mpic_coordinator.messages.validation_messages import ValidationMessages
 from aws_lambda_python.mpic_coordinator.validation_issue import ValidationIssue
 
 
-# TODO rename to MpicCommandValidator
 class MpicRequestValidator:
     @staticmethod
     # returns a list of validation issues found in the request; if empty, request is (probably) valid
     # TODO should we create a flag to validate values separately from structure?
-    def is_command_valid(request_path, request_command: MpicCommand, known_perspectives, diagnostic_mode=False) -> (bool, list):
+    def is_request_valid(request_path, mpic_request: MpicRequest, known_perspectives, diagnostic_mode=False) -> (bool, list):
         request_validation_issues = []
 
         # TODO if API version is in the URL then we don't need to validate it here explicitly
-        if request_command.api_version is None:
+        if mpic_request.api_version is None:
             request_validation_issues.append(ValidationIssue(ValidationMessages.MISSING_API_VERSION))
         else:
-            MpicRequestValidator.validate_api_version(request_command.api_version, request_validation_issues)
+            MpicRequestValidator.validate_api_version(mpic_request.api_version, request_validation_issues)
 
-        if request_command.system_params is None:
+        if mpic_request.system_params is None:
             request_validation_issues.append(ValidationIssue(ValidationMessages.MISSING_SYSTEM_PARAMS))
         else:
-            if request_command.system_params.domain_or_ip_target is None:
+            if mpic_request.system_params.domain_or_ip_target is None:
                 request_validation_issues.append(ValidationIssue(ValidationMessages.MISSING_DOMAIN_OR_IP_TARGET))
 
             # TODO align on this: if present, should 'perspectives' override 'perspective-count'? or conflict?
             # 'perspectives' is allowed if 'diagnostic_mode' is True
             # if 'diagnostic-mode' is false, 'perspectives' is not allowed
             # enforce that only one of 'perspectives' or 'perspective-count' is present
-            if (request_command.system_params.perspectives is not None and
-                    request_command.system_params.perspective_count is not None):
+            if (mpic_request.system_params.perspectives is not None and
+                    mpic_request.system_params.perspective_count is not None):
                 request_validation_issues.append(ValidationIssue(ValidationMessages.PERSPECTIVES_WITH_PERSPECTIVE_COUNT))
             else:
                 should_validate_quorum_count = False
                 requested_perspective_count = 0
-                if request_command.system_params.perspectives is not None:
-                    requested_perspectives = request_command.system_params.perspectives
+                if mpic_request.system_params.perspectives is not None:
+                    requested_perspectives = mpic_request.system_params.perspectives
                     requested_perspective_count = len(requested_perspectives)
                     if MpicRequestValidator.are_requested_perspectives_valid(requested_perspectives, known_perspectives):
                         should_validate_quorum_count = True
                     else:
                         request_validation_issues.append(ValidationIssue(ValidationMessages.INVALID_PERSPECTIVE_LIST))
-                elif request_command.system_params.perspective_count is not None:
-                    requested_perspective_count = request_command.system_params.perspective_count
+                elif mpic_request.system_params.perspective_count is not None:
+                    requested_perspective_count = mpic_request.system_params.perspective_count
                     if MpicRequestValidator.is_requested_perspective_count_valid(requested_perspective_count, known_perspectives):
                         should_validate_quorum_count = True
                     else:
                         request_validation_issues.append(ValidationIssue(ValidationMessages.INVALID_PERSPECTIVE_COUNT, requested_perspective_count))
-                if should_validate_quorum_count and request_command.system_params.quorum_count is not None:
-                    quorum_count = request_command.system_params.quorum_count
+                if should_validate_quorum_count and mpic_request.system_params.quorum_count is not None:
+                    quorum_count = mpic_request.system_params.quorum_count
                     MpicRequestValidator.validate_quorum_count(requested_perspective_count, quorum_count, request_validation_issues)
 
         # enforce additional validation rules based on request path
         match request_path:
             case RequestPath.CAA_CHECK:
-                if request_command.caa_details is not None:
-                    MpicRequestValidator.validate_caa_check_command_details(request_command, request_validation_issues)
+                if mpic_request.caa_details is not None:
+                    MpicRequestValidator.validate_mpic_request_caa_check_details(mpic_request, request_validation_issues)
             case RequestPath.DCV_CHECK:
-                MpicRequestValidator.validate_dcv_check_command_details(request_command, request_validation_issues)
+                MpicRequestValidator.validate_mpic_request_dcv_check_details(mpic_request, request_validation_issues)
             case RequestPath.DCV_WITH_CAA_CHECK:
-                if request_command.caa_details is not None:
-                    MpicRequestValidator.validate_caa_check_command_details(request_command, request_validation_issues)
-                MpicRequestValidator.validate_dcv_check_command_details(request_command, request_validation_issues)
+                if mpic_request.caa_details is not None:
+                    MpicRequestValidator.validate_mpic_request_caa_check_details(mpic_request, request_validation_issues)
+                MpicRequestValidator.validate_mpic_request_dcv_check_details(mpic_request, request_validation_issues)
             case _:
                 request_validation_issues.append(
                     ValidationIssue(ValidationMessages.UNSUPPORTED_REQUEST_PATH, request_path))
@@ -110,40 +109,40 @@ class MpicRequestValidator:
             request_validation_issues.append(ValidationIssue(ValidationMessages.INVALID_QUORUM_COUNT, quorum_count))
 
     @staticmethod
-    def validate_caa_check_command_details(request_command, request_validation_issues) -> None:
-        if request_command.caa_details is not None:
-            if request_command.caa_details.certificate_type is not None:
-                certificate_type = request_command.caa_details.certificate_type
+    def validate_mpic_request_caa_check_details(mpic_request: MpicRequest, request_validation_issues) -> None:
+        if mpic_request.caa_details is not None:
+            if mpic_request.caa_details.certificate_type is not None:
+                certificate_type = mpic_request.caa_details.certificate_type
                 # check if certificate_type is not in CertificateType enum
                 if certificate_type not in iter(CertificateType):
                     request_validation_issues.append(ValidationIssue(ValidationMessages.INVALID_CERTIFICATE_TYPE, certificate_type))
                 # TODO do we check anything as far as validity for caa-domains?
 
     @staticmethod
-    def validate_dcv_check_command_details(request_command, request_validation_issues) -> None:
-        if request_command.validation_method is None:
+    def validate_mpic_request_dcv_check_details(mpic_request: MpicRequest, request_validation_issues) -> None:
+        if mpic_request.validation_method is None:
             request_validation_issues.append(ValidationIssue(ValidationMessages.MISSING_VALIDATION_METHOD))
-        elif request_command.validation_method not in iter(DcvValidationMethod):
-            request_validation_issues.append(ValidationIssue(ValidationMessages.INVALID_VALIDATION_METHOD, request_command.validation_method))
+        elif mpic_request.validation_method not in iter(DcvValidationMethod):
+            request_validation_issues.append(ValidationIssue(ValidationMessages.INVALID_VALIDATION_METHOD, mpic_request.validation_method))
 
-        if request_command.validation_details is None:  # TODO should we enforce this for all methods?
+        if mpic_request.validation_details is None:  # TODO should we enforce this for all methods?
             request_validation_issues.append(ValidationIssue(ValidationMessages.MISSING_VALIDATION_DETAILS))
         else:
             # TODO should we enforce expected_challenge everywhere? or is it not actually required?
-            match request_command.validation_method:
+            match mpic_request.validation_method:
                 case DcvValidationMethod.DNS_GENERIC:
-                    if request_command.validation_details.prefix is None:
+                    if mpic_request.validation_details.prefix is None:
                         request_validation_issues.append(ValidationIssue(ValidationMessages.MISSING_PREFIX, DcvValidationMethod.DNS_GENERIC))
-                    if request_command.validation_details.record_type is None:
+                    if mpic_request.validation_details.record_type is None:
                         request_validation_issues.append(ValidationIssue(ValidationMessages.MISSING_RECORD_TYPE, DcvValidationMethod.DNS_GENERIC))
-                    if request_command.validation_details.expected_challenge is None:
+                    if mpic_request.validation_details.expected_challenge is None:
                         request_validation_issues.append(ValidationIssue(ValidationMessages.MISSING_EXPECTED_CHALLENGE, DcvValidationMethod.DNS_GENERIC))
                 case DcvValidationMethod.HTTP_GENERIC:
-                    if request_command.validation_details.path is None:
+                    if mpic_request.validation_details.path is None:
                         request_validation_issues.append(ValidationIssue(ValidationMessages.MISSING_PATH, DcvValidationMethod.HTTP_GENERIC))
-                    if request_command.validation_details.expected_challenge is None:
+                    if mpic_request.validation_details.expected_challenge is None:
                         request_validation_issues.append(ValidationIssue(ValidationMessages.MISSING_EXPECTED_CHALLENGE, DcvValidationMethod.HTTP_GENERIC))
                 # TODO should we remove TLS_USING_ALPN method from this version of the API?
                 case DcvValidationMethod.TLS_USING_ALPN:
-                    if request_command.validation_details.expected_challenge is None:
+                    if mpic_request.validation_details.expected_challenge is None:
                         request_validation_issues.append(ValidationIssue(ValidationMessages.MISSING_EXPECTED_CHALLENGE, DcvValidationMethod.TLS_USING_ALPN))

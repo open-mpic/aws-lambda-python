@@ -50,7 +50,10 @@ class TestMpicCoordinator:
     @pytest.mark.parametrize('field_to_delete, error_message_to_find', [('api-version', ValidationMessages.MISSING_API_VERSION.key),
                                                                         ('system-params', ValidationMessages.MISSING_SYSTEM_PARAMS.key)])
     def coordinate_mpic__should_return_error_given_invalid_request_body(self, set_env_variables, field_to_delete, error_message_to_find):
-        body = ValidRequestCreator.create_valid_caa_check_request()
+        # request = ValidRequestCreator.create_valid_dcv_with_caa_check_request()
+        # remove from request body the field that should be missing
+        # request.__setattr__(field_to_delete, None)
+        body = ValidRequestCreator.create_valid_caa_check_request_body()
         del body[field_to_delete]
         event = {'path': RequestPath.CAA_CHECK, 'body': json.dumps(body)}
         mpic_coordinator = MpicCoordinator()
@@ -63,14 +66,14 @@ class TestMpicCoordinator:
     @pytest.mark.parametrize('requested_perspective_count, expected_quorum_size', [(4, 3), (5, 4), (6, 4)])
     def determine_required_quorum_count__should_dynamically_set_required_quorum_count_given_no_quorum_specified(
             self, set_env_variables, requested_perspective_count, expected_quorum_size):
-        command = ValidRequestCreator.create_valid_caa_check_command()
+        command = ValidRequestCreator.create_valid_caa_check_request()
         command.system_params.quorum_count = None
         mpic_coordinator = MpicCoordinator()
         required_quorum_count = mpic_coordinator.determine_required_quorum_count(command.system_params, requested_perspective_count)
         assert required_quorum_count == expected_quorum_size
 
     def determine_required_quorum_count__should_use_specified_quorum_count_given_quorum_specified(self, set_env_variables):
-        command = ValidRequestCreator.create_valid_caa_check_command()
+        command = ValidRequestCreator.create_valid_caa_check_request()
         command.system_params.quorum_count = 5
         mpic_coordinator = MpicCoordinator()
         required_quorum_count = mpic_coordinator.determine_required_quorum_count(command.system_params, 6)

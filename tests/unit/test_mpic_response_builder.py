@@ -61,7 +61,7 @@ class TestMpicResponseBuilder:
     def build_response__should_return_response_given_mpic_request_configuration_and_results(self, request_path, perspective_count, quorum_count):
         persp_responses_per_check_type = self.create_perspective_responses_per_check_type(request_path)
         valid_by_check_type = self.create_validity_by_check_type(request_path)
-        command = ValidRequestCreator.create_valid_caa_check_command()  # check type doesn't matter in this case
+        command = ValidRequestCreator.create_valid_caa_check_request()  # check type doesn't matter in this case
         response = MpicResponseBuilder.build_response(request_path, command, perspective_count, quorum_count, persp_responses_per_check_type, valid_by_check_type)
         assert response['statusCode'] == 200
         response_body = json.loads(response['body'])
@@ -84,7 +84,7 @@ class TestMpicResponseBuilder:
                 assert response_body['is-valid'] == response_body['is-valid-dcv'] and response_body['is-valid-caa']
 
     def build_response__should_include_validation_details_and_method_when_present_in_request_body(self):
-        command = ValidRequestCreator.create_valid_dcv_check_command()
+        command = ValidRequestCreator.create_valid_dcv_check_request()
         request_path = RequestPath.DCV_CHECK
         persp_responses_per_check_type = self.create_perspective_responses_per_check_type(RequestPath.DCV_CHECK)
         valid_by_check_type = self.create_validity_by_check_type(RequestPath.DCV_CHECK)
@@ -94,7 +94,7 @@ class TestMpicResponseBuilder:
         assert response_body['validation-method'] == command.validation_method
 
     def build_response__should_set_is_valid_to_false_when_either_check_type_is_invalid(self):
-        command = ValidRequestCreator.create_valid_dcv_with_caa_check_command()
+        command = ValidRequestCreator.create_valid_dcv_with_caa_check_request()
         request_path = RequestPath.DCV_WITH_CAA_CHECK
         persp_responses_per_check_type = self.create_perspective_responses_per_check_type(RequestPath.DCV_WITH_CAA_CHECK)
         valid_by_check_type = self.create_validity_by_check_type(RequestPath.DCV_WITH_CAA_CHECK)

@@ -2,14 +2,14 @@ import json
 
 from aws_lambda_python.mpic_coordinator.config.service_config import API_VERSION
 from aws_lambda_python.mpic_coordinator.domain.check_type import CheckType
-from aws_lambda_python.mpic_coordinator.domain.mpic_command import MpicCommand
+from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicRequest
 from aws_lambda_python.mpic_coordinator.domain.request_path import RequestPath
 
 
 # TODO refactor to use dataclasses once API is updated to use snake care instead of kebab case for attribute names
 class MpicResponseBuilder:
     @staticmethod
-    def build_response(request_path, request_command: MpicCommand, perspective_count, quorum_count, perspective_responses_per_check_type, valid_by_check_type):
+    def build_response(request_path, request_command: MpicRequest, perspective_count, quorum_count, perspective_responses_per_check_type, valid_by_check_type):
         system_params = request_command.system_params if request_command.system_params else None
         validation_details = request_command.validation_details if request_command.validation_details else None
         validation_method = request_command.validation_method if request_command.validation_method else None
