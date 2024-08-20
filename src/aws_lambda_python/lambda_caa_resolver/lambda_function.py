@@ -34,17 +34,17 @@ def check_value_list_permits_issuance(value_list, caa_domains):
 ISSUE_TAG = 'issue'
 ISSUEWILD_TAG = 'issuewild'
 
-# Todo: format perspective response to match API description.
+# TODO format perspective response to match API description.
 def lambda_handler(event, context):
 
     caa_params = event['caa-params']
 
-    # Assume the default system configured identifiers and override if sent in the API call.
-    caa_identifiers = default_caa_domain_list
+    # Assume the default system configured validation targets and override if sent in the API call.
+    caa_domains = default_caa_domain_list
     if 'caa-domains' in caa_params:
-        caa_identifiers = caa_params['caa-domains']
+        caa_domains = caa_params['caa-domains']
 
-    domain = dns.name.from_text(event['identifier'])
+    domain = dns.name.from_text(event['domain-or-ip-target'])
     
 
     # Use the cert type field to check if the domain is a wildcard.
@@ -75,7 +75,7 @@ def lambda_handler(event, context):
     if not caa_found:
         return {
             'statusCode': 200,
-            'body': json.dumps({
+            'body': json.dumps({  # TODO rename fields to match API spec, e.g. 'is-valid'
                 'Region': os.environ['AWS_REGION'],
                 'ValidForIssue': valid_for_issue,
                 'Details': {
@@ -104,9 +104,9 @@ def lambda_handler(event, context):
         valid_for_issue = False
     else:
         if is_wc_domain and len(issue_wild_tags) > 0:
-            valid_for_issue = check_value_list_permits_issuance(issue_wild_tags, caa_identifiers)
+            valid_for_issue = check_value_list_permits_issuance(issue_wild_tags, caa_domains)
         elif len(issue_tags) > 0:
-            valid_for_issue = check_value_list_permits_issuance(issue_tags, caa_identifiers)
+            valid_for_issue = check_value_list_permits_issuance(issue_tags, caa_domains)
         else:
             # We had no unknown critical tags and we found no issue tags. Issuance can proceed.
             valid_for_issue = True

@@ -9,6 +9,7 @@ import random
 import hashlib
 
 from aws_lambda_python.mpic_coordinator.domain.check_type import CheckType
+from aws_lambda_python.mpic_coordinator.domain.mpic_command import MpicCommand
 from aws_lambda_python.mpic_coordinator.domain.remote_check_call_configuration import RemoteCheckCallConfiguration
 from aws_lambda_python.mpic_coordinator.domain.request_path import RequestPath
 from aws_lambda_python.mpic_coordinator.messages.validation_messages import ValidationMessages
@@ -37,31 +38,33 @@ class MpicCoordinator:
 
     def coordinate_mpic(self, event):
         request_path = event['path']
+
+        mpic_command = MpicCommand.from_json(event['body'])
+
         body = json.loads(event['body'])
 
-        is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(request_path, body, self.known_perspectives)
+        is_command_valid, validation_issues = MpicRequestValidator.is_command_valid(request_path, mpic_command, self.known_perspectives)
 
-        if not is_request_valid:
+        if not is_command_valid:
             return {
                 'statusCode': 400,
                 'body': json.dumps({'error': ValidationMessages.REQUEST_VALIDATION_FAILED.key,
-                                    'validation-issues': [issue.__dict__ for issue in validation_issues]})
+                                    'validation-issues': [vars(issue) for issue in validation_issues]})
             }
 
-        system_params = body['system-params']
-        domain_or_ip_target = system_params['identifier']  # domain or IP for which control is being validated TODO rename key
+        system_params = mpic_command.system_params
 
         # Determine the perspectives and perspective count to use for this request.
         perspective_count = self.default_perspective_count
-        if 'perspectives' in system_params:
-            perspectives_to_use = system_params['perspectives']
+        if system_params.perspectives is not None:
+            perspectives_to_use = system_params.perspectives
             perspective_count = len(perspectives_to_use)
         else:
-            if 'perspective-count' in system_params:
-                perspective_count = system_params['perspective-count']
+            if system_params.perspective_count is not None:
+                perspective_count = system_params.perspective_count
             perspectives_to_use = self.select_random_perspectives_across_rirs(self.known_perspectives,
                                                                               perspective_count,
-                                                                              domain_or_ip_target)
+                                                                              system_params.domain_or_ip_target)
 
         quorum_count = self.determine_required_quorum_count(system_params, perspective_count)
 
@@ -75,10 +78,11 @@ class MpicCoordinator:
         for check_type in [CheckType.CAA, CheckType.DCV]:
             valid_perspective_count = sum(validity_per_perspective_per_check_type[check_type].values())
 
-            # No requirement to enforce distinct RIRs per valid perspective. (TODO remove related option from config.yaml)
+            # TODO enforce requirement of 2+ RIRs in corroborating perspective set
+            # TODO enforce requirement of 500km distances between all corroborating perspectives
             valid_by_check_type[check_type] = valid_perspective_count >= quorum_count
 
-        response = MpicResponseBuilder.build_response(request_path, body, perspective_count, quorum_count,
+        response = MpicResponseBuilder.build_response(request_path, mpic_command, perspective_count, quorum_count,
                                                       perspective_responses_per_check_type, valid_by_check_type)
         return response
 
@@ -92,9 +96,10 @@ class MpicCoordinator:
         # Compute the distinct list or RIRs from all perspectives being considered.
         rirs_available = list(set([perspective.split('.')[0] for perspective in available_perspectives]))
 
-        # Seed the random generator with the hash secret concatenated with the identifier in all lowercase.
+        # TODO implement perspective cohort selection logic for floor(perspectives/count) > 1
+        # Seed the random generator with the hash secret concatenated with the domain-or-ip-target in all lowercase.
         # This prevents the adversary from gaining an advantage by retrying and getting different vantage point sets.
-        # (An alternative would be to limit retries per identifier, which has its own pros/cons.)
+        # (An alternative would be to limit retries per domain-or-ip-target, which has its own pros/cons.)
         random.seed(hashlib.sha256((self.hash_secret + domain_or_ip_target.lower()).encode('ASCII')).digest())
 
         # Get a random ordering of RIRs
@@ -121,21 +126,22 @@ class MpicCoordinator:
     # Determines the minimum required quorum size if none is specified in the request.
     @staticmethod
     def determine_required_quorum_count(system_params, perspective_count):
-        if 'quorum-count' in system_params:
-            required_quorum_count = system_params['quorum-count']
+        if system_params.quorum_count is not None:
+            required_quorum_count = system_params.quorum_count
         else:
             required_quorum_count = perspective_count - 1 if perspective_count <= 5 else perspective_count - 2
         return required_quorum_count
 
+    # TODO replace use of body with command once the async calls can accept the object (or a snake case keyed dict)
     # Configures the async lambda function calls to issue for the check request.
     def collect_async_calls_to_issue(self, request_path, body, perspectives_to_use) -> list[RemoteCheckCallConfiguration]:
-        domain_or_ip_target = body['system-params']['identifier']  # should have checked for validity by this point
+        domain_or_ip_target = body['system-params']['domain-or-ip-target']  # should have checked for validity by this point
         async_calls_to_issue = []
 
         # TODO are validation-method and validation-details required but caa-details NOT required?
 
         if request_path in (RequestPath.CAA_CHECK, RequestPath.DCV_WITH_CAA_CHECK):
-            input_args = {'identifier': domain_or_ip_target,
+            input_args = {'domain-or-ip-target': domain_or_ip_target,
                           'caa-params': body['caa-details'] if 'caa-details' in body else {}}  # TODO why 'params' vs 'details'?
             for perspective in perspectives_to_use:
                 arn = self.arns_per_perspective_per_check_type[CheckType.CAA][perspective]
@@ -143,7 +149,7 @@ class MpicCoordinator:
                 async_calls_to_issue.append(call_config)
 
         if request_path in (RequestPath.DCV_CHECK, RequestPath.DCV_WITH_CAA_CHECK):
-            input_args = {'identifier': domain_or_ip_target,
+            input_args = {'domain-or-ip-target': domain_or_ip_target,
                           'validation-method': body['validation-method'],
                           'validation-params': body['validation-details']}  # TODO why 'params' vs 'details'?
             for perspective in perspectives_to_use:
@@ -188,6 +194,7 @@ class MpicCoordinator:
                         'ValidForIssue']
                     if check_type not in perspective_responses_per_check_type:
                         perspective_responses_per_check_type[check_type] = []
+                    # TODO make sure responses per perspective match API spec...
                     perspective_responses_per_check_type[check_type].append(perspective_response)
         return perspective_responses_per_check_type, validity_per_perspective_per_check_type
 

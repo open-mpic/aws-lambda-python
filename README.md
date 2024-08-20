@@ -30,7 +30,7 @@ curl -H 'Content-Type: application/json' -H "x-api-key: $(hatch run ./get_api_ke
       -d '{
   "api-version": "1.0.0",
   "system-params": {
-    "identifier": "example.com"
+    "domain-or-ip-target": "example.com"
   }
 }' \
       -X POST \

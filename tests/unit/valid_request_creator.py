@@ -1,6 +1,10 @@
+import json
+
 from aws_lambda_python.mpic_coordinator.config.service_config import API_VERSION
-from aws_lambda_python.mpic_coordinator.domain.dcv_validation_method import DcvValidationMethod
-from aws_lambda_python.mpic_coordinator.domain.dns_record_type import DnsRecordType
+from aws_lambda_python.common_domain.certificate_type import CertificateType
+from aws_lambda_python.common_domain.dcv_validation_method import DcvValidationMethod
+from aws_lambda_python.common_domain.dns_record_type import DnsRecordType
+from aws_lambda_python.mpic_coordinator.domain.mpic_command import MpicCommand
 
 
 class ValidRequestCreator:
@@ -8,28 +12,58 @@ class ValidRequestCreator:
     def create_valid_caa_check_request():
         return {
             'api-version': API_VERSION,
-            'system-params': {'identifier': 'test', 'perspective-count': 6, 'quorum-count': 4},
-            'caa-details': {'certificate-type': 'tls-server'}
+            'system-params': {'domain-or-ip-target': 'test', 'perspective-count': 6, 'quorum-count': 4},
+            'caa-details': {'certificate-type': CertificateType.TLS_SERVER}
         }
+
+    @staticmethod
+    def create_valid_caa_check_command():
+        body = {
+            'api-version': API_VERSION,
+            'system-params': {'domain-or-ip-target': 'test', 'perspective-count': 6, 'quorum-count': 4},
+            'caa-details': {'certificate-type': CertificateType.TLS_SERVER}
+        }
+        return MpicCommand.from_json(json.dumps(body))
 
     @staticmethod
     def create_valid_dcv_check_request(validation_method=DcvValidationMethod.DNS_GENERIC):
         return {
             'api-version': API_VERSION,
-            'system-params': {'identifier': 'test', 'perspective-count': 6, 'quorum-count': 4},
+            'system-params': {'domain-or-ip-target': 'test', 'perspective-count': 6, 'quorum-count': 4},
             'validation-method': validation_method,
             'validation-details': ValidRequestCreator.create_validation_details(validation_method)
         }
 
     @staticmethod
-    def create_valid_dcv_with_caa_check_request(validation_method=DcvValidationMethod.DNS_GENERIC):
-        return {
+    def create_valid_dcv_check_command(validation_method=DcvValidationMethod.DNS_GENERIC):
+        body = {
             'api-version': API_VERSION,
-            'system-params': {'identifier': 'test', 'perspective-count': 6, 'quorum-count': 4},
-            'caa-details': {'certificate-type': 'tls-server'},
+            'system-params': {'domain-or-ip-target': 'test', 'perspective-count': 6, 'quorum-count': 4},
             'validation-method': validation_method,
             'validation-details': ValidRequestCreator.create_validation_details(validation_method)
         }
+        return MpicCommand.from_json(json.dumps(body))
+
+    @staticmethod
+    def create_valid_dcv_with_caa_check_request(validation_method=DcvValidationMethod.DNS_GENERIC):
+        return {
+            'api-version': API_VERSION,
+            'system-params': {'domain-or-ip-target': 'test', 'perspective-count': 6, 'quorum-count': 4},
+            'caa-details': {'certificate-type': CertificateType.TLS_SERVER},
+            'validation-method': validation_method,
+            'validation-details': ValidRequestCreator.create_validation_details(validation_method)
+        }
+
+    @staticmethod
+    def create_valid_dcv_with_caa_check_command(validation_method=DcvValidationMethod.DNS_GENERIC):
+        body = {
+            'api-version': API_VERSION,
+            'system-params': {'domain-or-ip-target': 'test', 'perspective-count': 6, 'quorum-count': 4},
+            'caa-details': {'certificate-type': CertificateType.TLS_SERVER},
+            'validation-method': validation_method,
+            'validation-details': ValidRequestCreator.create_validation_details(validation_method)
+        }
+        return MpicCommand.from_json(json.dumps(body))
 
     @classmethod
     def create_validation_details(cls, validation_method):

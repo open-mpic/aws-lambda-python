@@ -5,17 +5,25 @@ provider "aws" {
 }
 
 # Python open-mpic layer (contains third party libraries)
-resource "aws_lambda_layer_version" "python311-open-mpic-layer" {
+resource "aws_lambda_layer_version" "python311_open_mpic_layer" {
     filename            = "../layer/python311_layer_content.zip"
     layer_name          = "python_311_open_mpic_layer_{{deployment-id}}"
     source_code_hash    = "${filebase64sha256("../layer/python311_layer_content.zip")}"
     compatible_runtimes = ["python3.11"]
 }
 
+# Mpic Common layer for all lambdas (contains supporting first-party source code)
+resource "aws_lambda_layer_version" "mpic_common_layer" {
+    filename            = "../layer/mpic_common_layer_content.zip"
+    layer_name          = "mpic_common_layer_{{deployment-id}}"
+    source_code_hash    = "${filebase64sha256("../layer/mpic_common_layer_content.zip")}"
+    compatible_runtimes = ["python3.11"]
+}
+
 # Mpic Coordinator layer for the mpic coordinator lambda (contains supporting first-party source code)
-resource "aws_lambda_layer_version" "mpic-coordinator-layer" {
+resource "aws_lambda_layer_version" "mpic_coordinator_layer" {
     filename            = "../layer/mpic_coordinator_layer_content.zip"
-    layer_name          = "mpic-coordinator-layer_{{deployment-id}}"
+    layer_name          = "mpic_coordinator_layer_{{deployment-id}}"
     source_code_hash    = "${filebase64sha256("../layer/mpic_coordinator_layer_content.zip")}"
     compatible_runtimes = ["python3.11"]
 }
@@ -68,8 +76,9 @@ resource "aws_lambda_function" "mpic_coordinator_lambda" {
     runtime = "python3.11"
     timeout = 60
     layers = [
-        aws_lambda_layer_version.python311-open-mpic-layer.arn,
-        aws_lambda_layer_version.mpic-coordinator-layer.arn
+        aws_lambda_layer_version.python311_open_mpic_layer.arn,
+        aws_lambda_layer_version.mpic_common_layer.arn,
+        aws_lambda_layer_version.mpic_coordinator_layer.arn
     ]
     environment {
       variables = {

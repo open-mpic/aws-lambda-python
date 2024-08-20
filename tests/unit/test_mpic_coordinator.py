@@ -20,7 +20,7 @@ class TestMpicCoordinator:
             'validator_arns': 'arn:aws:acm-pca:us-east-1:123456789012:validator/rir1.region1a|arn:aws:acm-pca:us-east-1:123456789012:validator/rir1.region1b|arn:aws:acm-pca:us-east-1:123456789012:validator/rir2.region2a|arn:aws:acm-pca:us-east-1:123456789012:validator/rir2.region2b|arn:aws:acm-pca:us-east-1:123456789012:validator/rir3.region3a|arn:aws:acm-pca:us-east-1:123456789012:validator/rir3.region3b',
             'caa_arns': 'arn:aws:acm-pca:us-east-1:123456789012:caa/rir1.region1a|arn:aws:acm-pca:us-east-1:123456789012:caa/rir1.region1b|arn:aws:acm-pca:us-east-1:123456789012:caa/rir2.region2a|arn:aws:acm-pca:us-east-1:123456789012:caa/rir2.region2b|arn:aws:acm-pca:us-east-1:123456789012:caa/rir3.region3a|arn:aws:acm-pca:us-east-1:123456789012:caa/rir3.region3b',
             'default_perspective_count': '3',
-            'enforce_distinct_rir_regions': '1',
+            'enforce_distinct_rir_regions': '1',  # TODO may not need this...
             'hash_secret': 'test_secret',
             'caa_domains': 'example.com|example.net|example.org'
         }
@@ -29,12 +29,14 @@ class TestMpicCoordinator:
                 class_scoped_monkeypatch.setenv(k, v)
             yield class_scoped_monkeypatch  # restore the environment afterward
 
+    # TODO discuss BR requirement of 2+ RIRs. If 2+ cannot be selected, is that an error state (500 code)?
+    # TODO discuss BR requirement of 500k+ regional distance. This is not currently implemented.
     @pytest.mark.parametrize('requested_perspective_count, expected_unique_rirs', [(2, 2), (3, 3), (4, 3)])
     def select_random_perspectives_across_rirs__should_select_diverse_rirs_given_list_where_some_share_same_rir(
             self, set_env_variables, requested_perspective_count, expected_unique_rirs):
         perspectives = os.getenv('perspective_names').split('|')  # same split logic as in actual calling code
         mpic_coordinator = MpicCoordinator()
-        selected_perspectives = mpic_coordinator.select_random_perspectives_across_rirs(perspectives, requested_perspective_count, 'test_identifier')
+        selected_perspectives = mpic_coordinator.select_random_perspectives_across_rirs(perspectives, requested_perspective_count, 'test_target')
         assert len(set(map(lambda p: p.split('.')[0], selected_perspectives))) == expected_unique_rirs  # expect 3 unique rirs from setup data
 
     def select_random_perspectives_across_rirs__should_throw_error_given_requested_count_exceeds_total_perspectives(
@@ -43,7 +45,7 @@ class TestMpicCoordinator:
         excessive_count = len(perspectives) + 1
         mpic_coordinator = MpicCoordinator()
         with pytest.raises(ValueError):
-            mpic_coordinator.select_random_perspectives_across_rirs(perspectives, excessive_count, 'test_identifier')  # expect error
+            mpic_coordinator.select_random_perspectives_across_rirs(perspectives, excessive_count, 'test_target')  # expect error
 
     @pytest.mark.parametrize('field_to_delete, error_message_to_find', [('api-version', ValidationMessages.MISSING_API_VERSION.key),
                                                                         ('system-params', ValidationMessages.MISSING_SYSTEM_PARAMS.key)])
@@ -61,27 +63,23 @@ class TestMpicCoordinator:
     @pytest.mark.parametrize('requested_perspective_count, expected_quorum_size', [(4, 3), (5, 4), (6, 4)])
     def determine_required_quorum_count__should_dynamically_set_required_quorum_count_given_no_quorum_specified(
             self, set_env_variables, requested_perspective_count, expected_quorum_size):
-        body = {
-            'api-version': API_VERSION,
-            'system-params': {'identifier': 'test'},
-        }
+        command = ValidRequestCreator.create_valid_caa_check_command()
+        command.system_params.quorum_count = None
         mpic_coordinator = MpicCoordinator()
-        required_quorum_count = mpic_coordinator.determine_required_quorum_count(body['system-params'], requested_perspective_count)
+        required_quorum_count = mpic_coordinator.determine_required_quorum_count(command.system_params, requested_perspective_count)
         assert required_quorum_count == expected_quorum_size
 
     def determine_required_quorum_count__should_use_specified_quorum_count_given_quorum_specified(self, set_env_variables):
-        body = {
-            'api-version': API_VERSION,
-            'system-params': {'identifier': 'test', 'quorum-count': 5}
-        }
+        command = ValidRequestCreator.create_valid_caa_check_command()
+        command.system_params.quorum_count = 5
         mpic_coordinator = MpicCoordinator()
-        required_quorum_count = mpic_coordinator.determine_required_quorum_count(body['system-params'], 6)
+        required_quorum_count = mpic_coordinator.determine_required_quorum_count(command.system_params, 6)
         assert required_quorum_count == 5
 
     def collect_async_calls_to_issue__should_have_only_caa_calls_given_caa_check_request_path(self, set_env_variables):
         body = {
             'api-version': API_VERSION,
-            'system-params': {'identifier': 'test'}
+            'system-params': {'domain-or-ip-target': 'test'}
         }
         perspectives_to_use = os.getenv('perspective_names').split('|')
         mpic_coordinator = MpicCoordinator()
@@ -92,7 +90,7 @@ class TestMpicCoordinator:
     def collect_async_calls_to_issue__should_include_caa_details_as_caa_params_in_input_args_if_present(self, set_env_variables):
         body = {
             'api-version': API_VERSION,
-            'system-params': {'identifier': 'test'},
+            'system-params': {'domain-or-ip-target': 'test'},
             'caa-details': {'caa-domains': ['example.com']}
         }
         perspectives_to_use = os.getenv('perspective_names').split('|')
@@ -103,7 +101,7 @@ class TestMpicCoordinator:
     def collect_async_calls_to_issue__should_have_only_dcv_calls_and_include_validation_input_args_given_dcv_request_path(self, set_env_variables):
         body = {
             'api-version': API_VERSION,
-            'system-params': {'identifier': 'test'},
+            'system-params': {'domain-or-ip-target': 'test'},
             'validation-method': 'test-method',
             'validation-details': 'test-details'
         }
@@ -118,7 +116,7 @@ class TestMpicCoordinator:
     def collect_async_calls_to_issue__should_have_caa_and_dcv_calls_given_dcv_with_caa_request_path(self, set_env_variables):
         body = {
             'api-version': API_VERSION,
-            'system-params': {'identifier': 'test'},
+            'system-params': {'domain-or-ip-target': 'test'},
             'caa-details': {'caa-domains': ['example.com']},
             'validation-method': 'test-method',
             'validation-details': 'test-details'
@@ -134,7 +132,7 @@ class TestMpicCoordinator:
     def collect_async_calls_to_issue__should_use_default_caa_domains_if_none_specified(self, set_env_variables):
         body = {
             'api-version': API_VERSION,
-            'system-params': {'identifier': 'test'}
+            'system-params': {'domain-or-ip-target': 'test'}
         }
         perspectives_to_use = os.getenv('perspective_names').split('|')
         mpic_coordinator = MpicCoordinator()

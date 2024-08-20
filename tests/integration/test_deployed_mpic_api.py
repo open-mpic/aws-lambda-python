@@ -23,7 +23,7 @@ class TestDeployedMpicApi:
         body = {
             'api-version': '1.0.0',
             'system-params': {
-                'identifier': 'test',
+                'domain-or-ip-target': 'test',
                 'perspective-count': perspective_count,
                 'quorum-count': 2
             },
@@ -49,7 +49,7 @@ class TestDeployedMpicApi:
         body = {
             'api-version': '1.0.0',
             'system-params': {
-                'identifier': 'test',
+                'domain-or-ip-target': 'test',
                 'perspective-count': perspective_count,
                 'quorum-count': 5  # invalid quorum count
             },

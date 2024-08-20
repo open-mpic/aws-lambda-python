@@ -11,7 +11,7 @@ def lambda_handler(event, context):
 
     region = os.environ['AWS_REGION']
     
-    identifier = event['identifier']
+    domain_or_ip_target = event['domain-or-ip-target']
     
     # TODO: add some string format validation/error case checking
     valid_method = event['validation-method']
@@ -21,7 +21,7 @@ def lambda_handler(event, context):
     if valid_method == 'http-generic':
     
         challenge_path = valid_params['path']
-        challenge_url = f"http://{identifier}/{challenge_path}"
+        challenge_url = f"http://{domain_or_ip_target}/{challenge_path}"
         expected = valid_params['expected-challenge']
 
         r = requests.get(challenge_url)
@@ -53,7 +53,7 @@ def lambda_handler(event, context):
         
         challenge_prefix = valid_params['prefix']
         rdtype = dns.rdatatype.from_text(valid_params['record-type'])
-        name_to_resolve = f'{challenge_prefix}.{identifier}' if len(challenge_prefix) > 0 else f'{identifier}'
+        name_to_resolve = f'{challenge_prefix}.{domain_or_ip_target}' if len(challenge_prefix) > 0 else f'{domain_or_ip_target}'
         expected = valid_params['expected-challenge']
         
         print(f'Resolving {rdtype.name} for {name_to_resolve}...')
