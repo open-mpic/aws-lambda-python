@@ -65,7 +65,7 @@ class TestMpicResponseBuilder:
         assert response['statusCode'] == 200
         response_body = json.loads(response['body'])
         assert response_body['api_version'] == API_VERSION
-        assert response_body['request_system_params']['perspective_count'] == request.system_params.perspective_count
+        assert response_body['request_system_params']['perspective_count'] == request.orchestration_parameters.perspective_count
         assert response_body['number_of_perspectives_used'] == perspective_count
         assert response_body['required_quorum_count_used'] == quorum_count
         match check_type:

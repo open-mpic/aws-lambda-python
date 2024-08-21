@@ -1,12 +1,7 @@
-from aws_lambda_python.common_domain.certificate_type import CertificateType
-from pydantic import BaseModel
+from aws_lambda_python.common_domain.base_check_request import BaseCheckRequest
+from aws_lambda_python.common_domain.caa_check_parameters import CaaCheckParameters
 
 
-class CaaCheckRequestCaaDetails(BaseModel):
-    certificate_type: CertificateType | None = None
-    caa_domains: list[str] | None = None
-
-
-class CaaCheckRequest(BaseModel):
+class CaaCheckRequest(BaseCheckRequest):
     domain_or_ip_target: str
-    caa_details: CaaCheckRequestCaaDetails | None = None
+    caa_details: CaaCheckParameters | None = None

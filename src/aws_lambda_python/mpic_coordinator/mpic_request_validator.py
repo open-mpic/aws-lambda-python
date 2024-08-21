@@ -22,23 +22,23 @@ class MpicRequestValidator:
         # enforce that only one of 'perspectives' or 'perspective-count' is present
         should_validate_quorum_count = False
         requested_perspective_count = 0
-        if mpic_request.system_params.perspectives is not None and diagnostic_mode:
-            requested_perspectives = mpic_request.system_params.perspectives
+        if mpic_request.orchestration_parameters.perspectives is not None and diagnostic_mode:
+            requested_perspectives = mpic_request.orchestration_parameters.perspectives
             requested_perspective_count = len(requested_perspectives)
             if MpicRequestValidator.are_requested_perspectives_valid(requested_perspectives, known_perspectives):
                 should_validate_quorum_count = True
             else:
                 request_validation_issues.append(ValidationIssue(ValidationMessages.INVALID_PERSPECTIVE_LIST))
-        elif mpic_request.system_params.perspectives:
+        elif mpic_request.orchestration_parameters.perspectives:
             request_validation_issues.append(ValidationIssue(ValidationMessages.PERSPECTIVES_NOT_IN_DIAGNOSTIC_MODE))
-        elif mpic_request.system_params.perspective_count is not None:
-            requested_perspective_count = mpic_request.system_params.perspective_count
+        elif mpic_request.orchestration_parameters.perspective_count is not None:
+            requested_perspective_count = mpic_request.orchestration_parameters.perspective_count
             if MpicRequestValidator.is_requested_perspective_count_valid(requested_perspective_count, known_perspectives):
                 should_validate_quorum_count = True
             else:
                 request_validation_issues.append(ValidationIssue(ValidationMessages.INVALID_PERSPECTIVE_COUNT, requested_perspective_count))
-        if should_validate_quorum_count and mpic_request.system_params.quorum_count is not None:
-            quorum_count = mpic_request.system_params.quorum_count
+        if should_validate_quorum_count and mpic_request.orchestration_parameters.quorum_count is not None:
+            quorum_count = mpic_request.orchestration_parameters.quorum_count
             MpicRequestValidator.validate_quorum_count(requested_perspective_count, quorum_count, request_validation_issues)
 
         # TODO this should be checked in routing logic way before it gets here

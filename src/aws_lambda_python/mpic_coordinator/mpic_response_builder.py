@@ -11,7 +11,7 @@ from aws_lambda_python.mpic_coordinator.domain.mpic_dcv_with_caa_request import 
 class MpicResponseBuilder:
     @staticmethod
     def build_response(request: BaseMpicRequest, perspective_count, quorum_count, perspective_responses_per_check_type, valid_by_check_type):
-        system_params_as_dict = vars(request.system_params)
+        system_params_as_dict = vars(request.orchestration_parameters)
 
         response_body = {
             'api_version': API_VERSION,

@@ -13,22 +13,22 @@ class TestMpicDcvRequest:
         body = ValidRequestCreator.create_valid_dcv_check_request_body()
         json_body = json.dumps(body)
         mpic_request = MpicDcvRequest.from_json(json_body)
-        assert mpic_request.system_params.domain_or_ip_target == body['system_params']['domain_or_ip_target']
+        assert mpic_request.orchestration_parameters.domain_or_ip_target == body['orchestration_parameters']['domain_or_ip_target']
 
-    def from_json__should_throw_validation_error_given_missing_system_params(self):
+    def from_json__should_throw_validation_error_given_missing_orchestration_parameters(self):
         body = ValidRequestCreator.create_valid_dcv_check_request_body()
-        del body['system_params']
+        del body['orchestration_parameters']
         json_body = json.dumps(body)
         with pytest.raises(pydantic.ValidationError) as validation_error:
             MpicDcvRequest.from_json(json_body)
-        assert 'system_params' in str(validation_error.value)
+        assert 'orchestration_parameters' in str(validation_error.value)
 
     # TODO this is probably not a valid test given that perspectives are for diagnostics mode only
     # it likely needs different logic overall
     def from_json__should_throw_validation_error_given_both_perspectives_and_perspective_count_present(self):
         body = ValidRequestCreator.create_valid_dcv_check_request_body()
-        body['system_params']['perspective_count'] = 1
-        body['system_params']['perspectives'] = ['test']
+        body['orchestration_parameters']['perspective_count'] = 1
+        body['orchestration_parameters']['perspectives'] = ['test']
         json_body = json.dumps(body)
         with pytest.raises(pydantic.ValidationError) as validation_error:
             MpicDcvRequest.from_json(json_body)

@@ -22,16 +22,16 @@ class TestMpicRequestValidator:
 
     def is_request_valid__should_return_true_given_valid_caa_check_request_with_perspective_list_and_diagnostic_mode_true(self):
         request = ValidRequestCreator.create_valid_caa_check_request()
-        request.system_params.perspectives = self.known_perspectives[:6]
-        request.system_params.perspective_count = None
+        request.orchestration_parameters.perspectives = self.known_perspectives[:6]
+        request.orchestration_parameters.perspective_count = None
         is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.CAA_CHECK, request, self.known_perspectives, True)
         assert is_request_valid is True
         assert len(validation_issues) == 0
 
     def is_request_valid__should_return_false_and_message_given_caa_check_request_with_perspective_list_and_diagnostic_mode_false(self):
         request = ValidRequestCreator.create_valid_caa_check_request()
-        request.system_params.perspectives = self.known_perspectives[:6]
-        request.system_params.perspective_count = None
+        request.orchestration_parameters.perspectives = self.known_perspectives[:6]
+        request.orchestration_parameters.perspective_count = None
         is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.CAA_CHECK, request, self.known_perspectives, False)
         assert is_request_valid is False
         assert ValidationMessages.PERSPECTIVES_NOT_IN_DIAGNOSTIC_MODE.key in [issue.issue_type for issue in validation_issues]
@@ -72,7 +72,7 @@ class TestMpicRequestValidator:
     @pytest.mark.parametrize('perspective_count', [1, 0, -1, 'abc', sys.maxsize+1])
     def is_request_valid__should_return_false_and_message_given_invalid_perspective_count(self, perspective_count):
         request = ValidRequestCreator.create_valid_caa_check_request()
-        request.system_params.perspective_count = perspective_count
+        request.orchestration_parameters.perspective_count = perspective_count
         is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.CAA_CHECK, request, self.known_perspectives)
         assert is_request_valid is False
         assert ValidationMessages.INVALID_PERSPECTIVE_COUNT.key in [issue.issue_type for issue in validation_issues]
@@ -82,8 +82,8 @@ class TestMpicRequestValidator:
     # TODO discuss enforcement of 500km distance between perspective regions. (And 2+ RIR requirement.)
     def is_request_valid__should_return_false_and_message_given_invalid_perspective_list(self):
         request = ValidRequestCreator.create_valid_caa_check_request()
-        request.system_params.perspective_count = None
-        request.system_params.perspectives = ['bad_p1', 'bad_p2', 'bad_p3', 'bad_p4', 'bad_p5', 'bad_p6']
+        request.orchestration_parameters.perspective_count = None
+        request.orchestration_parameters.perspectives = ['bad_p1', 'bad_p2', 'bad_p3', 'bad_p4', 'bad_p5', 'bad_p6']
         is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.CAA_CHECK, request, self.known_perspectives, True)
         assert is_request_valid is False
         assert ValidationMessages.INVALID_PERSPECTIVE_LIST.key in [issue.issue_type for issue in validation_issues]
@@ -92,7 +92,7 @@ class TestMpicRequestValidator:
     @pytest.mark.parametrize('quorum_count', [1, -1, 10, 'abc', sys.maxsize+1])
     def is_request_valid__should_return_false_and_message_given_invalid_quorum_count(self, quorum_count):
         request = ValidRequestCreator.create_valid_caa_check_request()
-        request.system_params.quorum_count = quorum_count
+        request.orchestration_parameters.quorum_count = quorum_count
         is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.CAA_CHECK, request, self.known_perspectives)
         assert is_request_valid is False
         assert ValidationMessages.INVALID_QUORUM_COUNT.key in [issue.issue_type for issue in validation_issues]
@@ -102,7 +102,7 @@ class TestMpicRequestValidator:
     # TODO probably shouldn't allow a quorum count of zero, but that is an API spec update
     def is_request_valid__should_allow_quorum_count_of_zero(self):
         request = ValidRequestCreator.create_valid_caa_check_request()
-        request.system_params.quorum_count = 0
+        request.orchestration_parameters.quorum_count = 0
         is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.CAA_CHECK, request, self.known_perspectives)
         assert is_request_valid is True
         assert len(validation_issues) == 0

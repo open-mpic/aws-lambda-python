@@ -1,23 +1,11 @@
+from aws_lambda_python.common_domain.dcv_check_parameters import DcvCheckParameters
 from aws_lambda_python.common_domain.dcv_validation_method import DcvValidationMethod
-from aws_lambda_python.common_domain.dns_record_type import DnsRecordType
 from aws_lambda_python.mpic_coordinator.domain.base_mpic_request import BaseMpicRequest
-from pydantic import BaseModel, model_validator
-
-
-class MpicDcvRequestValidationDetails(BaseModel):
-    prefix: str | None = None
-    record_type: DnsRecordType | None = None
-    path: str | None = None
-    expected_challenge: str
-
-
-class MpicDcvRequestDcvDetails(BaseModel):
-    validation_method: DcvValidationMethod
-    validation_details: MpicDcvRequestValidationDetails
+from pydantic import model_validator
 
 
 class MpicDcvRequest(BaseMpicRequest):
-    dcv_details: MpicDcvRequestDcvDetails
+    dcv_details: DcvCheckParameters
 
     @model_validator(mode='after')
     def check_required_fields_per_validation_method(self) -> 'MpicDcvRequest':

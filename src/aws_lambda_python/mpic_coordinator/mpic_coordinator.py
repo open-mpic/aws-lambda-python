@@ -9,6 +9,8 @@ import random
 import hashlib
 
 import pydantic
+from aws_lambda_python.common_domain.caa_check_request import CaaCheckRequest
+from aws_lambda_python.common_domain.dcv_check_request import DcvCheckRequest
 from aws_lambda_python.mpic_coordinator.domain.check_type import CheckType
 from aws_lambda_python.mpic_coordinator.domain.mpic_caa_request import MpicCaaRequest
 from aws_lambda_python.mpic_coordinator.domain.mpic_dcv_request import MpicDcvRequest
@@ -42,6 +44,7 @@ class MpicCoordinator:
     def coordinate_mpic(self, event):
         request_path = event['path']
 
+        # parse event body into mpic_request
         try:
             match request_path:
                 case RequestPath.CAA_CHECK:
@@ -63,8 +66,6 @@ class MpicCoordinator:
                                     'validation-issues': validation_error.errors()})
             }
 
-        body = json.loads(event['body'])
-
         is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(request_path, mpic_request, self.known_perspectives)
 
         if not is_request_valid:
@@ -74,7 +75,7 @@ class MpicCoordinator:
                                     'validation-issues': [vars(issue) for issue in validation_issues]})
             }
 
-        system_params = mpic_request.system_params
+        system_params = mpic_request.orchestration_parameters
 
         # Determine the perspectives and perspective count to use for this request.
         perspective_count = self.default_perspective_count
@@ -91,7 +92,7 @@ class MpicCoordinator:
         quorum_count = self.determine_required_quorum_count(system_params, perspective_count)
 
         # Collect async calls to invoke for each perspective.
-        async_calls_to_issue = self.collect_async_calls_to_issue(request_path, body, perspectives_to_use)
+        async_calls_to_issue = self.collect_async_calls_to_issue(request_path, mpic_request, perspectives_to_use)
 
         perspective_responses_per_check_type, validity_per_perspective_per_check_type = (
             self.issue_async_calls_and_collect_responses(perspectives_to_use, async_calls_to_issue))
@@ -156,27 +157,24 @@ class MpicCoordinator:
 
     # TODO replace use of body with command once the async calls can accept the object (or a snake case keyed dict)
     # Configures the async lambda function calls to issue for the check request.
-    def collect_async_calls_to_issue(self, request_path, body, perspectives_to_use) -> list[RemoteCheckCallConfiguration]:
-        domain_or_ip_target = body['system_params']['domain_or_ip_target']  # should have checked for validity by this point
+    def collect_async_calls_to_issue(self, request_path, mpic_request, perspectives_to_use) -> list[RemoteCheckCallConfiguration]:
+        domain_or_ip_target = mpic_request.orchestration_parameters.domain_or_ip_target
         async_calls_to_issue = []
 
         # TODO are validation-method and validation-details required but caa-details NOT required?
 
         if request_path in (RequestPath.CAA_CHECK, RequestPath.DCV_WITH_CAA_CHECK):
-            input_args = {'domain_or_ip_target': domain_or_ip_target,
-                          'caa_params': body['caa_details'] if 'caa_details' in body else {}}  # TODO why 'params' vs 'details'?
+            check_parameters = CaaCheckRequest(domain_or_ip_target=domain_or_ip_target, caa_details=mpic_request.caa_details)
             for perspective in perspectives_to_use:
                 arn = self.arns_per_perspective_per_check_type[CheckType.CAA][perspective]
-                call_config = RemoteCheckCallConfiguration(CheckType.CAA, perspective, arn, input_args)
+                call_config = RemoteCheckCallConfiguration(CheckType.CAA, perspective, arn, check_parameters)
                 async_calls_to_issue.append(call_config)
 
         if request_path in (RequestPath.DCV_CHECK, RequestPath.DCV_WITH_CAA_CHECK):
-            input_args = {'domain_or_ip_target': domain_or_ip_target,
-                          'validation_method': body['dcv_details']['validation_method'],
-                          'validation_params': body['dcv_details']['validation_details']}  # TODO why 'params' vs 'details'?
+            check_parameters = DcvCheckRequest(domain_or_ip_target=domain_or_ip_target, dcv_details=mpic_request.dcv_details)
             for perspective in perspectives_to_use:
                 arn = self.arns_per_perspective_per_check_type[CheckType.DCV][perspective]
-                call_config = RemoteCheckCallConfiguration(CheckType.DCV, perspective, arn, input_args)
+                call_config = RemoteCheckCallConfiguration(CheckType.DCV, perspective, arn, check_parameters)
                 async_calls_to_issue.append(call_config)
 
         return async_calls_to_issue

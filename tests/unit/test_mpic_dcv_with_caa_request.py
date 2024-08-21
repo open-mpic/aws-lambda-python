@@ -12,11 +12,11 @@ class TestMpicDcvWithCaaRequest:
         body = ValidRequestCreator.create_valid_dcv_with_caa_check_request_body()
         json_body = json.dumps(body)
         mpic_request = MpicDcvWithCaaRequest.from_json(json_body)
-        assert mpic_request.system_params.domain_or_ip_target == body['system_params']['domain_or_ip_target']
+        assert mpic_request.orchestration_parameters.domain_or_ip_target == body['orchestration_parameters']['domain_or_ip_target']
 
     def from_json__should_throw_validation_error_given_missing_domain_or_ip_target(self):
         body = ValidRequestCreator.create_valid_dcv_check_request_body()
-        del body['system_params']['domain_or_ip_target']
+        del body['orchestration_parameters']['domain_or_ip_target']
         json_body = json.dumps(body)
         with pytest.raises(pydantic.ValidationError) as validation_error:
             MpicDcvWithCaaRequest.from_json(json_body)
