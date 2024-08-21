@@ -8,8 +8,12 @@ import os
 import random
 import hashlib
 
+import pydantic
 from aws_lambda_python.mpic_coordinator.domain.check_type import CheckType
-from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicRequest
+from aws_lambda_python.mpic_coordinator.domain.base_mpic_request import BaseMpicRequest
+from aws_lambda_python.mpic_coordinator.domain.mpic_caa_request import MpicCaaRequest
+from aws_lambda_python.mpic_coordinator.domain.mpic_dcv_request import MpicDcvRequest
+from aws_lambda_python.mpic_coordinator.domain.mpic_dcv_with_caa_request import MpicDcvWithCaaRequest
 from aws_lambda_python.mpic_coordinator.domain.remote_check_call_configuration import RemoteCheckCallConfiguration
 from aws_lambda_python.mpic_coordinator.domain.request_path import RequestPath
 from aws_lambda_python.mpic_coordinator.messages.validation_messages import ValidationMessages
@@ -39,7 +43,26 @@ class MpicCoordinator:
     def coordinate_mpic(self, event):
         request_path = event['path']
 
-        mpic_command = MpicRequest.from_json(event['body'])
+        try:
+            match request_path:
+                case RequestPath.CAA_CHECK:
+                    mpic_command = MpicCaaRequest.from_json(event['body'])
+                case RequestPath.DCV_CHECK:
+                    mpic_command = MpicDcvRequest.from_json(event['body'])
+                case RequestPath.DCV_WITH_CAA_CHECK:
+                    mpic_command = MpicDcvWithCaaRequest.from_json(event['body'])
+                case _:
+                    return {
+                        'statusCode': 400,
+                        'body': json.dumps({'error': ValidationMessages.REQUEST_VALIDATION_FAILED.key,
+                                            'validation-issues': [ValidationMessages.UNSUPPORTED_REQUEST_PATH.key]})
+                    }
+        except pydantic.ValidationError as validation_error:
+            return {
+                'statusCode': 400,
+                'body': json.dumps({'error': ValidationMessages.REQUEST_VALIDATION_FAILED.key,
+                                    'validation-issues': validation_error.errors()})
+            }
 
         body = json.loads(event['body'])
 

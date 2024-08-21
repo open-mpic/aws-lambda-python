@@ -1,87 +1,84 @@
 import dns.resolver
 import json
 import os
-import sys
 import requests
 
 # TODO extract into a separate module to test
 
-# Todo: format perspective response to match API description.
-def lambda_handler(event, context):
 
+# TODO format perspective response to match API description.
+# noinspection PyUnusedLocal
+def lambda_handler(event, context):
     region = os.environ['AWS_REGION']
     
-    domain_or_ip_target = event['domain-or-ip-target']
+    domain_or_ip_target = event['domain_or_ip_target']
     
     # TODO: add some string format validation/error case checking
-    valid_method = event['validation-method']
-    valid_params = event['validation-params']
+    valid_method = event['validation_method']
+    valid_params = event['validation_params']
 
-
-    if valid_method == 'http-generic':
-    
+    if valid_method == 'http_generic':
         challenge_path = valid_params['path']
-        challenge_url = f"http://{domain_or_ip_target}/{challenge_path}"
-        expected = valid_params['expected-challenge']
+        challenge_url = f"http://{domain_or_ip_target}/{challenge_path}"  # noqa E501 (http)
+        expected = valid_params['expected_challenge']
 
         r = requests.get(challenge_url)
     
         if r.status_code == requests.codes.OK:
             result = r.text.strip()
             return {
-            'statusCode': 200,
-            'headers': {
-                'Content-Type': 'application/json'
-                },
-            'body': json.dumps({
-                'Region': region,
-                'Result': result, # r.data.decode().rstrip()
-                'ValidForIssue': (result == expected)
-                })
+                'statusCode': 200,
+                'headers': {
+                    'Content-Type': 'application/json'
+                    },
+                'body': json.dumps({
+                    'Region': region,
+                    'Result': result,  # r.data.decode().rstrip()
+                    'ValidForIssue': (result == expected)
+                    })
             }
         else:
             return {
-            'statusCode': r.status_code,
-            'headers': {
-                'Content-Type': 'application/json'
-                },
-            'body': {
-                'Error': r.reason
-                }
+                'statusCode': r.status_code,
+                'headers': {
+                    'Content-Type': 'application/json'
+                    },
+                'body': {
+                    'Error': r.reason
+                    }
             }
-    elif valid_method == 'dns-generic':
-        
+    elif valid_method == 'dns_generic':
         challenge_prefix = valid_params['prefix']
-        rdtype = dns.rdatatype.from_text(valid_params['record-type'])
+        record_type = dns.rdatatype.from_text(valid_params['record_type'])
         name_to_resolve = f'{challenge_prefix}.{domain_or_ip_target}' if len(challenge_prefix) > 0 else f'{domain_or_ip_target}'
-        expected = valid_params['expected-challenge']
+        expected = valid_params['expected_challenge']
         
-        print(f'Resolving {rdtype.name} for {name_to_resolve}...')
+        print(f'Resolving {record_type.name} for {name_to_resolve}...')
         try:
-            resp = dns.resolver.resolve(name_to_resolve, rdtype)
-            txts = []
-            for ans in resp.response.answer:
-                if ans.rdtype == rdtype:
-                    for rdata in ans:
-                        txts.append(rdata.to_text()[1:-1]) # need to remove enclosing quotes
+            resp = dns.resolver.resolve(name_to_resolve, record_type)
+            record_data_as_text = []
+            for response_answer in resp.response.answer:
+                if response_answer.rdtype == record_type:
+                    for record_data in response_answer:
+                        record_data_as_text.append(record_data.to_text()[1:-1])  # need to remove enclosing quotes
             return {
-            'statusCode': 200,
-            'headers': {
-                'Content-Type': 'application/json'
-                },
-            'body': json.dumps({
-                'Region': region,
-                'Result': txts,
-                'ValidForIssue': any([_ == expected for _ in txts])
-                })
+                'statusCode': 200,
+                'headers': {
+                    'Content-Type': 'application/json'
+                    },
+                'body': json.dumps({
+                    'Region': region,
+                    'Result': record_data_as_text,
+                    'ValidForIssue': any([_ == expected for _ in record_data_as_text])
+                    })
             }
         except dns.exception.DNSException as e:
             return {
-            'statusCode': 404,
-            'headers': {
-                'Content-Type': 'application/json'
-                },
-            'body': {
-                'Error': str(e)
-                }
+                'statusCode': 404,
+                'headers': {
+                    'Content-Type': 'application/json'
+                    },
+                'body': {
+                    'Error': str(e)
+                    }
             }

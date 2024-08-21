@@ -1,5 +1,4 @@
 import sys
-
 import pytest
 
 from aws_lambda_python.common_domain.dcv_validation_method import DcvValidationMethod
@@ -25,11 +24,17 @@ class TestMpicRequestValidator:
         request = ValidRequestCreator.create_valid_caa_check_request()
         request.system_params.perspectives = self.known_perspectives[:6]
         request.system_params.perspective_count = None
-        is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.CAA_CHECK, request, self.known_perspectives)
+        is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.CAA_CHECK, request, self.known_perspectives, True)
         assert is_request_valid is True
         assert len(validation_issues) == 0
 
-    # def is_request_valid__should_return_false_and_message_given_caa_check_request_with_perspective_list_and_diagnostic_mode_false(self):
+    def is_request_valid__should_return_false_and_message_given_caa_check_request_with_perspective_list_and_diagnostic_mode_false(self):
+        request = ValidRequestCreator.create_valid_caa_check_request()
+        request.system_params.perspectives = self.known_perspectives[:6]
+        request.system_params.perspective_count = None
+        is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.CAA_CHECK, request, self.known_perspectives, False)
+        assert is_request_valid is False
+        assert ValidationMessages.PERSPECTIVES_NOT_IN_DIAGNOSTIC_MODE.key in [issue.issue_type for issue in validation_issues]
 
     @pytest.mark.parametrize('validation_method', [DcvValidationMethod.DNS_GENERIC, DcvValidationMethod.HTTP_GENERIC,
                                                    DcvValidationMethod.TLS_USING_ALPN])
@@ -44,13 +49,6 @@ class TestMpicRequestValidator:
         is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.DCV_WITH_CAA_CHECK, request, self.known_perspectives)
         assert is_request_valid is True
         assert len(validation_issues) == 0
-
-    def is_request_valid__should_return_false_and_message_given_missing_api_version(self):
-        request = ValidRequestCreator.create_valid_caa_check_request()
-        request.api_version = None  # remove api-version field
-        is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.CAA_CHECK, request, self.known_perspectives)
-        assert is_request_valid is False
-        assert ValidationMessages.MISSING_API_VERSION.key in [issue.issue_type for issue in validation_issues]
 
     @pytest.mark.parametrize('api_version', ['0.0.1', '5.0.0', '1;0;0', '1.', '100', 'bad-api-version'])  # ~=1.0.0 is valid
     def is_request_valid__should_return_false_and_message_given_invalid_api_version(self, api_version):
@@ -71,28 +69,6 @@ class TestMpicRequestValidator:
         unsupported_request_path_issue = next(issue for issue in validation_issues if issue.issue_type == ValidationMessages.UNSUPPORTED_REQUEST_PATH.key)
         assert request_path in unsupported_request_path_issue.message
 
-    def is_request_valid__should_return_false_and_message_given_missing_system_params(self):
-        request = ValidRequestCreator.create_valid_caa_check_request()
-        request.system_params = None  # remove system-params field
-        is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.CAA_CHECK, request, self.known_perspectives)
-        assert is_request_valid is False
-        assert ValidationMessages.MISSING_SYSTEM_PARAMS.key in [issue.issue_type for issue in validation_issues]
-
-    def is_request_valid__should_return_false_and_message_given_missing_domain_or_ip_target(self):
-        request = ValidRequestCreator.create_valid_caa_check_request()
-        request.system_params.domain_or_ip_target = None  # remove domain-or-ip-target field
-        is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.CAA_CHECK, request, self.known_perspectives)
-        assert is_request_valid is False
-        assert ValidationMessages.MISSING_DOMAIN_OR_IP_TARGET.key in [issue.issue_type for issue in validation_issues]
-
-    def is_request_valid__should_return_false_and_message_given_both_perspective_and_perspective_count_present(self):
-        request = ValidRequestCreator.create_valid_caa_check_request()
-        request.system_params.perspectives = self.known_perspectives[:6]
-        request.system_params.perspective_count = 2
-        is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.CAA_CHECK, request, self.known_perspectives)
-        assert is_request_valid is False
-        assert ValidationMessages.PERSPECTIVES_WITH_PERSPECTIVE_COUNT.key in [issue.issue_type for issue in validation_issues]
-
     @pytest.mark.parametrize('perspective_count', [1, 0, -1, 'abc', sys.maxsize+1])
     def is_request_valid__should_return_false_and_message_given_invalid_perspective_count(self, perspective_count):
         request = ValidRequestCreator.create_valid_caa_check_request()
@@ -108,7 +84,7 @@ class TestMpicRequestValidator:
         request = ValidRequestCreator.create_valid_caa_check_request()
         request.system_params.perspective_count = None
         request.system_params.perspectives = ['bad_p1', 'bad_p2', 'bad_p3', 'bad_p4', 'bad_p5', 'bad_p6']
-        is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.CAA_CHECK, request, self.known_perspectives)
+        is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.CAA_CHECK, request, self.known_perspectives, True)
         assert is_request_valid is False
         assert ValidationMessages.INVALID_PERSPECTIVE_LIST.key in [issue.issue_type for issue in validation_issues]
 
@@ -130,78 +106,6 @@ class TestMpicRequestValidator:
         is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.CAA_CHECK, request, self.known_perspectives)
         assert is_request_valid is True
         assert len(validation_issues) == 0
-
-    def is_request_valid__should_return_false_and_message_given_invalid_certificate_type_specified(self):
-        request = ValidRequestCreator.create_valid_caa_check_request()
-        request.caa_details.certificate_type = 'invalid-certificate-type'
-        is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.CAA_CHECK, request, self.known_perspectives)
-        assert is_request_valid is False
-        assert ValidationMessages.INVALID_CERTIFICATE_TYPE.key in [issue.issue_type for issue in validation_issues]
-        invalid_certificate_type_issue = next(issue for issue in validation_issues if issue.issue_type == ValidationMessages.INVALID_CERTIFICATE_TYPE.key)
-        assert 'invalid-certificate-type' in invalid_certificate_type_issue.message
-
-    def is_request_valid__should_return_false_and_message_given_missing_validation_method_for_dcv(self):
-        request = ValidRequestCreator.create_valid_dcv_check_request()
-        request.validation_method = None
-        is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.DCV_CHECK, request, self.known_perspectives)
-        assert is_request_valid is False
-        assert ValidationMessages.MISSING_VALIDATION_METHOD.key in [issue.issue_type for issue in validation_issues]
-
-    def is_request_valid__should_return_false_and_message_given_invalid_validation_method_specified(self):
-        request = ValidRequestCreator.create_valid_dcv_check_request()
-        request.validation_method = 'invalid-validation-method'
-        is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.DCV_CHECK, request, self.known_perspectives)
-        assert is_request_valid is False
-        assert ValidationMessages.INVALID_VALIDATION_METHOD.key in [issue.issue_type for issue in validation_issues]
-        invalid_validation_method_issue = next(issue for issue in validation_issues if issue.issue_type == ValidationMessages.INVALID_VALIDATION_METHOD.key)
-        assert 'invalid-validation-method' in invalid_validation_method_issue.message
-
-    def is_request_valid__should_return_false_and_message_given_missing_validation_details_for_dcv(self):
-        request = ValidRequestCreator.create_valid_dcv_check_request()
-        request.validation_details = None
-        is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.DCV_CHECK, request, self.known_perspectives)
-        assert is_request_valid is False
-        assert ValidationMessages.MISSING_VALIDATION_DETAILS.key in [issue.issue_type for issue in validation_issues]
-
-    @pytest.mark.parametrize('validation_method', [DcvValidationMethod.DNS_GENERIC, DcvValidationMethod.HTTP_GENERIC,
-                                                   DcvValidationMethod.TLS_USING_ALPN])
-    def is_request_valid__should_return_false_and_message_given_missing_expected_challenge_for_dcv(self, validation_method):
-        request = ValidRequestCreator.create_valid_dcv_check_request(validation_method)
-        request.validation_details.expected_challenge = None
-        is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.DCV_CHECK, request, self.known_perspectives)
-        assert is_request_valid is False
-        assert ValidationMessages.MISSING_EXPECTED_CHALLENGE.key in [issue.issue_type for issue in validation_issues]
-
-    def is_request_valid__should_return_false_and_message_given_missing_prefix_for_dns_validation(self):
-        request = ValidRequestCreator.create_valid_dcv_check_request(DcvValidationMethod.DNS_GENERIC)
-        request.validation_details.prefix = None
-        is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.DCV_CHECK, request, self.known_perspectives)
-        assert is_request_valid is False
-        assert ValidationMessages.MISSING_PREFIX.key in [issue.issue_type for issue in validation_issues]
-
-    def is_request_valid__should_return_false_and_message_given_missing_record_type_for_dns_validation(self):
-        request = ValidRequestCreator.create_valid_dcv_check_request(DcvValidationMethod.DNS_GENERIC)
-        request.validation_details.record_type = None
-        is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.DCV_CHECK, request, self.known_perspectives)
-        assert is_request_valid is False
-        assert ValidationMessages.MISSING_RECORD_TYPE.key in [issue.issue_type for issue in validation_issues]
-
-    def is_request_valid__should_return_false_and_message_given_missing_path_for_http_validation(self):
-        request = ValidRequestCreator.create_valid_dcv_check_request(DcvValidationMethod.HTTP_GENERIC)
-        request.validation_details.path = None
-        is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.DCV_CHECK, request, self.known_perspectives)
-        assert is_request_valid is False
-        assert ValidationMessages.MISSING_PATH.key in [issue.issue_type for issue in validation_issues]
-
-    def is_request_valid__should_return_multiple_messages_given_multiple_validation_issues(self):
-        request = ValidRequestCreator.create_valid_dcv_check_request()
-        request.system_params.domain_or_ip_target = None
-        request.validation_method = None
-        is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.DCV_CHECK, request, self.known_perspectives)
-        assert is_request_valid is False
-        assert len(validation_issues) == 2
-        assert ValidationMessages.MISSING_VALIDATION_METHOD.key in [issue.issue_type for issue in validation_issues]
-        assert ValidationMessages.MISSING_DOMAIN_OR_IP_TARGET.key in [issue.issue_type for issue in validation_issues]
 
 
 if __name__ == '__main__':

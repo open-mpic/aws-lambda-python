@@ -47,9 +47,8 @@ class TestMpicCoordinator:
         with pytest.raises(ValueError):
             mpic_coordinator.select_random_perspectives_across_rirs(perspectives, excessive_count, 'test_target')  # expect error
 
-    @pytest.mark.parametrize('field_to_delete, error_message_to_find', [('api-version', ValidationMessages.MISSING_API_VERSION.key),
-                                                                        ('system-params', ValidationMessages.MISSING_SYSTEM_PARAMS.key)])
-    def coordinate_mpic__should_return_error_given_invalid_request_body(self, set_env_variables, field_to_delete, error_message_to_find):
+    @pytest.mark.parametrize('field_to_delete', ['api_version', 'system_params'])
+    def coordinate_mpic__should_return_error_given_invalid_request_body(self, set_env_variables, field_to_delete):
         # request = ValidRequestCreator.create_valid_dcv_with_caa_check_request()
         # remove from request body the field that should be missing
         # request.__setattr__(field_to_delete, None)
@@ -58,10 +57,11 @@ class TestMpicCoordinator:
         event = {'path': RequestPath.CAA_CHECK, 'body': json.dumps(body)}
         mpic_coordinator = MpicCoordinator()
         result = mpic_coordinator.coordinate_mpic(event)
+        # FIXME need to capture pydantic validation error and put it into response (for now... FastAPI may render that unnecessary)
         assert result['statusCode'] == 400
         response_body = json.loads(result['body'])
         assert response_body['error'] == ValidationMessages.REQUEST_VALIDATION_FAILED.key
-        assert any(issue['issue_type'] == error_message_to_find for issue in response_body['validation-issues'])
+        assert field_to_delete in str(response_body['validation-issues'][0])
 
     @pytest.mark.parametrize('requested_perspective_count, expected_quorum_size', [(4, 3), (5, 4), (6, 4)])
     def determine_required_quorum_count__should_dynamically_set_required_quorum_count_given_no_quorum_specified(
