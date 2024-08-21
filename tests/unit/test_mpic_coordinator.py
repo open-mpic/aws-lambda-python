@@ -2,6 +2,7 @@ import json
 import pytest
 import os
 
+from aws_lambda_python.common_domain.dcv_validation_method import DcvValidationMethod
 from aws_lambda_python.mpic_coordinator.config.service_config import API_VERSION
 from aws_lambda_python.mpic_coordinator.domain.check_type import CheckType
 from aws_lambda_python.mpic_coordinator.domain.request_path import RequestPath
@@ -80,10 +81,7 @@ class TestMpicCoordinator:
         assert required_quorum_count == 5
 
     def collect_async_calls_to_issue__should_have_only_caa_calls_given_caa_check_request_path(self, set_env_variables):
-        body = {
-            'api-version': API_VERSION,
-            'system-params': {'domain-or-ip-target': 'test'}
-        }
+        body = ValidRequestCreator.create_valid_caa_check_request_body()
         perspectives_to_use = os.getenv('perspective_names').split('|')
         mpic_coordinator = MpicCoordinator()
         call_list = mpic_coordinator.collect_async_calls_to_issue(RequestPath.CAA_CHECK, body, perspectives_to_use)
@@ -91,39 +89,26 @@ class TestMpicCoordinator:
         assert set(map(lambda call_result: call_result.check_type, call_list)) == {CheckType.CAA}  # ensure each call is of type 'caa'
 
     def collect_async_calls_to_issue__should_include_caa_details_as_caa_params_in_input_args_if_present(self, set_env_variables):
-        body = {
-            'api-version': API_VERSION,
-            'system-params': {'domain-or-ip-target': 'test'},
-            'caa-details': {'caa-domains': ['example.com']}
-        }
+        body = ValidRequestCreator.create_valid_caa_check_request_body()
+        body['caa_details'] = {'caa_domains': ['example.com']}
         perspectives_to_use = os.getenv('perspective_names').split('|')
         mpic_coordinator = MpicCoordinator()
         call_list = mpic_coordinator.collect_async_calls_to_issue(RequestPath.CAA_CHECK, body, perspectives_to_use)
-        assert all(call.input_args['caa-params']['caa-domains'] == ['example.com'] for call in call_list)
+        assert all(call.input_args['caa_params']['caa_domains'] == ['example.com'] for call in call_list)
 
     def collect_async_calls_to_issue__should_have_only_dcv_calls_and_include_validation_input_args_given_dcv_request_path(self, set_env_variables):
-        body = {
-            'api-version': API_VERSION,
-            'system-params': {'domain-or-ip-target': 'test'},
-            'validation-method': 'test-method',
-            'validation-details': 'test-details'
-        }
+        body = ValidRequestCreator.create_valid_dcv_check_request_body(DcvValidationMethod.DNS_GENERIC)
+        body['dcv_details']['validation_details'] = {'expected_challenge': 'test', 'prefix': 'test.prefix'}
         perspectives_to_use = os.getenv('perspective_names').split('|')
         mpic_coordinator = MpicCoordinator()
         call_list = mpic_coordinator.collect_async_calls_to_issue(RequestPath.DCV_CHECK, body, perspectives_to_use)
         assert len(call_list) == 6
         assert set(map(lambda call_result: call_result.check_type, call_list)) == {CheckType.DCV}  # ensure each call is of type 'dcv'
-        assert all(call.input_args['validation-method'] == 'test-method' for call in call_list)
-        assert all(call.input_args['validation-params'] == 'test-details' for call in call_list)
+        assert all(call.input_args['validation_method'] == DcvValidationMethod.DNS_GENERIC for call in call_list)
+        assert all(call.input_args['validation_params']['prefix'] == 'test.prefix' for call in call_list)
 
     def collect_async_calls_to_issue__should_have_caa_and_dcv_calls_given_dcv_with_caa_request_path(self, set_env_variables):
-        body = {
-            'api-version': API_VERSION,
-            'system-params': {'domain-or-ip-target': 'test'},
-            'caa-details': {'caa-domains': ['example.com']},
-            'validation-method': 'test-method',
-            'validation-details': 'test-details'
-        }
+        body = ValidRequestCreator.create_valid_dcv_with_caa_check_request_body()
         perspectives_to_use = os.getenv('perspective_names').split('|')
         mpic_coordinator = MpicCoordinator()
         call_list = mpic_coordinator.collect_async_calls_to_issue(RequestPath.DCV_WITH_CAA_CHECK, body, perspectives_to_use)

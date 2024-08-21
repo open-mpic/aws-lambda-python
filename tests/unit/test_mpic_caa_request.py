@@ -40,6 +40,7 @@ class TestMpicCaaRequest:
             MpicCaaRequest.from_json(json_body)
         assert 'domain_or_ip_target' in str(validation_error.value)
 
+    # TODO are caa_details necessary? (domain list, certificate type)
     def from_json__should_throw_validation_error_given_missing_caa_details(self):
         body = ValidRequestCreator.create_valid_caa_check_request_body()
         del body['caa_details']
