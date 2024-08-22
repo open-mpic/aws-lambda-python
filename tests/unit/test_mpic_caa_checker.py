@@ -1,6 +1,8 @@
 import dns
 import pytest
+from aws_lambda_python.common_domain.caa_check_request import CaaCheckRequest
 from aws_lambda_python.mpic_caa_checker.mpic_caa_checker import MpicCaaChecker
+from dns.flags import Flag
 from dns.rdtypes.ANY.CAA import CAA
 from dns.rrset import RRset
 
@@ -10,19 +12,54 @@ CAA_RDTYPE = dns.rdatatype.CAA
 
 # noinspection PyMethodMayBeStatic
 class TestMpicCaaChecker:
+    @staticmethod
+    @pytest.fixture(scope='class')
+    def set_env_variables():
+        envvars = {
+            'default_caa_domains': 'example.com|example.net|example.org',
+            'AWS_REGION': 'us-east-4',
+        }
+        with pytest.MonkeyPatch.context() as class_scoped_monkeypatch:
+            for k, v in envvars.items():
+                class_scoped_monkeypatch.setenv(k, v)
+            yield class_scoped_monkeypatch  # restore the environment afterward
+
     @pytest.fixture
-    def rrset(self):
+    def test_rrset(self):
         caa_rdata_1 = CAA(CAA_RDCLASS, CAA_RDTYPE, flags=0, tag=b'issue', value=b'ca1.org')
         caa_rdata_2 = CAA(CAA_RDCLASS, CAA_RDTYPE, flags=0, tag=b'issue', value=b'ca2.org')
-        rrset = RRset(name=dns.name.Name('example'), rdclass=CAA_RDCLASS, rdtype=CAA_RDTYPE)
+        rrset = RRset(name=dns.name.Name(['example', 'com', '']), rdclass=CAA_RDCLASS, rdtype=CAA_RDTYPE)
         rrset.add(caa_rdata_1)
         rrset.add(caa_rdata_2)
         return rrset
 
+    def find_caa_record_and_domain__should_return_rrset_and_domain_given_domain_with_caa_record(self, set_env_variables, mocker):
+        # mock dns.resolver.resolve to return a valid response
+        caa_rdata_1 = CAA(CAA_RDCLASS, CAA_RDTYPE, flags=0, tag=b'issue', value=b'ca1.org')
+        answer_rrset = RRset(name=dns.name.from_text('example.com'), rdclass=CAA_RDCLASS, rdtype=CAA_RDTYPE)
+        good_response = dns.message.QueryMessage()
+        good_response.flags = Flag.QR | Flag.RD | Flag.RA
+        answer_rrset.add(caa_rdata_1)
+        question_rrset = RRset(name=dns.name.from_text('example.com'), rdclass=CAA_RDCLASS, rdtype=CAA_RDTYPE)
+        good_response.question = [question_rrset]
+        good_response.answer = [answer_rrset]
+        mocker.patch('dns.message.Message.find_rrset', return_value=answer_rrset)
+
+        good_answer = dns.resolver.Answer(qname=dns.name.from_text('example.com'), rdtype=CAA_RDTYPE, rdclass=CAA_RDCLASS, response=good_response)
+        mocker.patch('dns.resolver.resolve', side_effect=lambda domain_name, rdtype: (
+            good_answer if domain_name.to_text() == 'example.com.' else
+            (_ for _ in ()).throw(dns.resolver.NoAnswer)
+        ))
+        caa_request = CaaCheckRequest(domain_or_ip_target='example.com', certificate_type=None, caa_domains=None)
+        caa_checker = MpicCaaChecker()
+        answer_rrset, domain = caa_checker.find_caa_record_and_domain(caa_request)
+        assert isinstance(answer_rrset, RRset)
+        assert isinstance(domain, dns.name.Name)
+
     @pytest.mark.parametrize('value_list, caa_domains', [
         (['ca1.org'], ['ca1.org']),
         (['ca1.org', 'ca2.com'], ['ca2.com']),
-        (['ca1.org', 'ca2.com'], ['ca3.org', 'ca1.org']),
+        (['ca1.org', 'ca2.com'], ['ca3.net', 'ca1.org']),
     ])
     def does_value_list_permit_issuance__should_return_true_given_one_value_found_in_caa_domains(self, value_list, caa_domains):
         result = MpicCaaChecker.does_value_list_permit_issuance(value_list, caa_domains)
@@ -46,44 +83,44 @@ class TestMpicCaaChecker:
         result = MpicCaaChecker.does_value_list_permit_issuance(value_list, caa_domains)
         assert result is True
 
-    def is_valid_for_issuance__should_return_true_given_rrset_contains_domain(self, rrset):
+    def is_valid_for_issuance__should_return_true_given_rrset_contains_domain(self, test_rrset):
         caa_domains = ['ca1000.org']
         is_wc_domain = False
-        rrset.add(CAA(CAA_RDCLASS, CAA_RDTYPE, flags=0, tag=b'issue', value=caa_domains[0].encode('utf-8')))
-        result = MpicCaaChecker.is_valid_for_issuance(caa_domains, is_wc_domain, rrset)
+        test_rrset.add(CAA(CAA_RDCLASS, CAA_RDTYPE, flags=0, tag=b'issue', value=caa_domains[0].encode('utf-8')))
+        result = MpicCaaChecker.is_valid_for_issuance(caa_domains, is_wc_domain, test_rrset)
         assert result is True
 
-    def is_valid_for_issuance__should_return_true_given_rrset_contains_domain_and_domain_is_wildcard(self, rrset):
+    def is_valid_for_issuance__should_return_true_given_rrset_contains_domain_and_domain_is_wildcard(self, test_rrset):
         caa_domains = ['ca1000.org']
         is_wc_domain = True
-        rrset.add(CAA(CAA_RDCLASS, CAA_RDTYPE, flags=0, tag=b'issue', value=caa_domains[0].encode('utf-8')))
-        result = MpicCaaChecker.is_valid_for_issuance(caa_domains, is_wc_domain, rrset)
+        test_rrset.add(CAA(CAA_RDCLASS, CAA_RDTYPE, flags=0, tag=b'issue', value=caa_domains[0].encode('utf-8')))
+        result = MpicCaaChecker.is_valid_for_issuance(caa_domains, is_wc_domain, test_rrset)
         assert result is True
 
-    def is_valid_for_issuance__should_return_true_given_rrset_contains_domain_with_issuewild_tag_and_domain_is_wildcard(self, rrset):
+    def is_valid_for_issuance__should_return_true_given_rrset_contains_domain_with_issuewild_tag_and_domain_is_wildcard(self, test_rrset):
         caa_domains = ['ca1000.org']
         caa_rdata = CAA(CAA_RDCLASS, CAA_RDTYPE, flags=0, tag=b'issuewild', value=caa_domains[0].encode('utf-8'))
-        rrset.add(caa_rdata)
+        test_rrset.add(caa_rdata)
         is_wc_domain = True
-        result = MpicCaaChecker.is_valid_for_issuance(caa_domains, is_wc_domain, rrset)
+        result = MpicCaaChecker.is_valid_for_issuance(caa_domains, is_wc_domain, test_rrset)
         assert result is True
 
-    def is_valid_for_issuance_should_return_false_given_rrset_contains_domain_with_issuewild_tag_and_domain_is_not_wildcard(self, rrset):
+    def is_valid_for_issuance_should_return_false_given_rrset_contains_domain_with_issuewild_tag_and_domain_is_not_wildcard(self, test_rrset):
         caa_domains = ['ca1000.org']
         caa_rdata = CAA(CAA_RDCLASS, CAA_RDTYPE, flags=0, tag=b'issuewild', value=caa_domains[0].encode('utf-8'))
-        rrset.add(caa_rdata)
+        test_rrset.add(caa_rdata)
         is_wc_domain = False
-        result = MpicCaaChecker.is_valid_for_issuance(caa_domains, is_wc_domain, rrset)
+        result = MpicCaaChecker.is_valid_for_issuance(caa_domains, is_wc_domain, test_rrset)
         assert result is False
 
     #  TODO figure out if check for critical flag should override checks for issue and issuewild
     @pytest.mark.parametrize('caa_domain, rr_domain', [('ca1111.org', 'ca1111.org'), ('ca1111.org', 'ca2222.com')])
-    def is_valid_for_issuance__should_return_false_given_rrset_contains_any_records_with_critical_flags(self, rrset, caa_domain, rr_domain):
+    def is_valid_for_issuance__should_return_false_given_rrset_contains_any_records_with_critical_flags(self, test_rrset, caa_domain, rr_domain):
         caa_domains = [caa_domain]
         caa_rdata = CAA(CAA_RDCLASS, CAA_RDTYPE, flags=128, tag=b'unknown', value=rr_domain.encode('utf-8'))
-        rrset.add(caa_rdata)
+        test_rrset.add(caa_rdata)
         is_wc_domain = False
-        result = MpicCaaChecker.is_valid_for_issuance(caa_domains, is_wc_domain, rrset)
+        result = MpicCaaChecker.is_valid_for_issuance(caa_domains, is_wc_domain, test_rrset)
         assert result is False
 
 

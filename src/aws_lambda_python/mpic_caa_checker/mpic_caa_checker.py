@@ -2,8 +2,10 @@ import json
 import os
 from typing import Final
 
-import dns
+# import dns
+import dns.resolver
 from aws_lambda_python.common_domain.caa_check_request import CaaCheckRequest
+from aws_lambda_python.common_domain.caa_check_response import CaaCheckResponse, CaaCheckResponseDetails
 from aws_lambda_python.common_domain.certificate_type import CertificateType
 from dns.name import Name
 from dns.rrset import RRset
@@ -94,32 +96,19 @@ class MpicCaaChecker:
         rrset, domain = MpicCaaChecker.find_caa_record_and_domain(caa_request)
         caa_found = rrset is not None
 
-        # if domain has no CAA records: valid for issuance
-        if not caa_found:
-            result = {
-                'statusCode': 200,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({  # TODO rename fields to match API spec, e.g. 'is-valid'
-                    'region': self.AWS_REGION,
-                    'valid_for_issue': True,
-                    'details': {
-                        'present': False
-                    }
-                })
-            }
+        result = {
+            'statusCode': 200,
+            'headers': {'Content-Type': 'application/json'}
+        }
+        if not caa_found:  # if domain has no CAA records: valid for issuance
+            response = CaaCheckResponse(region=self.AWS_REGION, valid_for_issuance=True,
+                                        details=CaaCheckResponseDetails(present=False))
+            result['body'] = json.dumps(response.model_dump())
         else:
             valid_for_issuance = MpicCaaChecker.is_valid_for_issuance(caa_domains, is_wc_domain, rrset)
-            result = {
-                'statusCode': 200,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({
-                    'region': self.AWS_REGION,
-                    'valid_for_issuance': valid_for_issuance,
-                    'details': {
-                        'present': True,
-                        'found_at': domain.to_text(omit_final_dot=True),
-                        'response': rrset.to_text()
-                    }
-                })
-            }
+            response = CaaCheckResponse(region=self.AWS_REGION, valid_for_issuance=valid_for_issuance,
+                                        details=CaaCheckResponseDetails(present=True,
+                                                                        found_at=domain.to_text(omit_final_dot=True),
+                                                                        response=rrset.to_text()))
+            result['body'] = json.dumps(response.model_dump())
         return result
