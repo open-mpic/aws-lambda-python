@@ -21,14 +21,14 @@ class TestDeployedMpicApi:
         perspective_count = 3
 
         body = {
-            'api-version': '1.0.0',
-            'system-params': {
-                'domain-or-ip-target': 'test',
-                'perspective-count': perspective_count,
-                'quorum-count': 2
+            'api_version': '1.0.0',
+            'orchestration_parameters': {
+                'domain_or_ip_target': 'test',
+                'perspective_count': perspective_count,
+                'quorum_count': 2
             },
-            'caa-details': {
-                'caa-domains': [
+            'caa_details': {
+                'caa_domains': [
                     'mozilla.com'
                 ]
             }
@@ -41,20 +41,20 @@ class TestDeployedMpicApi:
         perspectives_list = response_body['perspectives']  # each element is a dictionary with 'statusCode' element
         # assert that each element in perspectives_list has a 'statusCode' element with value 200
         assert len(perspectives_list) == perspective_count
-        assert len(list(filter(lambda perspective: perspective['statusCode'] == 200, perspectives_list))) == perspective_count
+        assert len(list(filter(lambda perspective: perspective['status_code'] == 200, perspectives_list))) == perspective_count
 
     def api_should_return_400_given_invalid_parameters_in_request(self, api_client):
         perspective_count = 3
 
         body = {
-            'api-version': '1.0.0',
-            'system-params': {
-                'domain-or-ip-target': 'test',
-                'perspective-count': perspective_count,
-                'quorum-count': 5  # invalid quorum count
+            'api_version': '1.0.0',
+            'orchestration_parameters': {
+                'domain_or_ip_target': 'test',
+                'perspective_count': perspective_count,
+                'quorum_count': 5  # invalid quorum count
             },
-            'caa-details': {
-                'caa-domains': [
+            'caa_details': {
+                'caa_domains': [
                     'mozilla.com'
                 ]
             }

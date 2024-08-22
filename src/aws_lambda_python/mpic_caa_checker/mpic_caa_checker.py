@@ -3,6 +3,10 @@ import os
 from typing import Final
 
 import dns
+from aws_lambda_python.common_domain.caa_check_request import CaaCheckRequest
+from aws_lambda_python.common_domain.certificate_type import CertificateType
+from dns.name import Name
+from dns.rrset import RRset
 
 ISSUE_TAG: Final[str] = 'issue'
 ISSUEWILD_TAG: Final[str] = 'issuewild'
@@ -11,6 +15,7 @@ ISSUEWILD_TAG: Final[str] = 'issuewild'
 class MpicCaaChecker:
     def __init__(self):
         self.default_caa_domain_list = os.environ['default_caa_domains'].split("|")
+        self.AWS_REGION: Final[str] = os.environ['AWS_REGION']
 
     @staticmethod
     def does_value_list_permit_issuance(value_list: list, caa_domains):
@@ -25,86 +30,96 @@ class MpicCaaChecker:
         # If nothing matched, we cannot issue.
         return False
 
-    def execute_caa_check(self, event):
-        caa_params = event['caa_params']
+    @staticmethod
+    def find_caa_record_and_domain(caa_request) -> (RRset, Name):
+        rrset = None
+        domain = dns.name.from_text(caa_request.domain_or_ip_target)
 
-        # Assume the default system configured validation targets and override if sent in the API call.
-        caa_domains = self.default_caa_domain_list
-        if 'caa_domains' in caa_params:
-            caa_domains = caa_params['caa_domains']
-
-        domain = dns.name.from_text(event['domain_or_ip_target'])
-
-        # Use the cert type field to check if the domain is a wildcard.
-        is_wc_domain = False
-        if 'certificate_type' in caa_params:
-            cert_type = caa_params['certificate_type']
-            if cert_type not in ['tls_server', 'tls_server:wildcard']:
-                raise ValueError(f"Invalid cert type: {cert_type}")
-            is_wc_domain = cert_type == 'tls_server:wildcard'
-
-        caa_found = False
-        valid_for_issue = True
-
-        resource_record_set = None
         while domain != dns.name.root:
             try:
                 lookup = dns.resolver.resolve(domain, dns.rdatatype.CAA)
                 print(f'Found a CAA record for {domain}! Response: {lookup.rrset.to_text()}')
-                resource_record_set = lookup.rrset
-                caa_found = True
+                rrset = lookup.rrset
                 break
             except dns.resolver.NoAnswer:
                 print(f'No CAA record found for {domain}; trying parent domain...')
                 domain = domain.parent()
 
-        # if domain has no CAA records: valid for issuance
-        if not caa_found:
-            return {
-                'statusCode': 200,
-                'body': json.dumps({  # TODO rename fields to match API spec, e.g. 'is-valid'
-                    'Region': os.environ['AWS_REGION'],
-                    'ValidForIssue': valid_for_issue,
-                    'Details': {
-                        'Present': False
-                    }
-                })
-            }
+        return rrset, domain
 
+    @staticmethod
+    def is_valid_for_issuance(caa_domains, is_wc_domain, rrset):
+        # valid_for_issuance = False
         issue_tags = []
         issue_wild_tags = []
         has_unknown_critical_flags = False
-        for rr in resource_record_set:
-            tag = rr.tag.decode('utf-8')
-            val = rr.value.decode('utf-8')
-            flags = rr.flags
+
+        # TODO critical flag behavior is weird...
+        # right now a record with critical flag and 'issue' tag will be considered valid for issuance
+        for resource_record in rrset:
+            tag = resource_record.tag.decode('utf-8')
+            val = resource_record.value.decode('utf-8')
             if tag == ISSUE_TAG:
                 issue_tags.append(val)
             elif tag == ISSUEWILD_TAG:
                 issue_wild_tags.append(val)
-            elif flags & 0b10000000:
+            elif resource_record.flags & 0b10000000:  # bitwise-and to check if flags are 128 (the critical flag)
                 has_unknown_critical_flags = True
 
         if has_unknown_critical_flags:
-            valid_for_issue = False
+            valid_for_issuance = False
         else:
             if is_wc_domain and len(issue_wild_tags) > 0:
-                valid_for_issue = MpicCaaChecker.does_value_list_permit_issuance(issue_wild_tags, caa_domains)
+                valid_for_issuance = MpicCaaChecker.does_value_list_permit_issuance(issue_wild_tags, caa_domains)
             elif len(issue_tags) > 0:
-                valid_for_issue = MpicCaaChecker.does_value_list_permit_issuance(issue_tags, caa_domains)
+                valid_for_issuance = MpicCaaChecker.does_value_list_permit_issuance(issue_tags, caa_domains)
             else:
                 # We had no unknown critical tags, and we found no issue tags. Issuance can proceed.
-                valid_for_issue = True
+                valid_for_issuance = True
+        return valid_for_issuance
 
-        return {
-            'statusCode': 200,
-            'body': json.dumps({
-                'Region': os.environ['AWS_REGION'],
-                'ValidForIssue': valid_for_issue,
-                'Details': {
-                    'Present': True,
-                    'FoundAt': domain.to_text(omit_final_dot=True),
-                    'Response': resource_record_set.to_text()
-                }
-            })
-        }
+    def execute_caa_check(self, event):
+        caa_request = CaaCheckRequest.model_validate(event)
+
+        # Assume the default system configured validation targets and override if sent in the API call.
+        caa_domains = self.default_caa_domain_list
+        is_wc_domain = False
+        if caa_request.caa_details:
+            if caa_request.caa_details.caa_domains:
+                caa_domains = caa_request.caa_details.caa_domains
+
+            # Use the cert type field to check if the domain is a wildcard.
+            is_wc_domain = caa_request.caa_details.certificate_type == CertificateType.TLS_SERVER_WILDCARD
+
+        rrset, domain = MpicCaaChecker.find_caa_record_and_domain(caa_request)
+        caa_found = rrset is not None
+
+        # if domain has no CAA records: valid for issuance
+        if not caa_found:
+            result = {
+                'statusCode': 200,
+                'headers': {'Content-Type': 'application/json'},
+                'body': json.dumps({  # TODO rename fields to match API spec, e.g. 'is-valid'
+                    'region': self.AWS_REGION,
+                    'valid_for_issue': True,
+                    'details': {
+                        'present': False
+                    }
+                })
+            }
+        else:
+            valid_for_issuance = MpicCaaChecker.is_valid_for_issuance(caa_domains, is_wc_domain, rrset)
+            result = {
+                'statusCode': 200,
+                'headers': {'Content-Type': 'application/json'},
+                'body': json.dumps({
+                    'region': self.AWS_REGION,
+                    'valid_for_issuance': valid_for_issuance,
+                    'details': {
+                        'present': True,
+                        'found_at': domain.to_text(omit_final_dot=True),
+                        'response': rrset.to_text()
+                    }
+                })
+            }
+        return result

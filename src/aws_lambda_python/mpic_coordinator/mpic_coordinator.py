@@ -56,12 +56,14 @@ class MpicCoordinator:
                 case _:
                     return {
                         'statusCode': 400,
+                        'headers': {'Content-Type': 'application/json'},
                         'body': json.dumps({'error': ValidationMessages.REQUEST_VALIDATION_FAILED.key,
                                             'validation-issues': [ValidationMessages.UNSUPPORTED_REQUEST_PATH.key]})
                     }
         except pydantic.ValidationError as validation_error:
             return {
                 'statusCode': 400,
+                'headers': {'Content-Type': 'application/json'},
                 'body': json.dumps({'error': ValidationMessages.REQUEST_VALIDATION_FAILED.key,
                                     'validation-issues': validation_error.errors()})
             }
@@ -71,6 +73,7 @@ class MpicCoordinator:
         if not is_request_valid:
             return {
                 'statusCode': 400,
+                'headers': {'Content-Type': 'application/json'},
                 'body': json.dumps({'error': ValidationMessages.REQUEST_VALIDATION_FAILED.key,
                                     'validation-issues': [vars(issue) for issue in validation_issues]})
             }
@@ -155,13 +158,10 @@ class MpicCoordinator:
             required_quorum_count = perspective_count - 1 if perspective_count <= 5 else perspective_count - 2
         return required_quorum_count
 
-    # TODO replace use of body with command once the async calls can accept the object (or a snake case keyed dict)
     # Configures the async lambda function calls to issue for the check request.
     def collect_async_calls_to_issue(self, request_path, mpic_request, perspectives_to_use) -> list[RemoteCheckCallConfiguration]:
         domain_or_ip_target = mpic_request.orchestration_parameters.domain_or_ip_target
         async_calls_to_issue = []
-
-        # TODO are validation-method and validation-details required but caa-details NOT required?
 
         if request_path in (RequestPath.CAA_CHECK, RequestPath.DCV_WITH_CAA_CHECK):
             check_parameters = CaaCheckRequest(domain_or_ip_target=domain_or_ip_target, caa_details=mpic_request.caa_details)
@@ -205,13 +205,13 @@ class MpicCoordinator:
                 except Exception as e:
                     print(f'{perspective} generated an exception: {e}')
                 else:
-                    perspective_response = json.loads(data['Payload'].read().decode('utf-8'))
+                    perspective_response = json.loads(data['payload'].read().decode('utf-8'))
                     print(perspective_response)  # Debugging
                     perspective_response_body = json.loads(perspective_response['body'])
-                    if perspective_response_body['ValidForIssue']:
+                    if perspective_response_body['valid_for_issue']:
                         print(f"Perspective in {perspective_response_body['Region']} was valid!")
                     validity_per_perspective_per_check_type[check_type][perspective] |= perspective_response_body[
-                        'ValidForIssue']
+                        'valid_for_issue']
                     if check_type not in perspective_responses_per_check_type:
                         perspective_responses_per_check_type[check_type] = []
                     # TODO make sure responses per perspective match API spec...

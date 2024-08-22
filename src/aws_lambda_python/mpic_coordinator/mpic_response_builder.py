@@ -42,5 +42,6 @@ class MpicResponseBuilder:
 
         return {
             'statusCode': 200,  # other status codes will be returned earlier in the Coordinator logic
+            'headers': {'Content-Type': 'application/json'},
             'body': json.dumps(response_body)
         }
