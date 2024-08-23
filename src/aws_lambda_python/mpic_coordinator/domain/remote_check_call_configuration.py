@@ -7,4 +7,4 @@ class RemoteCheckCallConfiguration:
         self.check_type = check_type
         self.lambda_arn = lambda_arn
         self.perspective = perspective
-        self.input_args = input_args
+        self.input_args = input_args  # TODO rename to request_object or something

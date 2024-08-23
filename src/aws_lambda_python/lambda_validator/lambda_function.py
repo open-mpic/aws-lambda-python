@@ -32,9 +32,9 @@ def lambda_handler(event, context):
                     'Content-Type': 'application/json'
                     },
                 'body': json.dumps({
-                    'Region': region,
+                    'region': region,
                     'Result': result,  # r.data.decode().rstrip()
-                    'ValidForIssue': (result == expected)
+                    'valid_for_issuance': (result == expected)
                     })
             }
         else:
@@ -67,9 +67,9 @@ def lambda_handler(event, context):
                     'Content-Type': 'application/json'
                     },
                 'body': json.dumps({
-                    'Region': region,
-                    'Result': record_data_as_text,
-                    'ValidForIssue': any([_ == expected for _ in record_data_as_text])
+                    'region': region,
+                    'result': record_data_as_text,
+                    'valid_for_issuance': any([_ == expected for _ in record_data_as_text])
                     })
             }
         except dns.exception.DNSException as e:

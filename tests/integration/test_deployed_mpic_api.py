@@ -38,6 +38,7 @@ class TestDeployedMpicApi:
         assert response.status_code == 200
         # assert response body has a list of perspectives with length 2, and each element has response code 200
         response_body = json.loads(response.text)
+        print(json.dumps(response_body, indent=4))  # pretty print response body
         perspectives_list = response_body['perspectives']  # each element is a dictionary with 'statusCode' element
         # assert that each element in perspectives_list has a 'statusCode' element with value 200
         assert len(perspectives_list) == perspective_count

@@ -9,6 +9,7 @@ import random
 import hashlib
 
 import pydantic
+from aws_lambda_python.common_domain.base_check_response import BaseCheckResponse
 from aws_lambda_python.common_domain.caa_check_request import CaaCheckRequest
 from aws_lambda_python.common_domain.dcv_check_request import DcvCheckRequest
 from aws_lambda_python.mpic_coordinator.domain.check_type import CheckType
@@ -208,10 +209,10 @@ class MpicCoordinator:
                     perspective_response = json.loads(data['payload'].read().decode('utf-8'))
                     print(perspective_response)  # Debugging
                     perspective_response_body = json.loads(perspective_response['body'])
-                    if perspective_response_body['valid_for_issue']:
-                        print(f"Perspective in {perspective_response_body['Region']} was valid!")
-                    validity_per_perspective_per_check_type[check_type][perspective] |= perspective_response_body[
-                        'valid_for_issue']
+                    check_response = BaseCheckResponse.model_validate(perspective_response_body)
+                    if check_response.valid_for_issuance:
+                        print(f"Perspective in {check_response.region} was valid!")
+                    validity_per_perspective_per_check_type[check_type][perspective] |= check_response.valid_for_issuance
                     if check_type not in perspective_responses_per_check_type:
                         perspective_responses_per_check_type[check_type] = []
                     # TODO make sure responses per perspective match API spec...

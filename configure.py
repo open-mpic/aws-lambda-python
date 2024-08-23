@@ -66,7 +66,7 @@ def main(raw_args=None):
 
     regions = [perspective.split('.')[1] for perspective in config['perspectives']] 
 
-    # Generate main.generated.tf based on main.tf.template.
+    # Generate "main.generated.tf" based on main.tf.template.
     with open(args.main_tf_template) as stream:
         # Read the template file to a string.
         main_tf_string = stream.read()

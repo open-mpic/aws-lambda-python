@@ -1,3 +1,4 @@
+from aws_lambda_python.common_domain.base_check_response import BaseCheckResponse
 from pydantic import BaseModel
 
 
@@ -7,7 +8,5 @@ class CaaCheckResponseDetails(BaseModel):
     response: str | None = None
 
 
-class CaaCheckResponse(BaseModel):
-    region: str
-    valid_for_issuance: bool = False
+class CaaCheckResponse(BaseCheckResponse):
     details: CaaCheckResponseDetails

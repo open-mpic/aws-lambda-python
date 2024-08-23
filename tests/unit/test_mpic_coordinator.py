@@ -1,13 +1,17 @@
+import io
 import json
 import pytest
 import os
 
+from aws_lambda_python.common_domain.caa_check_response import CaaCheckResponse, CaaCheckResponseDetails
 from aws_lambda_python.common_domain.dcv_validation_method import DcvValidationMethod
 from aws_lambda_python.mpic_coordinator.config.service_config import API_VERSION
 from aws_lambda_python.mpic_coordinator.domain.check_type import CheckType
 from aws_lambda_python.mpic_coordinator.domain.request_path import RequestPath
 from aws_lambda_python.mpic_coordinator.messages.validation_messages import ValidationMessages
 from aws_lambda_python.mpic_coordinator.mpic_coordinator import MpicCoordinator
+from botocore.response import StreamingBody
+
 from valid_request_creator import ValidRequestCreator
 
 
@@ -126,6 +130,27 @@ class TestMpicCoordinator:
         mpic_coordinator.collect_async_calls_to_issue(RequestPath.CAA_CHECK, body, perspectives_to_use)
         # ensure each call has the default caa domains
         assert False
+
+    def coordinate_mpic__should_return_200_and_results_given_successful_caa_corroboration(self, set_env_variables, mocker):
+        request = ValidRequestCreator.create_valid_caa_check_request()
+        event = {'path': RequestPath.CAA_CHECK, 'body': json.dumps(request.model_dump())}
+        expected_response_body = CaaCheckResponse(region='us-east-4', valid_for_issuance=True,
+                                                  details=CaaCheckResponseDetails(present=False))
+        expected_response = {
+            'status_code': 200,
+            'body': json.dumps(expected_response_body.model_dump())
+        }
+        json_bytes = json.dumps(expected_response).encode('utf-8')
+        file_like_response = io.BytesIO(json_bytes)
+        streaming_body_response = StreamingBody(file_like_response, len(json_bytes))
+        mocker.patch('aws_lambda_python.mpic_coordinator.mpic_coordinator.MpicCoordinator.thread_call', return_value={
+            'payload': streaming_body_response
+        })
+        mpic_coordinator = MpicCoordinator()
+        result = mpic_coordinator.coordinate_mpic(event)
+        assert result['statusCode'] == 200
+        response_body = json.loads(result['body'])
+        assert response_body['is_valid'] is True
 
 
 if __name__ == '__main__':
