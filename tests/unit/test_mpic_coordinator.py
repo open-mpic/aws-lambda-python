@@ -134,6 +134,15 @@ class TestMpicCoordinator:
     def coordinate_mpic__should_return_200_and_results_given_successful_caa_corroboration(self, set_env_variables, mocker):
         request = ValidRequestCreator.create_valid_caa_check_request()
         event = {'path': RequestPath.CAA_CHECK, 'body': json.dumps(request.model_dump())}
+        mocker.patch('aws_lambda_python.mpic_coordinator.mpic_coordinator.MpicCoordinator.thread_call',
+                     side_effect=self.create_payload_with_streaming_body)
+        mpic_coordinator = MpicCoordinator()
+        result = mpic_coordinator.coordinate_mpic(event)
+        assert result['statusCode'] == 200
+        response_body = json.loads(result['body'])
+        assert response_body['is_valid'] is True
+
+    def create_payload_with_streaming_body(self, call_config):
         expected_response_body = CaaCheckResponse(region='us-east-4', valid_for_issuance=True,
                                                   details=CaaCheckResponseDetails(present=False))
         expected_response = {
@@ -143,14 +152,7 @@ class TestMpicCoordinator:
         json_bytes = json.dumps(expected_response).encode('utf-8')
         file_like_response = io.BytesIO(json_bytes)
         streaming_body_response = StreamingBody(file_like_response, len(json_bytes))
-        mocker.patch('aws_lambda_python.mpic_coordinator.mpic_coordinator.MpicCoordinator.thread_call', return_value={
-            'payload': streaming_body_response
-        })
-        mpic_coordinator = MpicCoordinator()
-        result = mpic_coordinator.coordinate_mpic(event)
-        assert result['statusCode'] == 200
-        response_body = json.loads(result['body'])
-        assert response_body['is_valid'] is True
+        return {'payload': streaming_body_response}
 
 
 if __name__ == '__main__':
