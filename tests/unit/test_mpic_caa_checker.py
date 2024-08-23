@@ -1,6 +1,11 @@
+import json
+
 import dns
 import pytest
+from aws_lambda_python.common_domain.caa_check_parameters import CaaCheckParameters
 from aws_lambda_python.common_domain.caa_check_request import CaaCheckRequest
+from aws_lambda_python.common_domain.caa_check_response import CaaCheckResponse, CaaCheckResponseDetails
+from aws_lambda_python.common_domain.certificate_type import CertificateType
 from aws_lambda_python.mpic_caa_checker.mpic_caa_checker import MpicCaaChecker
 from dns.flags import Flag
 from dns.rdtypes.ANY.CAA import CAA
@@ -16,7 +21,7 @@ class TestMpicCaaChecker:
     @pytest.fixture(scope='class')
     def set_env_variables():
         envvars = {
-            'default_caa_domains': 'example.com|example.net|example.org',
+            'default_caa_domains': 'ca1.com|ca2.net|ca3.org',
             'AWS_REGION': 'us-east-4',
         }
         with pytest.MonkeyPatch.context() as class_scoped_monkeypatch:
@@ -28,77 +33,131 @@ class TestMpicCaaChecker:
     def test_rrset(self):
         caa_rdata_1 = CAA(CAA_RDCLASS, CAA_RDTYPE, flags=0, tag=b'issue', value=b'ca1.org')
         caa_rdata_2 = CAA(CAA_RDCLASS, CAA_RDTYPE, flags=0, tag=b'issue', value=b'ca2.org')
-        rrset = RRset(name=dns.name.Name(['example', 'com', '']), rdclass=CAA_RDCLASS, rdtype=CAA_RDTYPE)
+        rrset = RRset(name=dns.name.from_text('example.com'), rdclass=CAA_RDCLASS, rdtype=CAA_RDTYPE)
         rrset.add(caa_rdata_1)
         rrset.add(caa_rdata_2)
         return rrset
 
-    def find_caa_record_and_domain__should_return_rrset_and_domain_given_domain_with_caa_record(self, set_env_variables, mocker):
-        # mock dns.resolver.resolve to return a valid response
-        caa_rdata_1 = CAA(CAA_RDCLASS, CAA_RDTYPE, flags=0, tag=b'issue', value=b'ca1.org')
-        answer_rrset = RRset(name=dns.name.from_text('example.com'), rdclass=CAA_RDCLASS, rdtype=CAA_RDTYPE)
+    @staticmethod
+    def create_dns_query_answer(domain, ca_name, mocker):
+        caa_rdata_1 = CAA(CAA_RDCLASS, CAA_RDTYPE, flags=0, tag=b'issue', value=ca_name.encode('utf-8'))
         good_response = dns.message.QueryMessage()
         good_response.flags = Flag.QR | Flag.RD | Flag.RA
-        answer_rrset.add(caa_rdata_1)
-        question_rrset = RRset(name=dns.name.from_text('example.com'), rdclass=CAA_RDCLASS, rdtype=CAA_RDTYPE)
-        good_response.question = [question_rrset]
-        good_response.answer = [answer_rrset]
-        mocker.patch('dns.message.Message.find_rrset', return_value=answer_rrset)
+        response_question_rrset = RRset(name=dns.name.from_text(domain), rdclass=CAA_RDCLASS, rdtype=CAA_RDTYPE)
+        good_response.question = [response_question_rrset]
+        response_answer_rrset = RRset(name=dns.name.from_text(domain), rdclass=CAA_RDCLASS, rdtype=CAA_RDTYPE)
+        response_answer_rrset.add(caa_rdata_1)
+        mocker.patch('dns.message.Message.find_rrset', return_value=response_answer_rrset)
+        return dns.resolver.Answer(qname=dns.name.from_text(domain), rdtype=CAA_RDTYPE,rdclass=CAA_RDCLASS, response=good_response)
 
-        good_answer = dns.resolver.Answer(qname=dns.name.from_text('example.com'), rdtype=CAA_RDTYPE, rdclass=CAA_RDCLASS, response=good_response)
+    # integration test of a sort -- only mocking dns methods rather than remaining class methods
+    def execute_caa_check__should_return_200_and_allow_issuance_given_no_caa_record_found(self, set_env_variables, mocker):
+        mocker.patch('dns.resolver.resolve', side_effect=lambda domain_name, rdtype: exec('raise(dns.resolver.NoAnswer)'))
+        caa_request = CaaCheckRequest(domain_or_ip_target='example.com',
+                                      caa_details=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['ca111.com']))
+        caa_checker = MpicCaaChecker()
+        result = caa_checker.execute_caa_check(caa_request)
+        assert result['statusCode'] == 200
+        expected_response = CaaCheckResponse(region='us-east-4', valid_for_issuance=True, details=CaaCheckResponseDetails(present=False))
+        assert result['body'] == json.dumps(expected_response.model_dump())
+
+    def execute_caa_check__should_return_200_and_allow_issuance_given_caa_record_found(self, set_env_variables, mocker):
+        test_dns_query_answer = TestMpicCaaChecker.create_dns_query_answer('example.com', 'ca111.com', mocker)
         mocker.patch('dns.resolver.resolve', side_effect=lambda domain_name, rdtype: (
-            good_answer if domain_name.to_text() == 'example.com.' else
+            test_dns_query_answer if domain_name.to_text() == 'example.com.' else
             (_ for _ in ()).throw(dns.resolver.NoAnswer)
+        ))
+        caa_request = CaaCheckRequest(domain_or_ip_target='example.com',
+                                      caa_details=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER,
+                                                                     caa_domains=['ca111.com']))
+
+        caa_checker = MpicCaaChecker()
+        result = caa_checker.execute_caa_check(caa_request)
+        assert result['statusCode'] == 200
+        expected_response = CaaCheckResponse(region='us-east-4', valid_for_issuance=True,
+                                             details=CaaCheckResponseDetails(present=True, found_at='example.com',
+                                                                             response=test_dns_query_answer.rrset.to_text()))
+        assert result['body'] == json.dumps(expected_response.model_dump())
+
+    def find_caa_record_and_domain__should_return_rrset_and_domain_given_domain_with_caa_record(self, set_env_variables, mocker):
+        # mock dns.resolver.resolve to return a valid response
+        test_dns_query_answer = TestMpicCaaChecker.create_dns_query_answer('example.com', 'ca1.org', mocker)
+        mocker.patch('dns.resolver.resolve', side_effect=lambda domain_name, rdtype: (
+            test_dns_query_answer if domain_name.to_text() == 'example.com.' else exec('raise(dns.resolver.NoAnswer)')
         ))
         caa_request = CaaCheckRequest(domain_or_ip_target='example.com', certificate_type=None, caa_domains=None)
         caa_checker = MpicCaaChecker()
         answer_rrset, domain = caa_checker.find_caa_record_and_domain(caa_request)
         assert isinstance(answer_rrset, RRset)
-        assert isinstance(domain, dns.name.Name)
+        assert isinstance(domain, dns.name.Name) and domain.to_text() == 'example.com.'
+
+    def find_caa_record_and_domain__should_return_rrset_and_domain_given_extra_subdomain(self, set_env_variables, mocker):
+        test_dns_query_answer = TestMpicCaaChecker.create_dns_query_answer('example.com', 'ca1.org', mocker)
+        mocker.patch('dns.resolver.resolve', side_effect=lambda domain_name, rdtype: (
+            test_dns_query_answer if domain_name.to_text() == 'example.com.' else
+            (_ for _ in ()).throw(dns.resolver.NoAnswer)
+        ))
+        caa_request = CaaCheckRequest(domain_or_ip_target='www.example.com', certificate_type=None, caa_domains=None)
+        caa_checker = MpicCaaChecker()
+        answer_rrset, domain = caa_checker.find_caa_record_and_domain(caa_request)
+        assert isinstance(answer_rrset, RRset)
+        assert isinstance(domain, dns.name.Name) and domain.to_text() == 'example.com.'
+
+    def find_caa_record_and_domain__should_return_none_and_root_domain_given_no_caa_record_for_domain(self, set_env_variables, mocker):
+        test_dns_query_answer = TestMpicCaaChecker.create_dns_query_answer('example.com', 'ca1.org', mocker)
+        mocker.patch('dns.resolver.resolve', side_effect=lambda domain_name, rdtype: (
+            test_dns_query_answer if domain_name.to_text() == 'example.org.' else
+            (_ for _ in ()).throw(dns.resolver.NoAnswer)
+        ))
+        caa_request = CaaCheckRequest(domain_or_ip_target='example.com', certificate_type=None, caa_domains=None)
+        caa_checker = MpicCaaChecker()
+        answer_rrset, domain = caa_checker.find_caa_record_and_domain(caa_request)
+        assert answer_rrset is None
+        assert isinstance(domain, dns.name.Name) and domain.to_text() == '.'  # try everything up to root domain
 
     @pytest.mark.parametrize('value_list, caa_domains', [
-        (['ca1.org'], ['ca1.org']),
-        (['ca1.org', 'ca2.com'], ['ca2.com']),
-        (['ca1.org', 'ca2.com'], ['ca3.net', 'ca1.org']),
+        (['ca111.org'], ['ca111.org']),
+        (['ca111.org', 'ca222.com'], ['ca222.com']),
+        (['ca111.org', 'ca222.com'], ['ca333.net', 'ca111.org']),
     ])
     def does_value_list_permit_issuance__should_return_true_given_one_value_found_in_caa_domains(self, value_list, caa_domains):
         result = MpicCaaChecker.does_value_list_permit_issuance(value_list, caa_domains)
         assert result is True
 
     def does_value_list_permit_issuance__should_return_false_given_value_not_found_in_caa_domains(self):
-        value_list = ['letsencrypt.org']
-        caa_domains = ['google.com']
+        value_list = ['ca222.org']
+        caa_domains = ['ca111.com']
         result = MpicCaaChecker.does_value_list_permit_issuance(value_list, caa_domains)
         assert result is False
 
     def does_value_list_permit_issuance__should_return_false_given_only_values_with_extensions(self):
-        value_list = ['0 issue "letsencrypt.org; policy=ev"']
-        caa_domains = ['letsencrypt.org']
+        value_list = ['0 issue "ca111.com; policy=ev"']
+        caa_domains = ['ca111.com']
         result = MpicCaaChecker.does_value_list_permit_issuance(value_list, caa_domains)
         assert result is False
 
     def does_value_list_permit_issuance__should_ignore_whitespace_around_values(self):
-        value_list = ['  ca1.org  ']
-        caa_domains = ['ca1.org']
+        value_list = ['  ca111.com  ']
+        caa_domains = ['ca111.com']
         result = MpicCaaChecker.does_value_list_permit_issuance(value_list, caa_domains)
         assert result is True
 
     def is_valid_for_issuance__should_return_true_given_rrset_contains_domain(self, test_rrset):
-        caa_domains = ['ca1000.org']
+        caa_domains = ['ca111.com']
         is_wc_domain = False
         test_rrset.add(CAA(CAA_RDCLASS, CAA_RDTYPE, flags=0, tag=b'issue', value=caa_domains[0].encode('utf-8')))
         result = MpicCaaChecker.is_valid_for_issuance(caa_domains, is_wc_domain, test_rrset)
         assert result is True
 
     def is_valid_for_issuance__should_return_true_given_rrset_contains_domain_and_domain_is_wildcard(self, test_rrset):
-        caa_domains = ['ca1000.org']
+        caa_domains = ['ca111.org']
         is_wc_domain = True
         test_rrset.add(CAA(CAA_RDCLASS, CAA_RDTYPE, flags=0, tag=b'issue', value=caa_domains[0].encode('utf-8')))
         result = MpicCaaChecker.is_valid_for_issuance(caa_domains, is_wc_domain, test_rrset)
         assert result is True
 
     def is_valid_for_issuance__should_return_true_given_rrset_contains_domain_with_issuewild_tag_and_domain_is_wildcard(self, test_rrset):
-        caa_domains = ['ca1000.org']
+        caa_domains = ['ca111.com']
         caa_rdata = CAA(CAA_RDCLASS, CAA_RDTYPE, flags=0, tag=b'issuewild', value=caa_domains[0].encode('utf-8'))
         test_rrset.add(caa_rdata)
         is_wc_domain = True
@@ -106,7 +165,7 @@ class TestMpicCaaChecker:
         assert result is True
 
     def is_valid_for_issuance_should_return_false_given_rrset_contains_domain_with_issuewild_tag_and_domain_is_not_wildcard(self, test_rrset):
-        caa_domains = ['ca1000.org']
+        caa_domains = ['ca111.com']
         caa_rdata = CAA(CAA_RDCLASS, CAA_RDTYPE, flags=0, tag=b'issuewild', value=caa_domains[0].encode('utf-8'))
         test_rrset.add(caa_rdata)
         is_wc_domain = False
@@ -114,7 +173,7 @@ class TestMpicCaaChecker:
         assert result is False
 
     #  TODO figure out if check for critical flag should override checks for issue and issuewild
-    @pytest.mark.parametrize('caa_domain, rr_domain', [('ca1111.org', 'ca1111.org'), ('ca1111.org', 'ca2222.com')])
+    @pytest.mark.parametrize('caa_domain, rr_domain', [('ca222.org', 'ca222.org'), ('ca222.org', 'ca111.com')])
     def is_valid_for_issuance__should_return_false_given_rrset_contains_any_records_with_critical_flags(self, test_rrset, caa_domain, rr_domain):
         caa_domains = [caa_domain]
         caa_rdata = CAA(CAA_RDCLASS, CAA_RDTYPE, flags=128, tag=b'unknown', value=rr_domain.encode('utf-8'))
