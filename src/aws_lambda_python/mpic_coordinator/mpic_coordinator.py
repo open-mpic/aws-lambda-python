@@ -208,14 +208,11 @@ class MpicCoordinator:
                     stacktrace = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
                     print(f'{perspective} generated an exception: {stacktrace}')
                 else:
-                    # print data dict in as readable a format as possible
-                    print(f"data from invoked future: {data}")  # Debugging
                     perspective_response = json.loads(data['Payload'].read().decode('utf-8'))
-                    print(perspective_response)  # Debugging
                     perspective_response_body = json.loads(perspective_response['body'])
+                    # deserialize perspective body to have a nested object in the output rather than a string
+                    perspective_response['body'] = perspective_response_body
                     check_response = BaseCheckResponse.model_validate(perspective_response_body)
-                    if check_response.valid_for_issuance:
-                        print(f"Perspective in {check_response.region} was valid!")
                     validity_per_perspective_per_check_type[check_type][perspective] |= check_response.valid_for_issuance
                     if check_type not in perspective_responses_per_check_type:
                         perspective_responses_per_check_type[check_type] = []
