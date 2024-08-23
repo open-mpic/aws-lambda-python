@@ -42,7 +42,7 @@ class TestDeployedMpicApi:
         perspectives_list = response_body['perspectives']  # each element is a dictionary with 'statusCode' element
         # assert that each element in perspectives_list has a 'statusCode' element with value 200
         assert len(perspectives_list) == perspective_count
-        assert len(list(filter(lambda perspective: perspective['status_code'] == 200, perspectives_list))) == perspective_count
+        assert len(list(filter(lambda perspective: perspective['statusCode'] == 200, perspectives_list))) == perspective_count
 
     def api_should_return_400_given_invalid_parameters_in_request(self, api_client):
         perspective_count = 3

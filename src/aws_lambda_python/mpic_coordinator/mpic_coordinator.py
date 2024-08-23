@@ -1,4 +1,5 @@
 import json
+import traceback
 from typing import Final
 import boto3
 import time
@@ -204,9 +205,12 @@ class MpicCoordinator:
                 try:
                     data = future.result()
                 except Exception as e:
-                    print(f'{perspective} generated an exception: {e}')
+                    stacktrace = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+                    print(f'{perspective} generated an exception: {stacktrace}')
                 else:
-                    perspective_response = json.loads(data['payload'].read().decode('utf-8'))
+                    # print data dict in as readable a format as possible
+                    print(f"data from invoked future: {data}")  # Debugging
+                    perspective_response = json.loads(data['Payload'].read().decode('utf-8'))
                     print(perspective_response)  # Debugging
                     perspective_response_body = json.loads(perspective_response['body'])
                     check_response = BaseCheckResponse.model_validate(perspective_response_body)
@@ -229,7 +233,7 @@ class MpicCoordinator:
         response = client.invoke(
             FunctionName=call_config.lambda_arn,
             InvocationType='RequestResponse',
-            Payload=json.dumps(call_config.input_args)
+            Payload=json.dumps(call_config.input_args.model_dump())
         )
         toc = time.perf_counter()
 

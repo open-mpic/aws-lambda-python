@@ -152,7 +152,7 @@ class TestMpicCoordinator:
         json_bytes = json.dumps(expected_response).encode('utf-8')
         file_like_response = io.BytesIO(json_bytes)
         streaming_body_response = StreamingBody(file_like_response, len(json_bytes))
-        return {'payload': streaming_body_response}
+        return {'Payload': streaming_body_response}
 
 
 if __name__ == '__main__':
