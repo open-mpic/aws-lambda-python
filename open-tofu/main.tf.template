@@ -78,13 +78,13 @@ resource "aws_lambda_function" "mpic_coordinator_lambda" {
     layers = [
         aws_lambda_layer_version.python311_open_mpic_layer.arn,
         aws_lambda_layer_version.mpic_common_layer.arn,
-        aws_lambda_layer_version.mpic_coordinator_layer.arn
+        aws_lambda_layer_version.mpic_coordinator_layer.arn,
     ]
     environment {
       variables = {
         perspective_names = {{perspective-names-list}}
         validator_arns = {{validator-arns-list}}
-        caa_arns = {{caa-resolver-arns-list}}
+        caa_arns = {{mpic-caa-checker-arns-list}}
         default_perspective_count = {{default-perspective-count}}
         enforce_distinct_rir_regions = {{enforce-distinct-rir-regions}}
         hash_secret = {{hash-secret}}

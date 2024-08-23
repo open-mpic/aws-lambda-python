@@ -48,20 +48,20 @@ class TestMpicCaaChecker:
         response_answer_rrset = RRset(name=dns.name.from_text(domain), rdclass=CAA_RDCLASS, rdtype=CAA_RDTYPE)
         response_answer_rrset.add(caa_rdata_1)
         mocker.patch('dns.message.Message.find_rrset', return_value=response_answer_rrset)
-        return dns.resolver.Answer(qname=dns.name.from_text(domain), rdtype=CAA_RDTYPE,rdclass=CAA_RDCLASS, response=good_response)
+        return dns.resolver.Answer(qname=dns.name.from_text(domain), rdtype=CAA_RDTYPE, rdclass=CAA_RDCLASS, response=good_response)
 
     # integration test of a sort -- only mocking dns methods rather than remaining class methods
-    def execute_caa_check__should_return_200_and_allow_issuance_given_no_caa_records_found(self, set_env_variables, mocker):
+    def check_caa__should_return_200_and_allow_issuance_given_no_caa_records_found(self, set_env_variables, mocker):
         mocker.patch('dns.resolver.resolve', side_effect=lambda domain_name, rdtype: exec('raise(dns.resolver.NoAnswer)'))
         caa_request = CaaCheckRequest(domain_or_ip_target='example.com',
                                       caa_details=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['ca111.com']))
         caa_checker = MpicCaaChecker()
-        result = caa_checker.execute_caa_check(caa_request)
+        result = caa_checker.check_caa(caa_request)
         assert result['statusCode'] == 200
         expected_response = CaaCheckResponse(region='us-east-4', valid_for_issuance=True, details=CaaCheckResponseDetails(present=False))
         assert result['body'] == json.dumps(expected_response.model_dump())
 
-    def execute_caa_check__should_return_200_and_allow_issuance_given_matching_caa_record_found(self, set_env_variables, mocker):
+    def check_caa__should_return_200_and_allow_issuance_given_matching_caa_record_found(self, set_env_variables, mocker):
         test_dns_query_answer = TestMpicCaaChecker.create_dns_query_answer('example.com', 'ca111.com', 'issue', mocker)
         mocker.patch('dns.resolver.resolve', side_effect=lambda domain_name, rdtype: (
             test_dns_query_answer if domain_name.to_text() == 'example.com.' else
@@ -72,14 +72,14 @@ class TestMpicCaaChecker:
                                                                      caa_domains=['ca111.com']))
 
         caa_checker = MpicCaaChecker()
-        result = caa_checker.execute_caa_check(caa_request)
+        result = caa_checker.check_caa(caa_request)
         assert result['statusCode'] == 200
         expected_response = CaaCheckResponse(region='us-east-4', valid_for_issuance=True,
                                              details=CaaCheckResponseDetails(present=True, found_at='example.com',
                                                                              response=test_dns_query_answer.rrset.to_text()))
         assert result['body'] == json.dumps(expected_response.model_dump())
 
-    def execute_caa_check_should_return_200_and_disallow_issuance_given_non_matching_caa_record_found(self, set_env_variables, mocker):
+    def check_caa_should_return_200_and_disallow_issuance_given_non_matching_caa_record_found(self, set_env_variables, mocker):
         test_dns_query_answer = TestMpicCaaChecker.create_dns_query_answer('example.com', 'ca222.org', 'issue', mocker)
         mocker.patch('dns.resolver.resolve', side_effect=lambda domain_name, rdtype: (
             test_dns_query_answer if domain_name.to_text() == 'example.com.' else
@@ -90,7 +90,7 @@ class TestMpicCaaChecker:
                                                                      caa_domains=['ca111.com']))
 
         caa_checker = MpicCaaChecker()
-        result = caa_checker.execute_caa_check(caa_request)
+        result = caa_checker.check_caa(caa_request)
         assert result['statusCode'] == 200
         expected_response = CaaCheckResponse(region='us-east-4', valid_for_issuance=False,
                                              details=CaaCheckResponseDetails(present=True, found_at='example.com',

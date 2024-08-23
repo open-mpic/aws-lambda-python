@@ -80,7 +80,7 @@ class MpicCaaChecker:
                 valid_for_issuance = True
         return valid_for_issuance
 
-    def execute_caa_check(self, event):
+    def check_caa(self, event):
         caa_request = CaaCheckRequest.model_validate(event)
 
         # Assume the default system configured validation targets and override if sent in the API call.

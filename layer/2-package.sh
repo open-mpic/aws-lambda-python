@@ -16,6 +16,14 @@ zip -r ../mpic_coordinator_layer_content.zip python -x "${py_exclude[@]}" # Zip 
 rm -r python # clean up, mostly not to bother the IDE which will find this duplicate code!
 cd .. # should be at layer directory
 
+# make mpic_caa_checker lambda layer for mpic caa checker lambda function
+mkdir -p mpic_caa_checker_layer_content/python/aws_lambda_python
+cp -r ../src/aws_lambda_python/mpic_caa_checker mpic_caa_checker_layer_content/python/aws_lambda_python/mpic_caa_checker
+cd mpic_caa_checker_layer_content
+zip -r ../mpic_caa_checker_layer_content.zip python -x "${py_exclude[@]}" # Zip the mpic_caa_checker lambda layer
+rm -r python # clean up, mostly not to bother the IDE which will find this duplicate code!
+cd .. # should be at layer directory
+
 # make mpic_common lambda layer for all lambda functions
 mkdir -p mpic_common_layer_content/python/aws_lambda_python
 cp -r ../src/aws_lambda_python/mpic_common mpic_common_layer_content/python/aws_lambda_python/mpic_common

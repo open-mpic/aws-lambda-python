@@ -14,6 +14,6 @@ cd "${FUNCTIONS_DIR}"/mpic_coordinator_lambda
 zip -r mpic_coordinator_lambda.zip mpic_coordinator_lambda_function.py
 cd $SCRIPT_DIR
 
-cd "${FUNCTIONS_DIR}"/lambda_caa_resolver
-zip lambda_caa_resolver.zip lambda_function.py
+cd "${FUNCTIONS_DIR}"/mpic_caa_checker_lambda
+zip mpic_caa_checker_lambda.zip mpic_caa_checker_lambda_function.py
 cd $SCRIPT_DIR
