@@ -9,6 +9,10 @@ from valid_request_creator import ValidRequestCreator
 
 # noinspection PyMethodMayBeStatic
 class TestMpicDcvRequest:
+    """
+        Tests correctness of configuration for Pydantic-driven auto validation of MpicDcvRequest objects.
+        """
+
     def from_json__should_return_dcv_mpic_request_given_valid_dcv_json(self):
         body = ValidRequestCreator.create_valid_dcv_check_request_body()
         json_body = json.dumps(body)

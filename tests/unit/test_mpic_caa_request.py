@@ -9,6 +9,10 @@ from valid_request_creator import ValidRequestCreator
 
 # noinspection PyMethodMayBeStatic
 class TestMpicCaaRequest:
+    """
+        Tests correctness of configuration for Pydantic-driven auto validation of MpicCaaRequest objects.
+        """
+
     def from_json__should_return_caa_mpic_request_given_valid_caa_json(self):
         body = ValidRequestCreator.create_valid_caa_check_request_body()
         json_body = json.dumps(body)

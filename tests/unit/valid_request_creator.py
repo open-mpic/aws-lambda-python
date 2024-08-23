@@ -1,5 +1,3 @@
-import json
-
 from aws_lambda_python.common_domain.caa_check_parameters import CaaCheckParameters
 from aws_lambda_python.common_domain.dcv_check_parameters import DcvCheckParameters
 from aws_lambda_python.mpic_coordinator.config.service_config import API_VERSION
@@ -14,7 +12,6 @@ from aws_lambda_python.mpic_coordinator.domain.mpic_dcv_with_caa_request import 
 from aws_lambda_python.mpic_coordinator.domain.mpic_orchestration_parameters import MpicOrchestrationParameters
 
 
-# TODO build requests as objects rather than dictionaries to avoid any magic strings
 class ValidRequestCreator:
     @staticmethod
     def create_valid_dcv_check_request_body(validation_method=DcvValidationMethod.DNS_GENERIC):
@@ -73,7 +70,6 @@ class ValidRequestCreator:
                 return ValidRequestCreator.create_valid_dcv_check_request()
             case CheckType.DCV_WITH_CAA:
                 return ValidRequestCreator.create_valid_dcv_with_caa_check_request()
-
 
     @classmethod
     def create_validation_details(cls, validation_method):

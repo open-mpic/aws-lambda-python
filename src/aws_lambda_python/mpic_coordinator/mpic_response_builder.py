@@ -7,7 +7,7 @@ from aws_lambda_python.mpic_coordinator.domain.mpic_dcv_request import MpicDcvRe
 from aws_lambda_python.mpic_coordinator.domain.mpic_dcv_with_caa_request import MpicDcvWithCaaRequest
 
 
-# TODO refactor to use domain objects once API is updated to use snake case instead of kebab case for attribute names
+# TODO refactor to use a response object instead of a dictionary to avoid magic strings
 class MpicResponseBuilder:
     @staticmethod
     def build_response(request: BaseMpicRequest, perspective_count, quorum_count, perspective_responses_per_check_type, valid_by_check_type):

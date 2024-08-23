@@ -8,6 +8,10 @@ from valid_request_creator import ValidRequestCreator
 
 # noinspection PyMethodMayBeStatic
 class TestMpicDcvWithCaaRequest:
+    """
+        Tests correctness of configuration for Pydantic-driven auto validation of MpicDcvWithCaaRequest objects.
+        """
+
     def from_json__should_return_dcv_with_caa_mpic_request_given_valid_dcv_with_caa_json(self):
         body = ValidRequestCreator.create_valid_dcv_with_caa_check_request_body()
         json_body = json.dumps(body)
@@ -41,3 +45,4 @@ class TestMpicDcvWithCaaRequest:
 
 if __name__ == '__main__':
     pytest.main()
+    
