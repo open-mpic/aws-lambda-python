@@ -1,4 +1,5 @@
-from aws_lambda_python.common_domain.check_parameters import CaaCheckParameters, DcvCheckParameters
+from aws_lambda_python.common_domain.check_parameters import CaaCheckParameters, DcvCheckParameters, \
+    DcvValidationDetails
 from aws_lambda_python.common_domain.enum.certificate_type import CertificateType
 from aws_lambda_python.common_domain.enum.dcv_validation_method import DcvValidationMethod
 from aws_lambda_python.common_domain.enum.dns_record_type import DnsRecordType
@@ -28,8 +29,6 @@ class ValidRequestCreator:
 
     @staticmethod
     def create_valid_caa_check_request() -> MpicCaaRequest:
-        # body = ValidRequestCreator.create_valid_caa_check_request_body()
-        # return MpicCaaRequest.from_json(json.dumps(body))
         return MpicCaaRequest(
             orchestration_parameters=MpicRequestOrchestrationParameters(domain_or_ip_target='test', perspective_count=6, quorum_count=4),
             caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER)
@@ -71,9 +70,9 @@ class ValidRequestCreator:
         validation_details = {}
         match validation_method:
             case DcvValidationMethod.DNS_GENERIC:
-                validation_details = {'prefix': 'test', 'record_type': DnsRecordType.A, 'expected_challenge': 'test'}
+                validation_details = DcvValidationDetails(prefix='test', record_type=DnsRecordType.A, expected_challenge='test')
             case DcvValidationMethod.HTTP_GENERIC:
-                validation_details = {'path': 'http://example.com', 'expected_challenge': 'test'}  # noqa E501 (http)
+                validation_details = DcvValidationDetails(path='http://example.com', expected_challenge='test')  # noqa E501 (http)
             case DcvValidationMethod.TLS_USING_ALPN:
-                validation_details = {'expected_challenge': 'test'}
+                validation_details = DcvValidationDetails(expected_challenge='test')
         return validation_details
