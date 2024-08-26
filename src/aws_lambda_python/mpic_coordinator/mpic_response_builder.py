@@ -1,7 +1,7 @@
 import json
 
 from aws_lambda_python.mpic_coordinator.config.service_config import API_VERSION
-from aws_lambda_python.mpic_coordinator.domain.enum.check_type import CheckType
+from aws_lambda_python.common_domain.enum.check_type import CheckType
 from aws_lambda_python.mpic_coordinator.domain.mpic_orchestration_parameters import MpicEffectiveOrchestrationParameters
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import BaseMpicRequest
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvRequest

@@ -10,10 +10,10 @@ import random
 import hashlib
 
 import pydantic
-from aws_lambda_python.common_domain.check_response import BaseCheckResponse, CheckResponse, AnnotatedCheckResponse
+from aws_lambda_python.common_domain.check_response import CheckResponse, AnnotatedCheckResponse
 from aws_lambda_python.common_domain.check_request import CaaCheckRequest
 from aws_lambda_python.common_domain.check_request import DcvCheckRequest
-from aws_lambda_python.mpic_coordinator.domain.enum.check_type import CheckType
+from aws_lambda_python.common_domain.enum.check_type import CheckType
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicCaaRequest
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvRequest
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvWithCaaRequest

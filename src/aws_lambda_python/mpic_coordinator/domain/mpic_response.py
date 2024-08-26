@@ -1,7 +1,7 @@
 from abc import ABC
 from typing import Union, Literal
 
-from aws_lambda_python.mpic_coordinator.domain.enum.check_type import CheckType
+from aws_lambda_python.common_domain.enum.check_type import CheckType
 from pydantic import BaseModel, Field
 
 from aws_lambda_python.common_domain.check_response import CaaCheckResponse, DcvCheckResponse

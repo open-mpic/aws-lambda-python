@@ -6,7 +6,7 @@ import os
 from aws_lambda_python.common_domain.check_response import CaaCheckResponse, CaaCheckResponseDetails
 from aws_lambda_python.common_domain.enum.dcv_validation_method import DcvValidationMethod
 from aws_lambda_python.mpic_coordinator.config.service_config import API_VERSION
-from aws_lambda_python.mpic_coordinator.domain.enum.check_type import CheckType
+from aws_lambda_python.common_domain.enum.check_type import CheckType
 from aws_lambda_python.mpic_coordinator.domain.request_path import RequestPath
 from aws_lambda_python.mpic_coordinator.messages.validation_messages import ValidationMessages
 from aws_lambda_python.mpic_coordinator.mpic_coordinator import MpicCoordinator

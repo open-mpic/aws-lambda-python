@@ -4,7 +4,7 @@ from aws_lambda_python.common_domain.enum.certificate_type import CertificateTyp
 from aws_lambda_python.common_domain.enum.dcv_validation_method import DcvValidationMethod
 from aws_lambda_python.common_domain.enum.dns_record_type import DnsRecordType
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import BaseMpicRequest
-from aws_lambda_python.mpic_coordinator.domain.enum.check_type import CheckType
+from aws_lambda_python.common_domain.enum.check_type import CheckType
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicCaaRequest
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvRequest
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvWithCaaRequest
