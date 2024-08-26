@@ -12,13 +12,13 @@ class TestMpicDcvWithCaaRequest:
         Tests correctness of configuration for Pydantic-driven auto validation of MpicDcvWithCaaRequest objects.
         """
 
-    def from_json__should_return_dcv_with_caa_mpic_request_given_valid_dcv_with_caa_json(self):
+    def model_validate_json__should_return_dcv_with_caa_mpic_request_given_valid_dcv_with_caa_json(self):
         body = ValidRequestCreator.create_valid_dcv_with_caa_check_request_body()
         json_body = json.dumps(body)
         mpic_request = MpicDcvWithCaaRequest.model_validate_json(json_body)
         assert mpic_request.orchestration_parameters.domain_or_ip_target == body['orchestration_parameters']['domain_or_ip_target']
 
-    def from_json__should_throw_validation_error_given_missing_domain_or_ip_target(self):
+    def model_validate_json__should_throw_validation_error_given_missing_domain_or_ip_target(self):
         body = ValidRequestCreator.create_valid_dcv_check_request_body()
         del body['orchestration_parameters']['domain_or_ip_target']
         json_body = json.dumps(body)
@@ -26,7 +26,7 @@ class TestMpicDcvWithCaaRequest:
             MpicDcvWithCaaRequest.model_validate_json(json_body)
         assert 'domain_or_ip_target' in str(validation_error.value)
 
-    def from_json__should_throw_validation_error_given_missing_caa_details(self):
+    def model_validate_json__should_throw_validation_error_given_missing_caa_details(self):
         body = ValidRequestCreator.create_valid_dcv_with_caa_check_request_body()
         del body['caa_details']
         json_body = json.dumps(body)
@@ -34,7 +34,7 @@ class TestMpicDcvWithCaaRequest:
             MpicDcvWithCaaRequest.model_validate_json(json_body)
         assert 'caa_details' in str(validation_error.value)
 
-    def from_json__should_throw_validation_error_given_missing_dcv_details(self):
+    def model_validate_json__should_throw_validation_error_given_missing_dcv_details(self):
         body = ValidRequestCreator.create_valid_dcv_check_request_body()
         del body['dcv_details']
         json_body = json.dumps(body)
