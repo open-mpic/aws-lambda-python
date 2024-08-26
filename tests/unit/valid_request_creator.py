@@ -34,7 +34,7 @@ class ValidRequestCreator:
         return MpicCaaRequest(
             api_version=API_VERSION,
             orchestration_parameters=MpicRequestOrchestrationParameters(domain_or_ip_target='test', perspective_count=6, quorum_count=4),
-            caa_details=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER)
+            caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER)
         )
 
     @staticmethod
@@ -42,7 +42,7 @@ class ValidRequestCreator:
         return MpicDcvRequest(
             api_version=API_VERSION,
             orchestration_parameters=MpicRequestOrchestrationParameters(domain_or_ip_target='test', perspective_count=6, quorum_count=4),
-            dcv_details=DcvCheckParameters(
+            dcv_check_parameters=DcvCheckParameters(
                 validation_method=validation_method,
                 validation_details=ValidRequestCreator.create_validation_details(validation_method)
             )
@@ -53,8 +53,8 @@ class ValidRequestCreator:
         return MpicDcvWithCaaRequest(
             api_version=API_VERSION,
             orchestration_parameters=MpicRequestOrchestrationParameters(domain_or_ip_target='test', perspective_count=6, quorum_count=4),
-            caa_details=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER),
-            dcv_details=DcvCheckParameters(
+            caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER),
+            dcv_check_parameters=DcvCheckParameters(
                 validation_method=validation_method,
                 validation_details=ValidRequestCreator.create_validation_details(validation_method)
             )

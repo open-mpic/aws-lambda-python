@@ -33,7 +33,7 @@ class TestDeployedMpicApi:
             api_version=API_VERSION,
             orchestration_parameters=MpicRequestOrchestrationParameters(domain_or_ip_target='test', perspective_count=3,
                                                                         quorum_count=2),
-            caa_details=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['mozilla.com'])
+            caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['mozilla.com'])
         )
 
         response = api_client.post(RequestPath.CAA_CHECK, json.dumps(request.model_dump()))
@@ -54,7 +54,7 @@ class TestDeployedMpicApi:
             api_version=API_VERSION,
             orchestration_parameters=MpicRequestOrchestrationParameters(domain_or_ip_target='test', perspective_count=3,
                                                                         quorum_count=2),
-            dcv_details=DcvCheckParameters(
+            dcv_check_parameters=DcvCheckParameters(
                 validation_method=DcvValidationMethod.HTTP_GENERIC,
                 validation_details=DcvValidationDetails(prefix=None, record_type=None, path='/',
                                                         expected_challenge='test')
@@ -72,7 +72,7 @@ class TestDeployedMpicApi:
             api_version=API_VERSION,
             orchestration_parameters=MpicRequestOrchestrationParameters(domain_or_ip_target='test', perspective_count=3,
                                                                         quorum_count=5),  # invalid quorum count
-            caa_details=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['mozilla.com'])
+            caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['mozilla.com'])
         )
 
         response = api_client.post(RequestPath.CAA_CHECK, json.dumps(request.model_dump()))

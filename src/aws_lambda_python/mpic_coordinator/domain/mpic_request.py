@@ -17,21 +17,23 @@ class BaseMpicRequest(BaseModel, ABC):
 
 
 class MpicCaaRequest(BaseMpicRequest):
-    caa_details: CaaCheckParameters
+    caa_check_parameters: CaaCheckParameters
 
 
 class MpicDcvRequest(BaseMpicRequest):
-    dcv_details: DcvCheckParameters
+    dcv_check_parameters: DcvCheckParameters
 
     @model_validator(mode='after')
     def check_required_fields_per_validation_method(self) -> 'MpicDcvRequest':
-        if self.dcv_details.validation_method == DcvValidationMethod.HTTP_GENERIC:
-            assert self.dcv_details.validation_details.path, f"path is required for {DcvValidationMethod.HTTP_GENERIC} validation"
-        elif self.dcv_details.validation_method == DcvValidationMethod.DNS_GENERIC:
-            assert self.dcv_details.validation_details.record_type, f"record_type is required for {DcvValidationMethod.DNS_GENERIC} validation"
-            assert self.dcv_details.validation_details.prefix, f"prefix is required for {DcvValidationMethod.DNS_GENERIC} validation"
+        if self.dcv_check_parameters.validation_method == DcvValidationMethod.HTTP_GENERIC:
+            assert self.dcv_check_parameters.validation_details.path, f"path is required for {DcvValidationMethod.HTTP_GENERIC} validation"
+        elif self.dcv_check_parameters.validation_method == DcvValidationMethod.DNS_GENERIC:
+            assert self.dcv_check_parameters.validation_details.record_type, f"record_type is required for {DcvValidationMethod.DNS_GENERIC} validation"
+            assert self.dcv_check_parameters.validation_details.prefix, f"prefix is required for {DcvValidationMethod.DNS_GENERIC} validation"
         return self
 
 
-class MpicDcvWithCaaRequest(MpicDcvRequest):
-    caa_details: CaaCheckParameters
+class MpicDcvWithCaaRequest(MpicDcvRequest):  # inherits from MpicDcvRequest rather than BaseMpicRequest
+    caa_check_parameters: CaaCheckParameters
+
+# TODO use an annotated discriminated union

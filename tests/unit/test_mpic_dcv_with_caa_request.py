@@ -26,21 +26,21 @@ class TestMpicDcvWithCaaRequest:
             MpicDcvWithCaaRequest.model_validate_json(json_body)
         assert 'domain_or_ip_target' in str(validation_error.value)
 
-    def model_validate_json__should_throw_validation_error_given_missing_caa_details(self):
+    def model_validate_json__should_throw_validation_error_given_missing_caa_check_parameters(self):
         body = ValidRequestCreator.create_valid_dcv_with_caa_check_request_body()
-        del body['caa_details']
+        del body['caa_check_parameters']
         json_body = json.dumps(body)
         with pytest.raises(pydantic.ValidationError) as validation_error:
             MpicDcvWithCaaRequest.model_validate_json(json_body)
-        assert 'caa_details' in str(validation_error.value)
+        assert 'caa_check_parameters' in str(validation_error.value)
 
-    def model_validate_json__should_throw_validation_error_given_missing_dcv_details(self):
+    def model_validate_json__should_throw_validation_error_given_missing_dcv_check_parameters(self):
         body = ValidRequestCreator.create_valid_dcv_check_request_body()
-        del body['dcv_details']
+        del body['dcv_check_parameters']
         json_body = json.dumps(body)
         with pytest.raises(pydantic.ValidationError) as validation_error:
             MpicDcvWithCaaRequest.model_validate_json(json_body)
-        assert 'dcv_details' in str(validation_error.value)
+        assert 'dcv_check_parameters' in str(validation_error.value)
 
 
 if __name__ == '__main__':

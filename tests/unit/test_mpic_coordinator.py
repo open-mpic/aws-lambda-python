@@ -92,13 +92,13 @@ class TestMpicCoordinator:
         assert len(call_list) == 6
         assert set(map(lambda call_result: call_result.check_type, call_list)) == {CheckType.CAA}  # ensure each call is of type 'caa'
 
-    def collect_async_calls_to_issue__should_include_caa_details_as_caa_params_in_input_args_if_present(self, set_env_variables):
+    def collect_async_calls_to_issue__should_include_caa_check_parameters_as_caa_params_in_input_args_if_present(self, set_env_variables):
         request = ValidRequestCreator.create_valid_caa_check_request()
-        request.caa_details.caa_domains = ['example.com']
+        request.caa_check_parameters.caa_domains = ['example.com']
         perspectives_to_use = os.getenv('perspective_names').split('|')
         mpic_coordinator = MpicCoordinator()
         call_list = mpic_coordinator.collect_async_calls_to_issue(RequestPath.CAA_CHECK, request, perspectives_to_use)
-        assert all(call.input_args.caa_details.caa_domains == ['example.com'] for call in call_list)
+        assert all(call.input_args.caa_check_parameters.caa_domains == ['example.com'] for call in call_list)
 
     def collect_async_calls_to_issue__should_have_only_dcv_calls_and_include_validation_input_args_given_dcv_request_path(self, set_env_variables):
         request = ValidRequestCreator.create_valid_dcv_check_request(DcvValidationMethod.DNS_GENERIC)
@@ -107,8 +107,8 @@ class TestMpicCoordinator:
         call_list = mpic_coordinator.collect_async_calls_to_issue(RequestPath.DCV_CHECK, request, perspectives_to_use)
         assert len(call_list) == 6
         assert set(map(lambda call_result: call_result.check_type, call_list)) == {CheckType.DCV}  # ensure each call is of type 'dcv'
-        assert all(call.input_args.dcv_details.validation_method == DcvValidationMethod.DNS_GENERIC for call in call_list)
-        assert all(call.input_args.dcv_details.validation_details.prefix == 'test' for call in call_list)
+        assert all(call.input_args.dcv_check_parameters.validation_method == DcvValidationMethod.DNS_GENERIC for call in call_list)
+        assert all(call.input_args.dcv_check_parameters.validation_details.prefix == 'test' for call in call_list)
 
     def collect_async_calls_to_issue__should_have_caa_and_dcv_calls_given_dcv_with_caa_request_path(self, set_env_variables):
         request = ValidRequestCreator.create_valid_dcv_with_caa_check_request()
@@ -143,10 +143,11 @@ class TestMpicCoordinator:
         assert response_body['is_valid'] is True
 
     def create_payload_with_streaming_body(self, call_config):
-        expected_response_body = CaaCheckResponse(region='us-east-4', valid_for_issuance=True,
-                                                  details=CaaCheckResponseDetails(present=False))
+        # note: all perspective response details will be identical in these tests due to this mocking
+        expected_response_body = CaaCheckResponse(perspective='us-east-4', check_passed=True,
+                                                  details=CaaCheckResponseDetails(caa_record_present=False))
         expected_response = {
-            'status_code': 200,
+            'statusCode': 200,
             'body': json.dumps(expected_response_body.model_dump())
         }
         json_bytes = json.dumps(expected_response).encode('utf-8')

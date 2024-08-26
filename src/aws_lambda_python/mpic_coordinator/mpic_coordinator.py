@@ -10,7 +10,7 @@ import random
 import hashlib
 
 import pydantic
-from aws_lambda_python.common_domain.check_response import BaseCheckResponse
+from aws_lambda_python.common_domain.check_response import BaseCheckResponse, CheckResponse, AnnotatedCheckResponse
 from aws_lambda_python.common_domain.check_request import CaaCheckRequest
 from aws_lambda_python.common_domain.check_request import DcvCheckRequest
 from aws_lambda_python.mpic_coordinator.domain.enum.check_type import CheckType
@@ -22,6 +22,7 @@ from aws_lambda_python.mpic_coordinator.domain.request_path import RequestPath
 from aws_lambda_python.mpic_coordinator.messages.validation_messages import ValidationMessages
 from aws_lambda_python.mpic_coordinator.mpic_request_validator import MpicRequestValidator
 from aws_lambda_python.mpic_coordinator.mpic_response_builder import MpicResponseBuilder
+from pydantic import TypeAdapter
 
 VERSION: Final[str] = '1.0.0'  # TODO do we need to externalize this? it's a bit hidden here
 
@@ -42,6 +43,7 @@ class MpicCoordinator:
             CheckType.DCV: {self.known_perspectives[i]: self.validator_arn_list[i] for i in range(len(self.known_perspectives))},
             CheckType.CAA: {self.known_perspectives[i]: self.caa_arn_list[i] for i in range(len(self.known_perspectives))}
         }
+        self.check_response_adapter: TypeAdapter[CheckResponse] = TypeAdapter(AnnotatedCheckResponse)
 
     def coordinate_mpic(self, event):
         request_path = event['path']
@@ -167,14 +169,14 @@ class MpicCoordinator:
         async_calls_to_issue = []
 
         if request_path in (RequestPath.CAA_CHECK, RequestPath.DCV_WITH_CAA_CHECK):
-            check_parameters = CaaCheckRequest(domain_or_ip_target=domain_or_ip_target, caa_details=mpic_request.caa_details)
+            check_parameters = CaaCheckRequest(domain_or_ip_target=domain_or_ip_target, caa_check_parameters=mpic_request.caa_check_parameters)
             for perspective in perspectives_to_use:
                 arn = self.arns_per_perspective_per_check_type[CheckType.CAA][perspective]
                 call_config = RemoteCheckCallConfiguration(CheckType.CAA, perspective, arn, check_parameters)
                 async_calls_to_issue.append(call_config)
 
         if request_path in (RequestPath.DCV_CHECK, RequestPath.DCV_WITH_CAA_CHECK):
-            check_parameters = DcvCheckRequest(domain_or_ip_target=domain_or_ip_target, dcv_details=mpic_request.dcv_details)
+            check_parameters = DcvCheckRequest(domain_or_ip_target=domain_or_ip_target, dcv_check_parameters=mpic_request.dcv_check_parameters)
             for perspective in perspectives_to_use:
                 arn = self.arns_per_perspective_per_check_type[CheckType.DCV][perspective]
                 call_config = RemoteCheckCallConfiguration(CheckType.DCV, perspective, arn, check_parameters)
@@ -212,13 +214,12 @@ class MpicCoordinator:
                     perspective_response = json.loads(data['Payload'].read().decode('utf-8'))
                     perspective_response_body = json.loads(perspective_response['body'])
                     # deserialize perspective body to have a nested object in the output rather than a string
-                    perspective_response['body'] = perspective_response_body
-                    check_response = BaseCheckResponse.model_validate(perspective_response_body)
-                    validity_per_perspective_per_check_type[check_type][perspective] |= check_response.valid_for_issuance
+                    check_response = self.check_response_adapter.validate_python(perspective_response_body)
+                    validity_per_perspective_per_check_type[check_type][perspective] |= check_response.check_passed
                     if check_type not in perspective_responses_per_check_type:
                         perspective_responses_per_check_type[check_type] = []
                     # TODO make sure responses per perspective match API spec...
-                    perspective_responses_per_check_type[check_type].append(perspective_response)
+                    perspective_responses_per_check_type[check_type].append(check_response)
         return perspective_responses_per_check_type, validity_per_perspective_per_check_type
 
     @staticmethod
@@ -228,7 +229,7 @@ class MpicCoordinator:
         tic_init = time.perf_counter()
         client = boto3.client('lambda', call_config.perspective.split(".")[1])
         tic = time.perf_counter()
-        response = client.invoke(
+        response = client.invoke(  # AWS Lambda-specific structure
             FunctionName=call_config.lambda_arn,
             InvocationType='RequestResponse',
             Payload=json.dumps(call_config.input_args.model_dump())

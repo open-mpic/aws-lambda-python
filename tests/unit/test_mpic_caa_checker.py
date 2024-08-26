@@ -54,11 +54,11 @@ class TestMpicCaaChecker:
     def check_caa__should_return_200_and_allow_issuance_given_no_caa_records_found(self, set_env_variables, mocker):
         mocker.patch('dns.resolver.resolve', side_effect=lambda domain_name, rdtype: exec('raise(dns.resolver.NoAnswer)'))
         caa_request = CaaCheckRequest(domain_or_ip_target='example.com',
-                                      caa_details=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['ca111.com']))
+                                      caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['ca111.com']))
         caa_checker = MpicCaaChecker()
         result = caa_checker.check_caa(caa_request)
         assert result['statusCode'] == 200
-        expected_response = CaaCheckResponse(region='us-east-4', valid_for_issuance=True, details=CaaCheckResponseDetails(present=False))
+        expected_response = CaaCheckResponse(perspective='us-east-4', check_passed=True, details=CaaCheckResponseDetails(present=False))
         assert result['body'] == json.dumps(expected_response.model_dump())
 
     def check_caa__should_return_200_and_allow_issuance_given_matching_caa_record_found(self, set_env_variables, mocker):
@@ -68,13 +68,13 @@ class TestMpicCaaChecker:
             (_ for _ in ()).throw(dns.resolver.NoAnswer)
         ))
         caa_request = CaaCheckRequest(domain_or_ip_target='example.com',
-                                      caa_details=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER,
-                                                                     caa_domains=['ca111.com']))
+                                      caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER,
+                                                                              caa_domains=['ca111.com']))
 
         caa_checker = MpicCaaChecker()
         result = caa_checker.check_caa(caa_request)
         assert result['statusCode'] == 200
-        expected_response = CaaCheckResponse(region='us-east-4', valid_for_issuance=True,
+        expected_response = CaaCheckResponse(perspective='us-east-4', check_passed=True,
                                              details=CaaCheckResponseDetails(present=True, found_at='example.com',
                                                                              response=test_dns_query_answer.rrset.to_text()))
         assert result['body'] == json.dumps(expected_response.model_dump())
@@ -86,13 +86,13 @@ class TestMpicCaaChecker:
             (_ for _ in ()).throw(dns.resolver.NoAnswer)
         ))
         caa_request = CaaCheckRequest(domain_or_ip_target='example.com',
-                                      caa_details=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER,
-                                                                     caa_domains=['ca111.com']))
+                                      caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER,
+                                                                              caa_domains=['ca111.com']))
 
         caa_checker = MpicCaaChecker()
         result = caa_checker.check_caa(caa_request)
         assert result['statusCode'] == 200
-        expected_response = CaaCheckResponse(region='us-east-4', valid_for_issuance=False,
+        expected_response = CaaCheckResponse(perspective='us-east-4', check_passed=False,
                                              details=CaaCheckResponseDetails(present=True, found_at='example.com',
                                                                              response=test_dns_query_answer.rrset.to_text()))
         assert result['body'] == json.dumps(expected_response.model_dump())

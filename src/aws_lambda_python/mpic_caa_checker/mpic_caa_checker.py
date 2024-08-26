@@ -86,12 +86,12 @@ class MpicCaaChecker:
         # Assume the default system configured validation targets and override if sent in the API call.
         caa_domains = self.default_caa_domain_list
         is_wc_domain = False
-        if caa_request.caa_details:
-            if caa_request.caa_details.caa_domains:
-                caa_domains = caa_request.caa_details.caa_domains
+        if caa_request.caa_check_parameters:
+            if caa_request.caa_check_parameters.caa_domains:
+                caa_domains = caa_request.caa_check_parameters.caa_domains
 
             # Use the cert type field to check if the domain is a wildcard.
-            is_wc_domain = caa_request.caa_details.certificate_type == CertificateType.TLS_SERVER_WILDCARD
+            is_wc_domain = caa_request.caa_check_parameters.certificate_type == CertificateType.TLS_SERVER_WILDCARD
 
         rrset, domain = MpicCaaChecker.find_caa_record_and_domain(caa_request)
         caa_found = rrset is not None
@@ -101,12 +101,12 @@ class MpicCaaChecker:
             'headers': {'Content-Type': 'application/json'}
         }
         if not caa_found:  # if domain has no CAA records: valid for issuance
-            response = CaaCheckResponse(region=self.AWS_REGION, valid_for_issuance=True,
+            response = CaaCheckResponse(perspective=self.AWS_REGION, check_passed=True,
                                         details=CaaCheckResponseDetails(present=False))
             result['body'] = json.dumps(response.model_dump())
         else:
             valid_for_issuance = MpicCaaChecker.is_valid_for_issuance(caa_domains, is_wc_domain, rrset)
-            response = CaaCheckResponse(region=self.AWS_REGION, valid_for_issuance=valid_for_issuance,
+            response = CaaCheckResponse(perspective=self.AWS_REGION, check_passed=valid_for_issuance,
                                         details=CaaCheckResponseDetails(present=True,
                                                                         found_at=domain.to_text(omit_final_dot=True),
                                                                         response=rrset.to_text()))
