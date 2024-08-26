@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from typing import Final
 
 # import dns
@@ -100,13 +101,15 @@ class MpicCaaChecker:
         }
         if not caa_found:  # if domain has no CAA records: valid for issuance
             response = CaaCheckResponse(perspective=self.AWS_REGION, check_passed=True,
-                                        details=CaaCheckResponseDetails(present=False))
+                                        details=CaaCheckResponseDetails(present=False),
+                                        timestamp_ns=time.time_ns())
             result['body'] = json.dumps(response.model_dump())
         else:
             valid_for_issuance = MpicCaaChecker.is_valid_for_issuance(caa_domains, is_wc_domain, rrset)
             response = CaaCheckResponse(perspective=self.AWS_REGION, check_passed=valid_for_issuance,
                                         details=CaaCheckResponseDetails(present=True,
                                                                         found_at=domain.to_text(omit_final_dot=True),
-                                                                        response=rrset.to_text()))
+                                                                        response=rrset.to_text()),
+                                        timestamp_ns=time.time_ns())
             result['body'] = json.dumps(response.model_dump())
         return result

@@ -10,7 +10,7 @@ class BaseCheckResponse(BaseModel):
     perspective: str
     check_passed: bool = False
     errors: list[ValidationError] | None = None
-    # TODO add datetime fields for when the check was made
+    timestamp_ns: int | None = None  # TODO what do we name this field?
 
 
 class CaaCheckResponseDetails(BaseModel):

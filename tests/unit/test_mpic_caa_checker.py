@@ -4,12 +4,13 @@ import dns
 import pytest
 from aws_lambda_python.common_domain.check_parameters import CaaCheckParameters
 from aws_lambda_python.common_domain.check_request import CaaCheckRequest
-from aws_lambda_python.common_domain.check_response import CaaCheckResponse, CaaCheckResponseDetails
+from aws_lambda_python.common_domain.check_response import CaaCheckResponse, CaaCheckResponseDetails, AnnotatedCheckResponse
 from aws_lambda_python.common_domain.enum.certificate_type import CertificateType
 from aws_lambda_python.mpic_caa_checker.mpic_caa_checker import MpicCaaChecker
 from dns.flags import Flag
 from dns.rdtypes.ANY.CAA import CAA
 from dns.rrset import RRset
+from pydantic import TypeAdapter
 
 CAA_RDCLASS = dns.rdataclass.IN
 CAA_RDTYPE = dns.rdatatype.CAA
@@ -58,8 +59,12 @@ class TestMpicCaaChecker:
         caa_checker = MpicCaaChecker()
         result = caa_checker.check_caa(caa_request)
         assert result['statusCode'] == 200
+        result_body = json.loads(result['body'])
+        check_response_adapter = TypeAdapter(AnnotatedCheckResponse)
+        response_object = check_response_adapter.validate_python(result_body)
+        response_object.timestamp_ns = None  # ignore timestamp for comparison
         expected_response = CaaCheckResponse(perspective='us-east-4', check_passed=True, details=CaaCheckResponseDetails(present=False))
-        assert result['body'] == json.dumps(expected_response.model_dump())
+        assert json.dumps(response_object.model_dump()) == json.dumps(expected_response.model_dump())
 
     def check_caa__should_return_200_and_allow_issuance_given_matching_caa_record_found(self, set_env_variables, mocker):
         test_dns_query_answer = TestMpicCaaChecker.create_dns_query_answer('example.com', 'ca111.com', 'issue', mocker)
@@ -74,10 +79,14 @@ class TestMpicCaaChecker:
         caa_checker = MpicCaaChecker()
         result = caa_checker.check_caa(caa_request)
         assert result['statusCode'] == 200
+        result_body = json.loads(result['body'])
+        check_response_adapter = TypeAdapter(AnnotatedCheckResponse)
+        response_object = check_response_adapter.validate_python(result_body)
+        response_object.timestamp_ns = None  # ignore timestamp for comparison
         expected_response = CaaCheckResponse(perspective='us-east-4', check_passed=True,
                                              details=CaaCheckResponseDetails(present=True, found_at='example.com',
                                                                              response=test_dns_query_answer.rrset.to_text()))
-        assert result['body'] == json.dumps(expected_response.model_dump())
+        assert json.dumps(response_object.model_dump()) == json.dumps(expected_response.model_dump())
 
     def check_caa_should_return_200_and_disallow_issuance_given_non_matching_caa_record_found(self, set_env_variables, mocker):
         test_dns_query_answer = TestMpicCaaChecker.create_dns_query_answer('example.com', 'ca222.org', 'issue', mocker)
@@ -92,10 +101,26 @@ class TestMpicCaaChecker:
         caa_checker = MpicCaaChecker()
         result = caa_checker.check_caa(caa_request)
         assert result['statusCode'] == 200
+        result_body = json.loads(result['body'])
+        check_response_adapter = TypeAdapter(AnnotatedCheckResponse)
+        response_object = check_response_adapter.validate_python(result_body)
+        response_object.timestamp_ns = None  # ignore timestamp for comparison
         expected_response = CaaCheckResponse(perspective='us-east-4', check_passed=False,
                                              details=CaaCheckResponseDetails(present=True, found_at='example.com',
                                                                              response=test_dns_query_answer.rrset.to_text()))
-        assert result['body'] == json.dumps(expected_response.model_dump())
+        assert json.dumps(response_object.model_dump()) == json.dumps(expected_response.model_dump())
+
+    def check_caa_should_include_timestamp_in_nanos_in_result(self, set_env_variables, mocker):
+        mocker.patch('dns.resolver.resolve', side_effect=lambda domain_name, rdtype: exec('raise(dns.resolver.NoAnswer)'))
+        caa_request = CaaCheckRequest(domain_or_ip_target='example.com', caa_check_parameters=CaaCheckParameters(
+                                          certificate_type=CertificateType.TLS_SERVER, caa_domains=['ca111.com']))
+        caa_checker = MpicCaaChecker()
+        result = caa_checker.check_caa(caa_request)
+        assert result['statusCode'] == 200
+        result_body = json.loads(result['body'])
+        check_response_adapter = TypeAdapter(AnnotatedCheckResponse)
+        response_object = check_response_adapter.validate_python(result_body)
+        assert response_object.timestamp_ns is not None
 
     def find_caa_record_and_domain__should_return_rrset_and_domain_given_domain_with_caa_record(self, set_env_variables, mocker):
         # mock dns.resolver.resolve to return a valid response
