@@ -18,15 +18,6 @@ class TestMpicCaaRequest:
         mpic_request = MpicCaaRequest.model_validate_json(json_body)
         assert mpic_request.orchestration_parameters.domain_or_ip_target == body['orchestration_parameters']['domain_or_ip_target']
 
-    # TODO remove when API version in request moves to URL
-    def model_validate_json__should_throw_validation_error_given_missing_api_version(self):
-        body = ValidRequestCreator.create_valid_caa_check_request_body()
-        del body['api_version']
-        json_body = json.dumps(body)
-        with pytest.raises(pydantic.ValidationError) as validation_error:
-            MpicCaaRequest.model_validate_json(json_body)
-        assert 'api_version' in str(validation_error.value)
-
     def model_validate_json__should_throw_validation_error_given_missing_orchestration_parameters(self):
         body = ValidRequestCreator.create_valid_caa_check_request_body()
         del body['orchestration_parameters']

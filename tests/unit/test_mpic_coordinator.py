@@ -5,9 +5,8 @@ import os
 
 from aws_lambda_python.common_domain.check_response import CaaCheckResponse, CaaCheckResponseDetails
 from aws_lambda_python.common_domain.enum.dcv_validation_method import DcvValidationMethod
-from aws_lambda_python.mpic_coordinator.config.service_config import API_VERSION
 from aws_lambda_python.common_domain.enum.check_type import CheckType
-from aws_lambda_python.mpic_coordinator.domain.request_path import RequestPath
+from aws_lambda_python.mpic_coordinator.domain.enum.request_path import RequestPath
 from aws_lambda_python.mpic_coordinator.messages.validation_messages import ValidationMessages
 from aws_lambda_python.mpic_coordinator.mpic_coordinator import MpicCoordinator
 from botocore.response import StreamingBody
@@ -52,14 +51,14 @@ class TestMpicCoordinator:
         with pytest.raises(ValueError):
             mpic_coordinator.select_random_perspectives_across_rirs(perspectives, excessive_count, 'test_target')  # expect error
 
-    @pytest.mark.parametrize('field_to_delete', ['api_version', 'orchestration_parameters'])
+    @pytest.mark.parametrize('field_to_delete', ['orchestration_parameters','dcv_check_parameters'])
     def coordinate_mpic__should_return_error_given_invalid_request_body(self, set_env_variables, field_to_delete):
         # request = ValidRequestCreator.create_valid_dcv_with_caa_check_request()
         # remove from request body the field that should be missing
         # request.__setattr__(field_to_delete, None)
-        body = ValidRequestCreator.create_valid_caa_check_request_body()
+        body = ValidRequestCreator.create_valid_dcv_check_request_body()
         del body[field_to_delete]
-        event = {'path': RequestPath.CAA_CHECK, 'body': json.dumps(body)}
+        event = {'path': RequestPath.DCV_CHECK, 'body': json.dumps(body)}
         mpic_coordinator = MpicCoordinator()
         result = mpic_coordinator.coordinate_mpic(event)
         # FIXME need to capture pydantic validation error and put it into response (for now... FastAPI may render that unnecessary)
@@ -122,7 +121,6 @@ class TestMpicCoordinator:
     @pytest.mark.skip  # FIXME: this test isn't ready; there is no way to easily inspect caa domains used
     def collect_async_calls_to_issue__should_use_default_caa_domains_if_none_specified(self, set_env_variables):
         body = {
-            'api-version': API_VERSION,
             'system-params': {'domain-or-ip-target': 'test'}
         }
         perspectives_to_use = os.getenv('perspective_names').split('|')

@@ -2,8 +2,6 @@ from enum import Enum
 
 
 class ValidationMessages(Enum):
-    MISSING_API_VERSION = ("missing-api-version", "Missing 'api-version' in request.")
-    INVALID_API_VERSION = ("invalid-api-version", "Invalid 'api-version' specified: {0}")
     UNSUPPORTED_REQUEST_PATH = ("unsupported-request-path", "Unsupported request path: {0}")
     MISSING_SYSTEM_PARAMS = ("missing-system-params", "Missing 'system-params' in request.")
     MISSING_DOMAIN_OR_IP_TARGET = ("missing-domain-or-ip-target", "Missing 'domain-or-ip-target' in 'system-params'.")

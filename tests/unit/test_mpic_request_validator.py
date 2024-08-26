@@ -2,7 +2,7 @@ import sys
 import pytest
 
 from aws_lambda_python.common_domain.enum.dcv_validation_method import DcvValidationMethod
-from aws_lambda_python.mpic_coordinator.domain.request_path import RequestPath
+from aws_lambda_python.mpic_coordinator.domain.enum.request_path import RequestPath
 from aws_lambda_python.mpic_coordinator.messages.validation_messages import ValidationMessages
 from aws_lambda_python.mpic_coordinator.mpic_request_validator import MpicRequestValidator
 from valid_request_creator import ValidRequestCreator
@@ -49,16 +49,6 @@ class TestMpicRequestValidator:
         is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.DCV_WITH_CAA_CHECK, request, self.known_perspectives)
         assert is_request_valid is True
         assert len(validation_issues) == 0
-
-    @pytest.mark.parametrize('api_version', ['0.0.1', '5.0.0', '1;0;0', '1.', '100', 'bad-api-version'])  # ~=1.0.0 is valid
-    def is_request_valid__should_return_false_and_message_given_invalid_api_version(self, api_version):
-        request = ValidRequestCreator.create_valid_caa_check_request()
-        request.api_version = api_version
-        is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.CAA_CHECK, request, self.known_perspectives)
-        assert is_request_valid is False
-        assert ValidationMessages.INVALID_API_VERSION.key in [issue.issue_type for issue in validation_issues]
-        invalid_api_version_issue = next(issue for issue in validation_issues if issue.issue_type == ValidationMessages.INVALID_API_VERSION.key)
-        assert api_version in invalid_api_version_issue.message
 
     @pytest.mark.parametrize('request_path', ['/invalid-path'])  # do any other path types need testing?
     def is_request_valid__should_return_false_and_message_given_unsupported_request_path(self, request_path):

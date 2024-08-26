@@ -12,7 +12,6 @@ from typing_extensions import Annotated
 
 
 class BaseMpicResponse(BaseModel, ABC):
-    api_version: str
     request_orchestration_parameters: MpicRequestOrchestrationParameters | None = None
     actual_orchestration_parameters: MpicEffectiveOrchestrationParameters | None = None
     is_valid: bool | None = False

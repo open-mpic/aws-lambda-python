@@ -3,7 +3,6 @@ import pytest
 from aws_lambda_python.common_domain.check_response import CaaCheckResponse, DcvCheckResponse, CaaCheckResponseDetails, \
     DcvCheckResponseDetails
 
-from aws_lambda_python.mpic_coordinator.config.service_config import API_VERSION
 from aws_lambda_python.common_domain.enum.check_type import CheckType
 from aws_lambda_python.mpic_coordinator.domain.mpic_response import BaseMpicResponse, AnnotatedMpicResponse
 from aws_lambda_python.mpic_coordinator.mpic_response_builder import MpicResponseBuilder
@@ -73,7 +72,6 @@ class TestMpicResponseBuilder:
         mpic_response_adapter = TypeAdapter(AnnotatedMpicResponse)
         response_body = mpic_response_adapter.validate_python(json.loads(response['body']))
 
-        assert response_body.api_version == API_VERSION  # TODO shouldn't really need this in the API
         assert (response_body.request_orchestration_parameters.perspective_count ==
                 request.orchestration_parameters.perspective_count)
         assert response_body.actual_orchestration_parameters.perspective_count == perspective_count

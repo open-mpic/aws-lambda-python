@@ -9,12 +9,10 @@ from aws_lambda_python.common_domain.enum.dcv_validation_method import DcvValida
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicCaaRequest
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvRequest
 from aws_lambda_python.mpic_coordinator.domain.mpic_orchestration_parameters import MpicRequestOrchestrationParameters
-from aws_lambda_python.mpic_coordinator.domain.request_path import RequestPath
+from aws_lambda_python.mpic_coordinator.domain.enum.request_path import RequestPath
 
 import testing_api_client
 from aws_lambda_python.mpic_coordinator.messages.validation_messages import ValidationMessages
-
-API_VERSION = '1.0.0'
 
 
 # noinspection PyMethodMayBeStatic
@@ -31,7 +29,6 @@ class TestDeployedMpicApi:
 
     def api_should_return_200_given_valid_caa_validation(self, api_client):
         request = MpicCaaRequest(
-            api_version=API_VERSION,
             orchestration_parameters=MpicRequestOrchestrationParameters(domain_or_ip_target='test', perspective_count=3,
                                                                         quorum_count=2),
             caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['mozilla.com'])
@@ -51,7 +48,6 @@ class TestDeployedMpicApi:
     @pytest.mark.skip(reason='Not implemented yet')
     def api_should_return_200_given_valid_dcv_validation(self, api_client):
         request = MpicDcvRequest(
-            api_version=API_VERSION,
             orchestration_parameters=MpicRequestOrchestrationParameters(domain_or_ip_target='test', perspective_count=3,
                                                                         quorum_count=2),
             dcv_check_parameters=DcvCheckParameters(
@@ -69,7 +65,6 @@ class TestDeployedMpicApi:
 
     def api_should_return_400_given_invalid_parameters_in_request(self, api_client):
         request = MpicCaaRequest(
-            api_version=API_VERSION,
             orchestration_parameters=MpicRequestOrchestrationParameters(domain_or_ip_target='test', perspective_count=3,
                                                                         quorum_count=5),  # invalid quorum count
             caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['mozilla.com'])

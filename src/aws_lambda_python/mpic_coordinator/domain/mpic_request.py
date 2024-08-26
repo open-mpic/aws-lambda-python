@@ -7,7 +7,6 @@ from aws_lambda_python.common_domain.enum.dcv_validation_method import DcvValida
 
 
 class BaseMpicRequest(BaseModel, ABC):
-    api_version: str  # TODO remove when API version in request moves to URL
     orchestration_parameters: MpicRequestOrchestrationParameters
 
     @model_validator(mode='after')

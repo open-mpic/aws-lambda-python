@@ -1,7 +1,4 @@
-import re
-
-from aws_lambda_python.mpic_coordinator.config.service_config import API_VERSION
-from aws_lambda_python.mpic_coordinator.domain.request_path import RequestPath
+from aws_lambda_python.mpic_coordinator.domain.enum.request_path import RequestPath
 from aws_lambda_python.mpic_coordinator.messages.validation_messages import ValidationMessages
 from aws_lambda_python.mpic_coordinator.validation_issue import ValidationIssue
 
@@ -13,8 +10,6 @@ class MpicRequestValidator:
     # TODO should we create a flag to validate values separately from structure?
     def is_request_valid(request_path, mpic_request, known_perspectives, diagnostic_mode=False) -> (bool, list):
         request_validation_issues = []
-
-        MpicRequestValidator.validate_api_version(mpic_request.api_version, request_validation_issues)
 
         # TODO align on this: if present, should 'perspectives' override 'perspective-count'? or conflict?
         # 'perspectives' is allowed if 'diagnostic_mode' is True
@@ -48,18 +43,6 @@ class MpicRequestValidator:
 
         # returns true if no validation issues found, false otherwise; includes list of validation issues found
         return len(request_validation_issues) == 0, request_validation_issues
-
-    @staticmethod  # TODO remove this method if we move API version to the URL
-    def validate_api_version(api_version, request_validation_issues) -> None:
-        # follow SemVer guidelines: https://semver.org/ (major version, minor version, patch version)
-        # check if api_version matches regex pattern for API versions that look like 1.0.0
-        if not re.match(r'^\d+(\.\d+)+$', api_version):
-            request_validation_issues.append(ValidationIssue(ValidationMessages.INVALID_API_VERSION, api_version))
-        else:
-            current_api_major_version = API_VERSION.split('.')[0]
-            request_api_major_version = api_version.split('.')[0]
-            if int(request_api_major_version) != int(current_api_major_version):  # check if major version is 1; ignore minor and patch versions
-                request_validation_issues.append(ValidationIssue(ValidationMessages.INVALID_API_VERSION, api_version))
 
     @staticmethod
     def are_requested_perspectives_valid(requested_perspectives, known_perspectives) -> bool:

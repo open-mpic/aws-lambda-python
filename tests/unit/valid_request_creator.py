@@ -1,5 +1,4 @@
 from aws_lambda_python.common_domain.check_parameters import CaaCheckParameters, DcvCheckParameters
-from aws_lambda_python.mpic_coordinator.config.service_config import API_VERSION
 from aws_lambda_python.common_domain.enum.certificate_type import CertificateType
 from aws_lambda_python.common_domain.enum.dcv_validation_method import DcvValidationMethod
 from aws_lambda_python.common_domain.enum.dns_record_type import DnsRecordType
@@ -32,7 +31,6 @@ class ValidRequestCreator:
         # body = ValidRequestCreator.create_valid_caa_check_request_body()
         # return MpicCaaRequest.from_json(json.dumps(body))
         return MpicCaaRequest(
-            api_version=API_VERSION,
             orchestration_parameters=MpicRequestOrchestrationParameters(domain_or_ip_target='test', perspective_count=6, quorum_count=4),
             caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER)
         )
@@ -40,7 +38,6 @@ class ValidRequestCreator:
     @staticmethod
     def create_valid_dcv_check_request(validation_method=DcvValidationMethod.DNS_GENERIC) -> MpicDcvRequest:
         return MpicDcvRequest(
-            api_version=API_VERSION,
             orchestration_parameters=MpicRequestOrchestrationParameters(domain_or_ip_target='test', perspective_count=6, quorum_count=4),
             dcv_check_parameters=DcvCheckParameters(
                 validation_method=validation_method,
@@ -51,7 +48,6 @@ class ValidRequestCreator:
     @staticmethod
     def create_valid_dcv_with_caa_check_request(validation_method=DcvValidationMethod.DNS_GENERIC) -> MpicDcvWithCaaRequest:
         return MpicDcvWithCaaRequest(
-            api_version=API_VERSION,
             orchestration_parameters=MpicRequestOrchestrationParameters(domain_or_ip_target='test', perspective_count=6, quorum_count=4),
             caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER),
             dcv_check_parameters=DcvCheckParameters(
