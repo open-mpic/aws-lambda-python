@@ -3,10 +3,10 @@ import json
 import pytest
 import os
 
-from aws_lambda_python.common_domain.caa_check_response import CaaCheckResponse, CaaCheckResponseDetails
-from aws_lambda_python.common_domain.dcv_validation_method import DcvValidationMethod
+from aws_lambda_python.common_domain.check_response import CaaCheckResponse, CaaCheckResponseDetails
+from aws_lambda_python.common_domain.enum.dcv_validation_method import DcvValidationMethod
 from aws_lambda_python.mpic_coordinator.config.service_config import API_VERSION
-from aws_lambda_python.mpic_coordinator.domain.check_type import CheckType
+from aws_lambda_python.mpic_coordinator.domain.enum.check_type import CheckType
 from aws_lambda_python.mpic_coordinator.domain.request_path import RequestPath
 from aws_lambda_python.mpic_coordinator.messages.validation_messages import ValidationMessages
 from aws_lambda_python.mpic_coordinator.mpic_coordinator import MpicCoordinator
@@ -66,7 +66,7 @@ class TestMpicCoordinator:
         assert result['statusCode'] == 400
         response_body = json.loads(result['body'])
         assert response_body['error'] == ValidationMessages.REQUEST_VALIDATION_FAILED.key
-        assert field_to_delete in str(response_body['validation-issues'][0])
+        assert field_to_delete in str(response_body['validation_issues'][0])
 
     @pytest.mark.parametrize('requested_perspective_count, expected_quorum_size', [(4, 3), (5, 4), (6, 4)])
     def determine_required_quorum_count__should_dynamically_set_required_quorum_count_given_no_quorum_specified(

@@ -2,7 +2,7 @@ import json
 import pytest
 
 from aws_lambda_python.mpic_coordinator.config.service_config import API_VERSION
-from aws_lambda_python.mpic_coordinator.domain.check_type import CheckType
+from aws_lambda_python.mpic_coordinator.domain.enum.check_type import CheckType
 from aws_lambda_python.mpic_coordinator.mpic_response_builder import MpicResponseBuilder
 from valid_request_creator import ValidRequestCreator
 

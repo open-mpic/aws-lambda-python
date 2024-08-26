@@ -1,15 +1,14 @@
-from aws_lambda_python.common_domain.caa_check_parameters import CaaCheckParameters
-from aws_lambda_python.common_domain.dcv_check_parameters import DcvCheckParameters
+from aws_lambda_python.common_domain.check_parameters import CaaCheckParameters, DcvCheckParameters
 from aws_lambda_python.mpic_coordinator.config.service_config import API_VERSION
-from aws_lambda_python.common_domain.certificate_type import CertificateType
-from aws_lambda_python.common_domain.dcv_validation_method import DcvValidationMethod
-from aws_lambda_python.common_domain.dns_record_type import DnsRecordType
-from aws_lambda_python.mpic_coordinator.domain.base_mpic_request import BaseMpicRequest
-from aws_lambda_python.mpic_coordinator.domain.check_type import CheckType
-from aws_lambda_python.mpic_coordinator.domain.mpic_caa_request import MpicCaaRequest
-from aws_lambda_python.mpic_coordinator.domain.mpic_dcv_request import MpicDcvRequest
-from aws_lambda_python.mpic_coordinator.domain.mpic_dcv_with_caa_request import MpicDcvWithCaaRequest
-from aws_lambda_python.mpic_coordinator.domain.mpic_orchestration_parameters import MpicOrchestrationParameters
+from aws_lambda_python.common_domain.enum.certificate_type import CertificateType
+from aws_lambda_python.common_domain.enum.dcv_validation_method import DcvValidationMethod
+from aws_lambda_python.common_domain.enum.dns_record_type import DnsRecordType
+from aws_lambda_python.mpic_coordinator.domain.mpic_request import BaseMpicRequest
+from aws_lambda_python.mpic_coordinator.domain.enum.check_type import CheckType
+from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicCaaRequest
+from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvRequest
+from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvWithCaaRequest
+from aws_lambda_python.mpic_coordinator.domain.mpic_orchestration_parameters import MpicRequestOrchestrationParameters
 
 
 class ValidRequestCreator:
@@ -34,7 +33,7 @@ class ValidRequestCreator:
         # return MpicCaaRequest.from_json(json.dumps(body))
         return MpicCaaRequest(
             api_version=API_VERSION,
-            orchestration_parameters=MpicOrchestrationParameters(domain_or_ip_target='test', perspective_count=6, quorum_count=4),
+            orchestration_parameters=MpicRequestOrchestrationParameters(domain_or_ip_target='test', perspective_count=6, quorum_count=4),
             caa_details=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER)
         )
 
@@ -42,7 +41,7 @@ class ValidRequestCreator:
     def create_valid_dcv_check_request(validation_method=DcvValidationMethod.DNS_GENERIC) -> MpicDcvRequest:
         return MpicDcvRequest(
             api_version=API_VERSION,
-            orchestration_parameters=MpicOrchestrationParameters(domain_or_ip_target='test', perspective_count=6, quorum_count=4),
+            orchestration_parameters=MpicRequestOrchestrationParameters(domain_or_ip_target='test', perspective_count=6, quorum_count=4),
             dcv_details=DcvCheckParameters(
                 validation_method=validation_method,
                 validation_details=ValidRequestCreator.create_validation_details(validation_method)
@@ -53,7 +52,7 @@ class ValidRequestCreator:
     def create_valid_dcv_with_caa_check_request(validation_method=DcvValidationMethod.DNS_GENERIC) -> MpicDcvWithCaaRequest:
         return MpicDcvWithCaaRequest(
             api_version=API_VERSION,
-            orchestration_parameters=MpicOrchestrationParameters(domain_or_ip_target='test', perspective_count=6, quorum_count=4),
+            orchestration_parameters=MpicRequestOrchestrationParameters(domain_or_ip_target='test', perspective_count=6, quorum_count=4),
             caa_details=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER),
             dcv_details=DcvCheckParameters(
                 validation_method=validation_method,

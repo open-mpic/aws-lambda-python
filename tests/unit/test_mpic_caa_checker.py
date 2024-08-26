@@ -2,10 +2,10 @@ import json
 
 import dns
 import pytest
-from aws_lambda_python.common_domain.caa_check_parameters import CaaCheckParameters
-from aws_lambda_python.common_domain.caa_check_request import CaaCheckRequest
-from aws_lambda_python.common_domain.caa_check_response import CaaCheckResponse, CaaCheckResponseDetails
-from aws_lambda_python.common_domain.certificate_type import CertificateType
+from aws_lambda_python.common_domain.check_parameters import CaaCheckParameters
+from aws_lambda_python.common_domain.check_request import CaaCheckRequest
+from aws_lambda_python.common_domain.check_response import CaaCheckResponse, CaaCheckResponseDetails
+from aws_lambda_python.common_domain.enum.certificate_type import CertificateType
 from aws_lambda_python.mpic_caa_checker.mpic_caa_checker import MpicCaaChecker
 from dns.flags import Flag
 from dns.rdtypes.ANY.CAA import CAA

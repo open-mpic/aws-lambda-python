@@ -1,7 +1,7 @@
 import sys
 import pytest
 
-from aws_lambda_python.common_domain.dcv_validation_method import DcvValidationMethod
+from aws_lambda_python.common_domain.enum.dcv_validation_method import DcvValidationMethod
 from aws_lambda_python.mpic_coordinator.domain.request_path import RequestPath
 from aws_lambda_python.mpic_coordinator.messages.validation_messages import ValidationMessages
 from aws_lambda_python.mpic_coordinator.mpic_request_validator import MpicRequestValidator

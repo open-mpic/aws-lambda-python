@@ -1,13 +1,13 @@
 import json
 import sys
 import pytest
-from aws_lambda_python.common_domain.caa_check_parameters import CaaCheckParameters
-from aws_lambda_python.common_domain.certificate_type import CertificateType
-from aws_lambda_python.common_domain.dcv_check_parameters import DcvCheckParameters, DcvValidationDetails
-from aws_lambda_python.common_domain.dcv_validation_method import DcvValidationMethod
-from aws_lambda_python.mpic_coordinator.domain.mpic_caa_request import MpicCaaRequest
-from aws_lambda_python.mpic_coordinator.domain.mpic_dcv_request import MpicDcvRequest
-from aws_lambda_python.mpic_coordinator.domain.mpic_orchestration_parameters import MpicOrchestrationParameters
+from aws_lambda_python.common_domain.check_parameters import CaaCheckParameters
+from aws_lambda_python.common_domain.check_parameters import DcvCheckParameters, DcvValidationDetails
+from aws_lambda_python.common_domain.enum.certificate_type import CertificateType
+from aws_lambda_python.common_domain.enum.dcv_validation_method import DcvValidationMethod
+from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicCaaRequest
+from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvRequest
+from aws_lambda_python.mpic_coordinator.domain.mpic_orchestration_parameters import MpicRequestOrchestrationParameters
 from aws_lambda_python.mpic_coordinator.domain.request_path import RequestPath
 
 import testing_api_client
@@ -31,8 +31,8 @@ class TestDeployedMpicApi:
     def api_should_return_200_given_valid_caa_validation(self, api_client):
         request = MpicCaaRequest(
             api_version=API_VERSION,
-            orchestration_parameters=MpicOrchestrationParameters(domain_or_ip_target='test', perspective_count=3,
-                                                                 quorum_count=2),
+            orchestration_parameters=MpicRequestOrchestrationParameters(domain_or_ip_target='test', perspective_count=3,
+                                                                        quorum_count=2),
             caa_details=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['mozilla.com'])
         )
 
@@ -41,7 +41,7 @@ class TestDeployedMpicApi:
         assert response.status_code == 200
         # assert response body has a list of perspectives with length 2, and each element has response code 200
         response_body = json.loads(response.text)
-        print(json.dumps(response_body, indent=4))  # pretty print response body
+        print("\n", {json.dumps(response_body, indent=4)})  # pretty print response body
         perspectives_list = response_body['perspectives']  # each element is a dictionary with 'statusCode' element
         # assert that each element in perspectives_list has a 'statusCode' element with value 200
         assert len(perspectives_list) == request.orchestration_parameters.perspective_count
@@ -52,8 +52,8 @@ class TestDeployedMpicApi:
     def api_should_return_200_given_valid_dcv_validation(self, api_client):
         request = MpicDcvRequest(
             api_version=API_VERSION,
-            orchestration_parameters=MpicOrchestrationParameters(domain_or_ip_target='test', perspective_count=3,
-                                                                 quorum_count=2),
+            orchestration_parameters=MpicRequestOrchestrationParameters(domain_or_ip_target='test', perspective_count=3,
+                                                                        quorum_count=2),
             dcv_details=DcvCheckParameters(
                 validation_method=DcvValidationMethod.HTTP_GENERIC,
                 validation_details=DcvValidationDetails(prefix=None, record_type=None, path='/',
@@ -70,8 +70,8 @@ class TestDeployedMpicApi:
     def api_should_return_400_given_invalid_parameters_in_request(self, api_client):
         request = MpicCaaRequest(
             api_version=API_VERSION,
-            orchestration_parameters=MpicOrchestrationParameters(domain_or_ip_target='test', perspective_count=3,
-                                                                 quorum_count=5),  # invalid quorum count
+            orchestration_parameters=MpicRequestOrchestrationParameters(domain_or_ip_target='test', perspective_count=3,
+                                                                        quorum_count=5),  # invalid quorum count
             caa_details=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['mozilla.com'])
         )
 
@@ -79,5 +79,5 @@ class TestDeployedMpicApi:
         assert response.status_code == 400
         response_body = json.loads(response.text)
         assert response_body['error'] == ValidationMessages.REQUEST_VALIDATION_FAILED.key
-        assert any(issue['issue_type'] == ValidationMessages.INVALID_QUORUM_COUNT.key for issue in response_body['validation-issues'])
+        assert any(issue['issue_type'] == ValidationMessages.INVALID_QUORUM_COUNT.key for issue in response_body['validation_issues'])
         

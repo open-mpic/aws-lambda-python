@@ -1,10 +1,10 @@
 import json
 
 from aws_lambda_python.mpic_coordinator.config.service_config import API_VERSION
-from aws_lambda_python.mpic_coordinator.domain.check_type import CheckType
-from aws_lambda_python.mpic_coordinator.domain.base_mpic_request import BaseMpicRequest
-from aws_lambda_python.mpic_coordinator.domain.mpic_dcv_request import MpicDcvRequest
-from aws_lambda_python.mpic_coordinator.domain.mpic_dcv_with_caa_request import MpicDcvWithCaaRequest
+from aws_lambda_python.mpic_coordinator.domain.enum.check_type import CheckType
+from aws_lambda_python.mpic_coordinator.domain.mpic_request import BaseMpicRequest
+from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvRequest
+from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvWithCaaRequest
 
 
 # TODO refactor to use a response object instead of a dictionary to avoid magic strings
@@ -41,7 +41,7 @@ class MpicResponseBuilder:
             response_body['is_valid'] = valid_by_check_type[CheckType.CAA]
 
         return {
-            'statusCode': 200,  # other status codes will be returned earlier in the Coordinator logic
+            'statusCode': 200,  # other status codes returned earlier in Coordinator logic; note: must be snakeCase
             'headers': {'Content-Type': 'application/json'},
             'body': json.dumps(response_body)
         }

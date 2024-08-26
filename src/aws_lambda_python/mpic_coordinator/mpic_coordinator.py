@@ -10,13 +10,13 @@ import random
 import hashlib
 
 import pydantic
-from aws_lambda_python.common_domain.base_check_response import BaseCheckResponse
-from aws_lambda_python.common_domain.caa_check_request import CaaCheckRequest
-from aws_lambda_python.common_domain.dcv_check_request import DcvCheckRequest
-from aws_lambda_python.mpic_coordinator.domain.check_type import CheckType
-from aws_lambda_python.mpic_coordinator.domain.mpic_caa_request import MpicCaaRequest
-from aws_lambda_python.mpic_coordinator.domain.mpic_dcv_request import MpicDcvRequest
-from aws_lambda_python.mpic_coordinator.domain.mpic_dcv_with_caa_request import MpicDcvWithCaaRequest
+from aws_lambda_python.common_domain.check_response import BaseCheckResponse
+from aws_lambda_python.common_domain.check_request import CaaCheckRequest
+from aws_lambda_python.common_domain.check_request import DcvCheckRequest
+from aws_lambda_python.mpic_coordinator.domain.enum.check_type import CheckType
+from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicCaaRequest
+from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvRequest
+from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvWithCaaRequest
 from aws_lambda_python.mpic_coordinator.domain.remote_check_call_configuration import RemoteCheckCallConfiguration
 from aws_lambda_python.mpic_coordinator.domain.request_path import RequestPath
 from aws_lambda_python.mpic_coordinator.messages.validation_messages import ValidationMessages
@@ -50,24 +50,24 @@ class MpicCoordinator:
         try:
             match request_path:
                 case RequestPath.CAA_CHECK:
-                    mpic_request = MpicCaaRequest.from_json(event['body'])
+                    mpic_request = MpicCaaRequest.model_validate_json(event['body'])
                 case RequestPath.DCV_CHECK:
-                    mpic_request = MpicDcvRequest.from_json(event['body'])
+                    mpic_request = MpicDcvRequest.model_validate_json(event['body'])
                 case RequestPath.DCV_WITH_CAA_CHECK:
-                    mpic_request = MpicDcvWithCaaRequest.from_json(event['body'])
+                    mpic_request = MpicDcvWithCaaRequest.model_validate_json(event['body'])
                 case _:
                     return {
-                        'statusCode': 400,
+                        'statusCode': 400,  # must be snakeCase for well-formed AWS Lambda response
                         'headers': {'Content-Type': 'application/json'},
                         'body': json.dumps({'error': ValidationMessages.REQUEST_VALIDATION_FAILED.key,
-                                            'validation-issues': [ValidationMessages.UNSUPPORTED_REQUEST_PATH.key]})
+                                            'validation_issues': [ValidationMessages.UNSUPPORTED_REQUEST_PATH.key]})
                     }
         except pydantic.ValidationError as validation_error:
             return {
                 'statusCode': 400,
                 'headers': {'Content-Type': 'application/json'},
                 'body': json.dumps({'error': ValidationMessages.REQUEST_VALIDATION_FAILED.key,
-                                    'validation-issues': validation_error.errors()})
+                                    'validation_issues': validation_error.errors()})
             }
 
         is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(request_path, mpic_request, self.known_perspectives)
@@ -77,7 +77,7 @@ class MpicCoordinator:
                 'statusCode': 400,
                 'headers': {'Content-Type': 'application/json'},
                 'body': json.dumps({'error': ValidationMessages.REQUEST_VALIDATION_FAILED.key,
-                                    'validation-issues': [vars(issue) for issue in validation_issues]})
+                                    'validation_issues': [vars(issue) for issue in validation_issues]})
             }
 
         system_params = mpic_request.orchestration_parameters
@@ -112,6 +112,7 @@ class MpicCoordinator:
 
         response = MpicResponseBuilder.build_response(mpic_request, perspective_count, quorum_count,
                                                       perspective_responses_per_check_type, valid_by_check_type)
+
         return response
 
     # Returns a random subset of perspectives with a goal of maximum RIR diversity to increase diversity.

@@ -1,5 +1,5 @@
-from aws_lambda_python.common_domain.base_check_request import BaseCheckRequest
-from aws_lambda_python.mpic_coordinator.domain.check_type import CheckType
+from aws_lambda_python.common_domain.check_request import BaseCheckRequest
+from aws_lambda_python.mpic_coordinator.domain.enum.check_type import CheckType
 
 
 class RemoteCheckCallConfiguration:

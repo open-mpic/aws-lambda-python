@@ -4,9 +4,9 @@ from typing import Final
 
 # import dns
 import dns.resolver
-from aws_lambda_python.common_domain.caa_check_request import CaaCheckRequest
-from aws_lambda_python.common_domain.caa_check_response import CaaCheckResponse, CaaCheckResponseDetails
-from aws_lambda_python.common_domain.certificate_type import CertificateType
+from aws_lambda_python.common_domain.check_request import CaaCheckRequest
+from aws_lambda_python.common_domain.check_response import CaaCheckResponse, CaaCheckResponseDetails
+from aws_lambda_python.common_domain.enum.certificate_type import CertificateType
 from dns.name import Name
 from dns.rrset import RRset
 

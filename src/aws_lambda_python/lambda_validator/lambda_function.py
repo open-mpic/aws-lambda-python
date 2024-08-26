@@ -27,24 +27,24 @@ def lambda_handler(event, context):
         if r.status_code == requests.codes.OK:
             result = r.text.strip()
             return {
-                'statusCode': 200,
+                'status_code': 200,
                 'headers': {
                     'Content-Type': 'application/json'
                     },
                 'body': json.dumps({
                     'region': region,
-                    'Result': result,  # r.data.decode().rstrip()
+                    'result': result,  # r.data.decode().rstrip()
                     'valid_for_issuance': (result == expected)
                     })
             }
         else:
             return {
-                'statusCode': r.status_code,
+                'status_code': r.status_code,
                 'headers': {
                     'Content-Type': 'application/json'
                     },
                 'body': {
-                    'Error': r.reason
+                    'error': r.reason
                     }
             }
     elif valid_method == 'dns_generic':
@@ -62,7 +62,7 @@ def lambda_handler(event, context):
                     for record_data in response_answer:
                         record_data_as_text.append(record_data.to_text()[1:-1])  # need to remove enclosing quotes
             return {
-                'statusCode': 200,
+                'status_code': 200,
                 'headers': {
                     'Content-Type': 'application/json'
                     },
@@ -74,11 +74,11 @@ def lambda_handler(event, context):
             }
         except dns.exception.DNSException as e:
             return {
-                'statusCode': 404,
+                'status_code': 404,
                 'headers': {
                     'Content-Type': 'application/json'
                     },
                 'body': {
-                    'Error': str(e)
+                    'error': str(e)
                     }
             }
