@@ -199,11 +199,10 @@ class TestMpicCaaChecker:
         result = MpicCaaChecker.is_valid_for_issuance(caa_domains, is_wc_domain, test_rrset)
         assert result is False
 
-    #  TODO figure out if check for critical flag should override checks for issue and issuewild
     @pytest.mark.parametrize('caa_domain, rr_domain', [('ca222.org', 'ca222.org'), ('ca222.org', 'ca111.com')])
-    def is_valid_for_issuance__should_return_false_given_rrset_contains_any_records_with_critical_flags(self, test_rrset, caa_domain, rr_domain):
+    def is_valid_for_issuance__should_return_false_given_rrset_contains_unknown_tag_with_critical_flags(self, test_rrset, caa_domain, rr_domain):
         caa_domains = [caa_domain]
-        caa_rdata = CAA(CAA_RDCLASS, CAA_RDTYPE, flags=128, tag=b'unknown', value=rr_domain.encode('utf-8'))
+        caa_rdata = CAA(CAA_RDCLASS, CAA_RDTYPE, flags=128, tag=b'mystery', value=rr_domain.encode('utf-8'))
         test_rrset.add(caa_rdata)
         is_wc_domain = False
         result = MpicCaaChecker.is_valid_for_issuance(caa_domains, is_wc_domain, test_rrset)

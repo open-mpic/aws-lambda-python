@@ -51,13 +51,11 @@ class MpicCaaChecker:
 
     @staticmethod
     def is_valid_for_issuance(caa_domains, is_wc_domain, rrset):
-        # valid_for_issuance = False
         issue_tags = []
         issue_wild_tags = []
         has_unknown_critical_flags = False
 
-        # TODO critical flag behavior is weird...
-        # right now a record with critical flag and 'issue' tag will be considered valid for issuance
+        # Note: a record with critical flag and 'issue' tag will be considered valid for issuance
         for resource_record in rrset:
             tag = resource_record.tag.decode('utf-8')
             val = resource_record.value.decode('utf-8')
@@ -97,7 +95,7 @@ class MpicCaaChecker:
         caa_found = rrset is not None
 
         result = {
-            'statusCode': 200,
+            'statusCode': 200,  # note: must be snakeCase
             'headers': {'Content-Type': 'application/json'}
         }
         if not caa_found:  # if domain has no CAA records: valid for issuance

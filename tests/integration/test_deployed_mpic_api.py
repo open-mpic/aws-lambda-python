@@ -4,6 +4,7 @@ import pytest
 from aws_lambda_python.common_domain.check_parameters import CaaCheckParameters
 from aws_lambda_python.common_domain.check_parameters import DcvCheckParameters, DcvValidationDetails
 from aws_lambda_python.common_domain.enum.certificate_type import CertificateType
+from aws_lambda_python.common_domain.enum.check_type import CheckType
 from aws_lambda_python.common_domain.enum.dcv_validation_method import DcvValidationMethod
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicCaaRequest
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvRequest
@@ -42,10 +43,9 @@ class TestDeployedMpicApi:
         # assert response body has a list of perspectives with length 2, and each element has response code 200
         response_body = json.loads(response.text)
         print("\n", {json.dumps(response_body, indent=4)})  # pretty print response body
-        perspectives_list = response_body['perspectives']  # each element is a dictionary with 'statusCode' element
-        # assert that each element in perspectives_list has a 'statusCode' element with value 200
+        perspectives_list = response_body['perspectives']
         assert len(perspectives_list) == request.orchestration_parameters.perspective_count
-        assert (len(list(filter(lambda perspective: perspective['statusCode'] == 200, perspectives_list)))
+        assert (len(list(filter(lambda perspective: perspective['check_type'] == CheckType.CAA, perspectives_list)))
                 == request.orchestration_parameters.perspective_count)
 
     @pytest.mark.skip(reason='Not implemented yet')

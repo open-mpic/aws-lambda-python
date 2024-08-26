@@ -17,37 +17,6 @@ class TestMpicResponseBuilder:
     def create_perspective_responses_per_check_type(check_type=CheckType.DCV_WITH_CAA):
         responses = {}
         caa_responses = [  # 1 false
-                    {'perspective': 'p1', 'is_valid': True},
-                    {'perspective': 'p2', 'is_valid': False},
-                    {'perspective': 'p3', 'is_valid': True},
-                    {'perspective': 'p4', 'is_valid': True},
-                    {'perspective': 'p5', 'is_valid': True},
-                    {'perspective': 'p6', 'is_valid': True}
-                ]
-        dcv_responses = [  # 2 false
-                {'perspective': 'p1', 'is_valid': True},
-                {'perspective': 'p2', 'is_valid': True},
-                {'perspective': 'p3', 'is_valid': True},
-                {'perspective': 'p4', 'is_valid': True},
-                {'perspective': 'p5', 'is_valid': False},
-                {'perspective': 'p6', 'is_valid': False}
-            ]
-
-        match check_type:
-            case CheckType.CAA:
-                responses[CheckType.CAA] = caa_responses
-            case CheckType.DCV:
-                responses[CheckType.DCV] = dcv_responses
-            case CheckType.DCV_WITH_CAA:
-                responses[CheckType.CAA] = caa_responses
-                responses[CheckType.DCV] = dcv_responses
-
-        return responses
-
-    @staticmethod
-    def create_perspective_responses_per_check_type_2(check_type=CheckType.DCV_WITH_CAA):
-        responses = {}
-        caa_responses = [  # 1 false
             CaaCheckResponse(perspective='p1', check_passed=True, details=CaaCheckResponseDetails(caa_record_present=False)),
             CaaCheckResponse(perspective='p2', check_passed=False, details=CaaCheckResponseDetails(caa_record_present=False)),
             CaaCheckResponse(perspective='p3', check_passed=True, details=CaaCheckResponseDetails(caa_record_present=False)),
@@ -88,7 +57,6 @@ class TestMpicResponseBuilder:
                 validity_by_check_type[CheckType.DCV] = True
         return validity_by_check_type
 
-    @pytest.mark.skip(reason='being replaced')
     @pytest.mark.parametrize('check_type, perspective_count, quorum_count', [
         (CheckType.CAA, 6, 4),
         (CheckType.DCV, 6, 5),  # higher quorum count
@@ -96,36 +64,6 @@ class TestMpicResponseBuilder:
     ])
     def build_response__should_return_response_given_mpic_request_configuration_and_results(self, check_type, perspective_count, quorum_count):
         persp_responses_per_check_type = self.create_perspective_responses_per_check_type(check_type)
-        valid_by_check_type = self.create_validity_by_check_type(check_type)
-        request = ValidRequestCreator.create_valid_request(check_type)
-        response = MpicResponseBuilder.build_response(request, perspective_count, quorum_count, persp_responses_per_check_type, valid_by_check_type)
-        assert response['statusCode'] == 200
-        response_body = json.loads(response['body'])
-        assert response_body['api_version'] == API_VERSION
-        assert response_body['request_system_params']['perspective_count'] == request.orchestration_parameters.perspective_count
-        assert response_body['number_of_perspectives_used'] == perspective_count
-        assert response_body['required_quorum_count_used'] == quorum_count
-        match check_type:
-            case CheckType.CAA:
-                assert response_body['perspectives'] == persp_responses_per_check_type[CheckType.CAA]
-                assert response_body['is_valid'] == valid_by_check_type[CheckType.CAA]
-            case CheckType.DCV:
-                assert response_body['perspectives'] == persp_responses_per_check_type[CheckType.DCV]
-                assert response_body['is_valid'] == valid_by_check_type[CheckType.DCV]
-            case CheckType.DCV_WITH_CAA:
-                assert response_body['perspectives_dcv'] == persp_responses_per_check_type[CheckType.DCV]
-                assert response_body['perspectives_caa'] == persp_responses_per_check_type[CheckType.CAA]
-                assert response_body['is_valid_dcv'] == valid_by_check_type[CheckType.DCV]
-                assert response_body['is_valid_caa'] == valid_by_check_type[CheckType.CAA]
-                assert response_body['is_valid'] == response_body['is_valid_dcv'] and response_body['is_valid_caa']
-
-    @pytest.mark.parametrize('check_type, perspective_count, quorum_count', [
-        (CheckType.CAA, 6, 4),
-        (CheckType.DCV, 6, 5),  # higher quorum count
-        (CheckType.DCV_WITH_CAA, 6, 4)
-    ])
-    def build_response__should_return_response_given_mpic_request_configuration_and_results_2(self, check_type, perspective_count, quorum_count):
-        persp_responses_per_check_type = self.create_perspective_responses_per_check_type_2(check_type)
         valid_by_check_type = self.create_validity_by_check_type(check_type)
         request = ValidRequestCreator.create_valid_request(check_type)
         response = MpicResponseBuilder.build_response(request, perspective_count, quorum_count,
@@ -156,19 +94,9 @@ class TestMpicResponseBuilder:
                 assert response_body.is_valid_caa == valid_by_check_type[CheckType.CAA]
                 assert response_body.is_valid == response_body.is_valid_dcv and response_body.is_valid_caa
 
-    @pytest.mark.skip(reason='being replaced')
     def build_response__should_include_validation_details_and_method_when_present_in_request_body(self):
         request = ValidRequestCreator.create_valid_dcv_check_request()
         persp_responses_per_check_type = self.create_perspective_responses_per_check_type(CheckType.DCV)
-        valid_by_check_type = self.create_validity_by_check_type(CheckType.DCV)
-        response = MpicResponseBuilder.build_response(request, 6, 5, persp_responses_per_check_type, valid_by_check_type)
-        response_body = json.loads(response['body'])
-        assert response_body['validation_details']['expected_challenge'] == request.dcv_check_parameters.validation_details.expected_challenge
-        assert response_body['validation_method'] == request.dcv_check_parameters.validation_method
-
-    def build_response__should_include_validation_details_and_method_when_present_in_request_body_2(self):
-        request = ValidRequestCreator.create_valid_dcv_check_request()
-        persp_responses_per_check_type = self.create_perspective_responses_per_check_type_2(CheckType.DCV)
         valid_by_check_type = self.create_validity_by_check_type(CheckType.DCV)
         response = MpicResponseBuilder.build_response(request, 6, 5, persp_responses_per_check_type,
                                                       valid_by_check_type)
@@ -177,19 +105,9 @@ class TestMpicResponseBuilder:
         assert response_body.dcv_parameters.validation_details.expected_challenge == request.dcv_check_parameters.validation_details.expected_challenge
         assert response_body.dcv_parameters.validation_method == request.dcv_check_parameters.validation_method
 
-    @pytest.mark.skip(reason='being replaced')
     def build_response__should_set_is_valid_to_false_when_either_check_type_is_invalid(self):
         request = ValidRequestCreator.create_valid_dcv_with_caa_check_request()
         persp_responses_per_check_type = self.create_perspective_responses_per_check_type(CheckType.DCV_WITH_CAA)
-        valid_by_check_type = self.create_validity_by_check_type(CheckType.DCV_WITH_CAA)
-        valid_by_check_type[CheckType.DCV] = False
-        response = MpicResponseBuilder.build_response(request, 6, 4, persp_responses_per_check_type, valid_by_check_type)
-        response_body = json.loads(response['body'])
-        assert response_body['is_valid'] is False
-
-    def build_response__should_set_is_valid_to_false_when_either_check_type_is_invalid_2(self):
-        request = ValidRequestCreator.create_valid_dcv_with_caa_check_request()
-        persp_responses_per_check_type = self.create_perspective_responses_per_check_type_2(CheckType.DCV_WITH_CAA)
         valid_by_check_type = self.create_validity_by_check_type(CheckType.DCV_WITH_CAA)
         valid_by_check_type[CheckType.DCV] = False
         response = MpicResponseBuilder.build_response(request, 6, 4, persp_responses_per_check_type, valid_by_check_type)
