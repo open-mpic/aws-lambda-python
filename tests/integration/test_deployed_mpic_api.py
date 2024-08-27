@@ -34,12 +34,13 @@ class TestDeployedMpicApi:
             caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['mozilla.com'])
         )
 
+        print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
         response = api_client.post(RequestPath.CAA_CHECK, json.dumps(request.model_dump()))
         # response_body_as_json = response.json()
         assert response.status_code == 200
         # assert response body has a list of perspectives with length 2, and each element has response code 200
         response_body = json.loads(response.text)
-        print("\n", json.dumps(response_body, indent=4))  # pretty print response body
+        print("\nResponse:\n", json.dumps(response_body, indent=4))  # pretty print response body
         perspectives_list = response_body['perspectives']
         assert len(perspectives_list) == request.orchestration_parameters.perspective_count
         assert (len(list(filter(lambda perspective: perspective['check_type'] == CheckType.CAA, perspectives_list)))
