@@ -10,7 +10,6 @@ from aws_lambda_python.mpic_caa_checker.mpic_caa_checker import MpicCaaChecker
 from dns.flags import Flag
 from dns.rdtypes.ANY.CAA import CAA
 from dns.rrset import RRset
-from pydantic import TypeAdapter
 
 CAA_RDCLASS = dns.rdataclass.IN
 CAA_RDTYPE = dns.rdatatype.CAA
@@ -60,8 +59,7 @@ class TestMpicCaaChecker:
         result = caa_checker.check_caa(caa_request)
         assert result['statusCode'] == 200
         result_body = json.loads(result['body'])
-        check_response_adapter = TypeAdapter(AnnotatedCheckResponse)
-        response_object = check_response_adapter.validate_python(result_body)
+        response_object = CaaCheckResponse.model_validate(result_body)
         response_object.timestamp_ns = None  # ignore timestamp for comparison
         expected_response = CaaCheckResponse(perspective='us-east-4', check_passed=True, details=CaaCheckResponseDetails(present=False))
         assert json.dumps(response_object.model_dump()) == json.dumps(expected_response.model_dump())
@@ -80,8 +78,7 @@ class TestMpicCaaChecker:
         result = caa_checker.check_caa(caa_request)
         assert result['statusCode'] == 200
         result_body = json.loads(result['body'])
-        check_response_adapter = TypeAdapter(AnnotatedCheckResponse)
-        response_object = check_response_adapter.validate_python(result_body)
+        response_object = CaaCheckResponse.model_validate(result_body)
         response_object.timestamp_ns = None  # ignore timestamp for comparison
         expected_response = CaaCheckResponse(perspective='us-east-4', check_passed=True,
                                              details=CaaCheckResponseDetails(present=True, found_at='example.com',
@@ -102,8 +99,7 @@ class TestMpicCaaChecker:
         result = caa_checker.check_caa(caa_request)
         assert result['statusCode'] == 200
         result_body = json.loads(result['body'])
-        check_response_adapter = TypeAdapter(AnnotatedCheckResponse)
-        response_object = check_response_adapter.validate_python(result_body)
+        response_object = CaaCheckResponse.model_validate(result_body)
         response_object.timestamp_ns = None  # ignore timestamp for comparison
         expected_response = CaaCheckResponse(perspective='us-east-4', check_passed=False,
                                              details=CaaCheckResponseDetails(present=True, found_at='example.com',
@@ -118,8 +114,7 @@ class TestMpicCaaChecker:
         result = caa_checker.check_caa(caa_request)
         assert result['statusCode'] == 200
         result_body = json.loads(result['body'])
-        check_response_adapter = TypeAdapter(AnnotatedCheckResponse)
-        response_object = check_response_adapter.validate_python(result_body)
+        response_object = CaaCheckResponse.model_validate(result_body)
         assert response_object.timestamp_ns is not None
 
     def find_caa_record_and_domain__should_return_rrset_and_domain_given_domain_with_caa_record(self, set_env_variables, mocker):

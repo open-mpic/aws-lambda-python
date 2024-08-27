@@ -70,9 +70,9 @@ class ValidRequestCreator:
         validation_details = {}
         match validation_method:
             case DcvValidationMethod.DNS_GENERIC:
-                validation_details = DcvValidationDetails(prefix='test', record_type=DnsRecordType.A, expected_challenge='test')
+                validation_details = DcvValidationDetails(challenge_prefix='test', record_type=DnsRecordType.A, expected_challenge='test')
             case DcvValidationMethod.HTTP_GENERIC:
-                validation_details = DcvValidationDetails(path='http://example.com', expected_challenge='test')  # noqa E501 (http)
+                validation_details = DcvValidationDetails(challenge_path='http://example.com', expected_challenge='test')  # noqa E501 (http)
             case DcvValidationMethod.TLS_USING_ALPN:
                 validation_details = DcvValidationDetails(expected_challenge='test')
         return validation_details

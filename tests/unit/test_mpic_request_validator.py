@@ -3,7 +3,7 @@ import pytest
 
 from aws_lambda_python.common_domain.enum.dcv_validation_method import DcvValidationMethod
 from aws_lambda_python.mpic_coordinator.domain.enum.request_path import RequestPath
-from aws_lambda_python.mpic_coordinator.messages.validation_messages import ValidationMessages
+from aws_lambda_python.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
 from aws_lambda_python.mpic_coordinator.mpic_request_validator import MpicRequestValidator
 from valid_request_creator import ValidRequestCreator
 
@@ -34,7 +34,7 @@ class TestMpicRequestValidator:
         request.orchestration_parameters.perspective_count = None
         is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.CAA_CHECK, request, self.known_perspectives, False)
         assert is_request_valid is False
-        assert ValidationMessages.PERSPECTIVES_NOT_IN_DIAGNOSTIC_MODE.key in [issue.issue_type for issue in validation_issues]
+        assert MpicRequestValidationMessages.PERSPECTIVES_NOT_IN_DIAGNOSTIC_MODE.key in [issue.issue_type for issue in validation_issues]
 
     @pytest.mark.parametrize('validation_method', [DcvValidationMethod.DNS_GENERIC, DcvValidationMethod.HTTP_GENERIC,
                                                    DcvValidationMethod.TLS_USING_ALPN])
@@ -55,8 +55,8 @@ class TestMpicRequestValidator:
         request = ValidRequestCreator.create_valid_caa_check_request()
         is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(request_path, request, self.known_perspectives)
         assert is_request_valid is False
-        assert ValidationMessages.UNSUPPORTED_REQUEST_PATH.key in [issue.issue_type for issue in validation_issues]
-        unsupported_request_path_issue = next(issue for issue in validation_issues if issue.issue_type == ValidationMessages.UNSUPPORTED_REQUEST_PATH.key)
+        assert MpicRequestValidationMessages.UNSUPPORTED_REQUEST_PATH.key in [issue.issue_type for issue in validation_issues]
+        unsupported_request_path_issue = next(issue for issue in validation_issues if issue.issue_type == MpicRequestValidationMessages.UNSUPPORTED_REQUEST_PATH.key)
         assert request_path in unsupported_request_path_issue.message
 
     @pytest.mark.parametrize('perspective_count', [1, 0, -1, 'abc', sys.maxsize+1])
@@ -65,8 +65,8 @@ class TestMpicRequestValidator:
         request.orchestration_parameters.perspective_count = perspective_count
         is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.CAA_CHECK, request, self.known_perspectives)
         assert is_request_valid is False
-        assert ValidationMessages.INVALID_PERSPECTIVE_COUNT.key in [issue.issue_type for issue in validation_issues]
-        invalid_perspective_count_issue = next(issue for issue in validation_issues if issue.issue_type == ValidationMessages.INVALID_PERSPECTIVE_COUNT.key)
+        assert MpicRequestValidationMessages.INVALID_PERSPECTIVE_COUNT.key in [issue.issue_type for issue in validation_issues]
+        invalid_perspective_count_issue = next(issue for issue in validation_issues if issue.issue_type == MpicRequestValidationMessages.INVALID_PERSPECTIVE_COUNT.key)
         assert str(perspective_count) in invalid_perspective_count_issue.message
 
     # TODO discuss enforcement of 500km distance between perspective regions. (And 2+ RIR requirement.)
@@ -76,7 +76,7 @@ class TestMpicRequestValidator:
         request.orchestration_parameters.perspectives = ['bad_p1', 'bad_p2', 'bad_p3', 'bad_p4', 'bad_p5', 'bad_p6']
         is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.CAA_CHECK, request, self.known_perspectives, True)
         assert is_request_valid is False
-        assert ValidationMessages.INVALID_PERSPECTIVE_LIST.key in [issue.issue_type for issue in validation_issues]
+        assert MpicRequestValidationMessages.INVALID_PERSPECTIVE_LIST.key in [issue.issue_type for issue in validation_issues]
 
     # TODO should there be a more permissive validation (in diagnostic mode?) for quorum count?
     @pytest.mark.parametrize('quorum_count', [1, -1, 10, 'abc', sys.maxsize+1])
@@ -85,8 +85,8 @@ class TestMpicRequestValidator:
         request.orchestration_parameters.quorum_count = quorum_count
         is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.CAA_CHECK, request, self.known_perspectives)
         assert is_request_valid is False
-        assert ValidationMessages.INVALID_QUORUM_COUNT.key in [issue.issue_type for issue in validation_issues]
-        invalid_quorum_count_issue = next(issue for issue in validation_issues if issue.issue_type == ValidationMessages.INVALID_QUORUM_COUNT.key)
+        assert MpicRequestValidationMessages.INVALID_QUORUM_COUNT.key in [issue.issue_type for issue in validation_issues]
+        invalid_quorum_count_issue = next(issue for issue in validation_issues if issue.issue_type == MpicRequestValidationMessages.INVALID_QUORUM_COUNT.key)
         assert str(quorum_count) in invalid_quorum_count_issue.message
 
     # TODO probably shouldn't allow a quorum count of zero, but that is an API spec update

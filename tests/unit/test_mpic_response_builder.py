@@ -2,7 +2,8 @@ import json
 import pytest
 from aws_lambda_python.common_domain.check_response import CaaCheckResponse, DcvCheckResponse, CaaCheckResponseDetails, DcvCheckResponseDetails
 from aws_lambda_python.common_domain.enum.check_type import CheckType
-from aws_lambda_python.mpic_coordinator.domain.mpic_response import BaseMpicResponse, AnnotatedMpicResponse
+from aws_lambda_python.mpic_coordinator.domain.mpic_response import BaseMpicResponse, AnnotatedMpicResponse, \
+    MpicDcvResponse
 from aws_lambda_python.mpic_coordinator.mpic_response_builder import MpicResponseBuilder
 from pydantic import TypeAdapter
 
@@ -96,8 +97,7 @@ class TestMpicResponseBuilder:
         valid_by_check_type = self.create_validity_by_check_type(CheckType.DCV)
         response = MpicResponseBuilder.build_response(request, 6, 5, persp_responses_per_check_type,
                                                       valid_by_check_type)
-        mpic_response_adapter = TypeAdapter(AnnotatedMpicResponse)
-        response_body = mpic_response_adapter.validate_python(json.loads(response['body']))
+        response_body = MpicDcvResponse.model_validate(json.loads(response['body']))
         assert response_body.dcv_parameters.validation_details.expected_challenge == request.dcv_check_parameters.validation_details.expected_challenge
         assert response_body.dcv_parameters.validation_method == request.dcv_check_parameters.validation_method
 

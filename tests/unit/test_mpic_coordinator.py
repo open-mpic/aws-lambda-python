@@ -7,7 +7,7 @@ from aws_lambda_python.common_domain.check_response import CaaCheckResponse, Caa
 from aws_lambda_python.common_domain.enum.dcv_validation_method import DcvValidationMethod
 from aws_lambda_python.common_domain.enum.check_type import CheckType
 from aws_lambda_python.mpic_coordinator.domain.enum.request_path import RequestPath
-from aws_lambda_python.mpic_coordinator.messages.validation_messages import ValidationMessages
+from aws_lambda_python.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
 from aws_lambda_python.mpic_coordinator.mpic_coordinator import MpicCoordinator
 from botocore.response import StreamingBody
 
@@ -64,7 +64,7 @@ class TestMpicCoordinator:
         # FIXME need to capture pydantic validation error and put it into response (for now... FastAPI may render that unnecessary)
         assert result['statusCode'] == 400
         response_body = json.loads(result['body'])
-        assert response_body['error'] == ValidationMessages.REQUEST_VALIDATION_FAILED.key
+        assert response_body['error'] == MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key
         assert field_to_delete in str(response_body['validation_issues'][0])
 
     @pytest.mark.parametrize('requested_perspective_count, expected_quorum_size', [(4, 3), (5, 4), (6, 4)])
@@ -107,7 +107,7 @@ class TestMpicCoordinator:
         assert len(call_list) == 6
         assert set(map(lambda call_result: call_result.check_type, call_list)) == {CheckType.DCV}  # ensure each call is of type 'dcv'
         assert all(call.input_args.dcv_check_parameters.validation_method == DcvValidationMethod.DNS_GENERIC for call in call_list)
-        assert all(call.input_args.dcv_check_parameters.validation_details.prefix == 'test' for call in call_list)
+        assert all(call.input_args.dcv_check_parameters.validation_details.challenge_prefix == 'test' for call in call_list)
 
     def collect_async_calls_to_issue__should_have_caa_and_dcv_calls_given_dcv_with_caa_request_path(self, set_env_variables):
         request = ValidRequestCreator.create_valid_dcv_with_caa_check_request()

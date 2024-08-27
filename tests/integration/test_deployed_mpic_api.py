@@ -12,7 +12,7 @@ from aws_lambda_python.mpic_coordinator.domain.mpic_orchestration_parameters imp
 from aws_lambda_python.mpic_coordinator.domain.enum.request_path import RequestPath
 
 import testing_api_client
-from aws_lambda_python.mpic_coordinator.messages.validation_messages import ValidationMessages
+from aws_lambda_python.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
 
 
 # noinspection PyMethodMayBeStatic
@@ -73,6 +73,6 @@ class TestDeployedMpicApi:
         response = api_client.post(RequestPath.CAA_CHECK, json.dumps(request.model_dump()))
         assert response.status_code == 400
         response_body = json.loads(response.text)
-        assert response_body['error'] == ValidationMessages.REQUEST_VALIDATION_FAILED.key
-        assert any(issue['issue_type'] == ValidationMessages.INVALID_QUORUM_COUNT.key for issue in response_body['validation_issues'])
+        assert response_body['error'] == MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key
+        assert any(issue['issue_type'] == MpicRequestValidationMessages.INVALID_QUORUM_COUNT.key for issue in response_body['validation_issues'])
         

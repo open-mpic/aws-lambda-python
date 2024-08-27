@@ -25,10 +25,10 @@ class MpicDcvRequest(BaseMpicRequest):
     @model_validator(mode='after')
     def check_required_fields_per_validation_method(self) -> 'MpicDcvRequest':
         if self.dcv_check_parameters.validation_method == DcvValidationMethod.HTTP_GENERIC:
-            assert self.dcv_check_parameters.validation_details.path, f"path is required for {DcvValidationMethod.HTTP_GENERIC} validation"
+            assert self.dcv_check_parameters.validation_details.challenge_path, f"challenge_path is required for {DcvValidationMethod.HTTP_GENERIC} validation"
         elif self.dcv_check_parameters.validation_method == DcvValidationMethod.DNS_GENERIC:
             assert self.dcv_check_parameters.validation_details.record_type, f"record_type is required for {DcvValidationMethod.DNS_GENERIC} validation"
-            assert self.dcv_check_parameters.validation_details.prefix, f"prefix is required for {DcvValidationMethod.DNS_GENERIC} validation"
+            assert self.dcv_check_parameters.validation_details.challenge_prefix, f"challenge_prefix is required for {DcvValidationMethod.DNS_GENERIC} validation"
         return self
 
 

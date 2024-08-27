@@ -11,10 +11,11 @@ class CaaCheckParameters(BaseModel):
 
 
 class DcvValidationDetails(BaseModel):
-    prefix: str | None = None
+    challenge_prefix: str | None = None
     record_type: DnsRecordType | None = None
-    path: str | None = None
+    challenge_path: str | None = None
     expected_challenge: str
+    # TODO may need a challenge_suffix as well
 
 
 class DcvCheckParameters(BaseModel):

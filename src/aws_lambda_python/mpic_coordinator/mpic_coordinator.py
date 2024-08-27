@@ -19,12 +19,10 @@ from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvReques
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvWithCaaRequest
 from aws_lambda_python.mpic_coordinator.domain.remote_check_call_configuration import RemoteCheckCallConfiguration
 from aws_lambda_python.mpic_coordinator.domain.enum.request_path import RequestPath
-from aws_lambda_python.mpic_coordinator.messages.validation_messages import ValidationMessages
+from aws_lambda_python.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
 from aws_lambda_python.mpic_coordinator.mpic_request_validator import MpicRequestValidator
 from aws_lambda_python.mpic_coordinator.mpic_response_builder import MpicResponseBuilder
 from pydantic import TypeAdapter
-
-VERSION: Final[str] = '1.0.0'  # TODO do we need to externalize this? it's a bit hidden here
 
 
 class MpicCoordinator:
@@ -43,6 +41,7 @@ class MpicCoordinator:
             CheckType.DCV: {self.known_perspectives[i]: self.validator_arn_list[i] for i in range(len(self.known_perspectives))},
             CheckType.CAA: {self.known_perspectives[i]: self.caa_arn_list[i] for i in range(len(self.known_perspectives))}
         }
+        # for correct deserialization of responses based on discriminator field (check type)
         self.check_response_adapter: TypeAdapter[CheckResponse] = TypeAdapter(AnnotatedCheckResponse)
 
     def coordinate_mpic(self, event):
@@ -61,14 +60,14 @@ class MpicCoordinator:
                     return {
                         'statusCode': 400,  # must be snakeCase for well-formed AWS Lambda response
                         'headers': {'Content-Type': 'application/json'},
-                        'body': json.dumps({'error': ValidationMessages.REQUEST_VALIDATION_FAILED.key,
-                                            'validation_issues': [ValidationMessages.UNSUPPORTED_REQUEST_PATH.key]})
+                        'body': json.dumps({'error': MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key,
+                                            'validation_issues': [MpicRequestValidationMessages.UNSUPPORTED_REQUEST_PATH.key]})
                     }
         except pydantic.ValidationError as validation_error:
             return {
                 'statusCode': 400,
                 'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': ValidationMessages.REQUEST_VALIDATION_FAILED.key,
+                'body': json.dumps({'error': MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key,
                                     'validation_issues': validation_error.errors()})
             }
 
@@ -78,7 +77,7 @@ class MpicCoordinator:
             return {
                 'statusCode': 400,
                 'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': ValidationMessages.REQUEST_VALIDATION_FAILED.key,
+                'body': json.dumps({'error': MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key,
                                     'validation_issues': [vars(issue) for issue in validation_issues]})
             }
 
@@ -224,6 +223,12 @@ class MpicCoordinator:
 
     @staticmethod
     def thread_call(call_config: RemoteCheckCallConfiguration):
+        """
+        Issues a call to a lambda function in a separate thread. This is a blocking call.
+        This is purely AWS specific and should not be used in other contexts.
+        :param call_config:
+        :return:
+        """
         print(f"Started lambda call for region {call_config.perspective} at {str(datetime.now())}")
 
         tic_init = time.perf_counter()

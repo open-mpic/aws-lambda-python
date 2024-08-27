@@ -1,6 +1,6 @@
 from aws_lambda_python.mpic_coordinator.domain.enum.request_path import RequestPath
-from aws_lambda_python.mpic_coordinator.messages.validation_messages import ValidationMessages
-from aws_lambda_python.mpic_coordinator.validation_issue import ValidationIssue
+from aws_lambda_python.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
+from aws_lambda_python.mpic_coordinator.mpic_request_validation_issue import MpicRequestValidationIssue
 
 
 # TODO rename to reflect that it's validating values rather than structure?
@@ -23,15 +23,15 @@ class MpicRequestValidator:
             if MpicRequestValidator.are_requested_perspectives_valid(requested_perspectives, known_perspectives):
                 should_validate_quorum_count = True
             else:
-                request_validation_issues.append(ValidationIssue(ValidationMessages.INVALID_PERSPECTIVE_LIST))
+                request_validation_issues.append(MpicRequestValidationIssue(MpicRequestValidationMessages.INVALID_PERSPECTIVE_LIST))
         elif mpic_request.orchestration_parameters.perspectives:
-            request_validation_issues.append(ValidationIssue(ValidationMessages.PERSPECTIVES_NOT_IN_DIAGNOSTIC_MODE))
+            request_validation_issues.append(MpicRequestValidationIssue(MpicRequestValidationMessages.PERSPECTIVES_NOT_IN_DIAGNOSTIC_MODE))
         elif mpic_request.orchestration_parameters.perspective_count is not None:
             requested_perspective_count = mpic_request.orchestration_parameters.perspective_count
             if MpicRequestValidator.is_requested_perspective_count_valid(requested_perspective_count, known_perspectives):
                 should_validate_quorum_count = True
             else:
-                request_validation_issues.append(ValidationIssue(ValidationMessages.INVALID_PERSPECTIVE_COUNT, requested_perspective_count))
+                request_validation_issues.append(MpicRequestValidationIssue(MpicRequestValidationMessages.INVALID_PERSPECTIVE_COUNT, requested_perspective_count))
         if should_validate_quorum_count and mpic_request.orchestration_parameters.quorum_count is not None:
             quorum_count = mpic_request.orchestration_parameters.quorum_count
             MpicRequestValidator.validate_quorum_count(requested_perspective_count, quorum_count, request_validation_issues)
@@ -39,7 +39,7 @@ class MpicRequestValidator:
         # TODO this should be checked in routing logic way before it gets here
         # check if request_path is supported in RequestPath enum
         if request_path not in iter(RequestPath):
-            request_validation_issues.append(ValidationIssue(ValidationMessages.UNSUPPORTED_REQUEST_PATH, request_path))
+            request_validation_issues.append(MpicRequestValidationIssue(MpicRequestValidationMessages.UNSUPPORTED_REQUEST_PATH, request_path))
 
         # returns true if no validation issues found, false otherwise; includes list of validation issues found
         return len(request_validation_issues) == 0, request_validation_issues
@@ -65,4 +65,4 @@ class MpicRequestValidator:
                             (4 <= requested_perspective_count - 2 <= quorum_count <= requested_perspective_count)
                           ))
         if not quorum_is_valid:
-            request_validation_issues.append(ValidationIssue(ValidationMessages.INVALID_QUORUM_COUNT, quorum_count))
+            request_validation_issues.append(MpicRequestValidationIssue(MpicRequestValidationMessages.INVALID_QUORUM_COUNT, quorum_count))

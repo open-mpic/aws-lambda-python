@@ -9,12 +9,8 @@ class BaseCheckRequest(BaseModel, ABC):
 
 
 class CaaCheckRequest(BaseCheckRequest):
-    domain_or_ip_target: str
     caa_check_parameters: CaaCheckParameters | None = None
 
 
 class DcvCheckRequest(BaseCheckRequest):
-    domain_or_ip_target: str
     dcv_check_parameters: DcvCheckParameters
-
-# TODO use an annotated discriminated union

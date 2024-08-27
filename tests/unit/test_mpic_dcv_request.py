@@ -82,11 +82,11 @@ class TestMpicDcvRequest:
 
     def model_validate_json__should_throw_validation_error_given_missing_prefix_for_dns_validation(self):
         body = ValidRequestCreator.create_valid_dcv_check_request_body(DcvValidationMethod.DNS_GENERIC)
-        del body['dcv_check_parameters']['validation_details']['prefix']
+        del body['dcv_check_parameters']['validation_details']['challenge_prefix']
         json_body = json.dumps(body)
         with pytest.raises(pydantic.ValidationError) as validation_error:
             MpicDcvRequest.model_validate_json(json_body)
-        assert 'prefix' in str(validation_error.value)
+        assert 'challenge_prefix' in str(validation_error.value)
 
     def model_validate_json__should_throw_validation_error_given_missing_record_type_for_dns_validation(self):
         body = ValidRequestCreator.create_valid_dcv_check_request_body(DcvValidationMethod.DNS_GENERIC)
@@ -105,13 +105,13 @@ class TestMpicDcvRequest:
         assert 'record_type' in str(validation_error.value)
         assert 'invalid' in str(validation_error.value)
 
-    def model_validate_json__should_throw_validation_error_given_missing_path_for_http_validation(self):
+    def model_validate_json__should_throw_validation_error_given_missing_challenge_path_for_http_validation(self):
         body = ValidRequestCreator.create_valid_dcv_check_request_body(DcvValidationMethod.HTTP_GENERIC)
-        del body['dcv_check_parameters']['validation_details']['path']
+        del body['dcv_check_parameters']['validation_details']['challenge_path']
         json_body = json.dumps(body)
         with pytest.raises(pydantic.ValidationError) as validation_error:
             MpicDcvRequest.model_validate_json(json_body)
-        assert 'path' in str(validation_error.value)
+        assert 'challenge_path' in str(validation_error.value)
 
 
 if __name__ == '__main__':
