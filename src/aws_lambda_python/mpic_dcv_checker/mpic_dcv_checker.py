@@ -75,9 +75,9 @@ class MpicDcvChecker:
 
         print(f"Resolving {dns_record_type.name} record for {name_to_resolve}...")
         try:
-            resp = dns.resolver.resolve(name_to_resolve, dns_record_type)
+            response = dns.resolver.resolve(name_to_resolve, dns_record_type)
             record_data_as_text = []
-            for response_answer in resp.response.answer:
+            for response_answer in response.response.answer:
                 if response_answer.rdtype == dns_record_type:
                     for record_data in response_answer:
                         record_data_as_text.append(record_data.to_text()[1:-1])  # need to remove enclosing quotes
@@ -86,7 +86,7 @@ class MpicDcvChecker:
                 perspective=self.AWS_REGION,
                 check_passed=expected_dns_record_content in record_data_as_text,
                 check_timestamp_ns=time.time_ns(),
-                details=DcvCheckResponseDetails(dns_generic={'resolved_ip': '0.0.0.0'})  # FIXME get details
+                details=DcvCheckResponseDetails(dns_generic={})  # FIXME get details (or don't bother with this)
             )
             return {
                 'statusCode': 200,
@@ -98,7 +98,7 @@ class MpicDcvChecker:
                 perspective=self.AWS_REGION,
                 check_passed=False,
                 check_timestamp_ns=time.time_ns(),
-                errors=[ValidationError(error_type=str(e), error_message=e.msg)],
+                errors=[ValidationError(error_type=e.__class__.__name__, error_message=e.msg)],
                 details=DcvCheckResponseDetails()
             )
             return {

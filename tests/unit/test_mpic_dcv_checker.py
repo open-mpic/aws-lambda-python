@@ -145,6 +145,7 @@ class TestMpicDcvChecker:
         assert response['statusCode'] == 200
         dcv_check_response = DcvCheckResponse.model_validate(json.loads(response['body']))
         assert dcv_check_response.check_passed is True
+        assert dcv_check_response.perspective == 'us-east-4'
 
     def perform_http_validation__should_return_check_passed_false_with_details_given_request_token_file_not_found(self, set_env_variables, mocker):
         dcv_request = TestMpicDcvChecker.create_http_check_request()
@@ -164,14 +165,31 @@ class TestMpicDcvChecker:
         expected_domain = f"{dcv_details.dns_name_prefix}.{dcv_request.domain_or_ip_target}"
         test_dns_query_answer = TestMpicDcvChecker.create_dns_query_answer(dcv_request.domain_or_ip_target, dcv_details, mocker)
         mocker.patch('dns.resolver.resolve', side_effect=lambda domain_name, rdtype: (
-            test_dns_query_answer if domain_name == expected_domain else
-            (_ for _ in ()).throw(dns.resolver.NoAnswer)
+            test_dns_query_answer if domain_name == expected_domain else self.raise_(dns.resolver.NoAnswer)
         ))
         dcv_checker = MpicDcvChecker()
         response = dcv_checker.perform_dns_validation(dcv_request)
         assert response['statusCode'] == 200
         dcv_check_response = DcvCheckResponse.model_validate(json.loads(response['body']))
         assert dcv_check_response.check_passed is True
+        assert dcv_check_response.perspective == 'us-east-4'
+
+    def perform_dns_validation__should_return_check_passed_false_with_details_given_expected_dns_record_not_found(self, set_env_variables, mocker):
+        dcv_request = TestMpicDcvChecker.create_dns_check_request()
+        mocker.patch('dns.resolver.resolve', side_effect=lambda domain_name, rdtype: self.raise_(dns.resolver.NoAnswer))
+        dcv_checker = MpicDcvChecker()
+        response = dcv_checker.perform_dns_validation(dcv_request)
+        assert response['statusCode'] == 500
+        dcv_check_response = DcvCheckResponse.model_validate(json.loads(response['body']))
+        assert dcv_check_response.check_passed is False
+        assert dcv_check_response.errors[0].error_type == dns.resolver.NoAnswer.__name__
+        assert 'answer' in dcv_check_response.errors[0].error_message
+
+    def raise_(self, ex):
+        # noinspection PyUnusedLocal
+        def _raise(*args, **kwargs):
+            raise ex
+        return _raise()
 
 
 if __name__ == '__main__':

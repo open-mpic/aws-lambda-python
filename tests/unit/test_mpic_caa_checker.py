@@ -121,7 +121,7 @@ class TestMpicCaaChecker:
         # mock dns.resolver.resolve to return a valid response
         test_dns_query_answer = TestMpicCaaChecker.create_dns_query_answer('example.com', 'ca1.org', 'issue', mocker)
         mocker.patch('dns.resolver.resolve', side_effect=lambda domain_name, rdtype: (
-            test_dns_query_answer if domain_name.to_text() == 'example.com.' else exec('raise(dns.resolver.NoAnswer)')
+            test_dns_query_answer if domain_name.to_text() == 'example.com.' else self.raise_(dns.resolver.NoAnswer)
         ))
         caa_request = CaaCheckRequest(domain_or_ip_target='example.com', certificate_type=None, caa_domains=None)
         caa_checker = MpicCaaChecker()
@@ -132,8 +132,7 @@ class TestMpicCaaChecker:
     def find_caa_record_and_domain__should_return_rrset_and_domain_given_extra_subdomain(self, set_env_variables, mocker):
         test_dns_query_answer = TestMpicCaaChecker.create_dns_query_answer('example.com', 'ca1.org', 'issue', mocker)
         mocker.patch('dns.resolver.resolve', side_effect=lambda domain_name, rdtype: (
-            test_dns_query_answer if domain_name.to_text() == 'example.com.' else
-            (_ for _ in ()).throw(dns.resolver.NoAnswer)
+            test_dns_query_answer if domain_name.to_text() == 'example.com.' else self.raise_(dns.resolver.NoAnswer)
         ))
         caa_request = CaaCheckRequest(domain_or_ip_target='www.example.com', certificate_type=None, caa_domains=None)
         caa_checker = MpicCaaChecker()
@@ -144,8 +143,7 @@ class TestMpicCaaChecker:
     def find_caa_record_and_domain__should_return_none_and_root_domain_given_no_caa_record_for_domain(self, set_env_variables, mocker):
         test_dns_query_answer = TestMpicCaaChecker.create_dns_query_answer('example.com', 'ca1.org', 'issue', mocker)
         mocker.patch('dns.resolver.resolve', side_effect=lambda domain_name, rdtype: (
-            test_dns_query_answer if domain_name.to_text() == 'example.org.' else
-            (_ for _ in ()).throw(dns.resolver.NoAnswer)
+            test_dns_query_answer if domain_name.to_text() == 'example.org.' else self.raise_(dns.resolver.NoAnswer)
         ))
         caa_request = CaaCheckRequest(domain_or_ip_target='example.com', certificate_type=None, caa_domains=None)
         caa_checker = MpicCaaChecker()
@@ -228,6 +226,11 @@ class TestMpicCaaChecker:
         result = MpicCaaChecker.is_valid_for_issuance(caa_domains, is_wc_domain, test_rrset)
         assert result is False
 
+    def raise_(self, ex):
+        # noinspection PyUnusedLocal
+        def _raise(*args, **kwargs):
+            raise ex
+        return _raise()
 
 if __name__ == '__main__':
     pytest.main()

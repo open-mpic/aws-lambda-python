@@ -25,9 +25,9 @@ class CaaCheckResponse(BaseCheckResponse):
 
 
 class DcvCheckResponseDetails(BaseModel):
-    http_generic: dict | None = None  # rename? example field 'resolved_ip'
+    http_generic: dict | None = None  # rename?
     dns_generic: dict | None = None  # rename?
-    # tls-using-alpn?  # TODO add tls-using-alpn?
+    # FIXME probably need to define details instead of just a dict
 
 
 class DcvCheckResponse(BaseCheckResponse):
