@@ -24,7 +24,7 @@ class MpicResponseBuilder:
                 actual_orchestration_parameters=actual_orchestration_parameters,
                 is_valid=valid_by_check_type[CheckType.DCV],
                 perspectives=perspective_responses_per_check_type[CheckType.DCV],
-                dcv_parameters=request.dcv_check_parameters
+                dcv_check_parameters=request.dcv_check_parameters
             )
         elif type(request) is MpicDcvWithCaaRequest:
             response_body = MpicDcvWithCaaResponse(
@@ -35,8 +35,8 @@ class MpicResponseBuilder:
                 is_valid=valid_by_check_type[CheckType.DCV] and valid_by_check_type[CheckType.CAA],
                 perspectives_dcv=perspective_responses_per_check_type[CheckType.DCV],
                 perspectives_caa=perspective_responses_per_check_type[CheckType.CAA],
-                dcv_parameters=request.dcv_check_parameters,
-                caa_parameters=request.caa_check_parameters
+                dcv_check_parameters=request.dcv_check_parameters,
+                caa_check_parameters=request.caa_check_parameters
             )
         else:
             response_body = MpicCaaResponse(
@@ -44,7 +44,7 @@ class MpicResponseBuilder:
                 actual_orchestration_parameters=actual_orchestration_parameters,
                 is_valid=valid_by_check_type[CheckType.CAA],
                 perspectives=perspective_responses_per_check_type[CheckType.CAA],
-                caa_parameters=request.caa_check_parameters
+                caa_check_parameters=request.caa_check_parameters
             )
 
         return {

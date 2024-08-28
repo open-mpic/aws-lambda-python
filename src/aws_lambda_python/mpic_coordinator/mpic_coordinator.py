@@ -1,6 +1,5 @@
 import json
 import traceback
-from typing import Final
 import boto3
 import time
 import concurrent.futures
@@ -81,21 +80,22 @@ class MpicCoordinator:
                                     'validation_issues': [vars(issue) for issue in validation_issues]})
             }
 
-        system_params = mpic_request.orchestration_parameters
+        orchestration_parameters = mpic_request.orchestration_parameters
 
         # Determine the perspectives and perspective count to use for this request.
+        # TODO revisit this when diagnostic mode (allowing 'perspectives') is implemented
         perspective_count = self.default_perspective_count
-        if system_params.perspectives is not None:
-            perspectives_to_use = system_params.perspectives
+        if orchestration_parameters.perspectives is not None:
+            perspectives_to_use = orchestration_parameters.perspectives
             perspective_count = len(perspectives_to_use)
         else:
-            if system_params.perspective_count is not None:
-                perspective_count = system_params.perspective_count
+            if orchestration_parameters.perspective_count is not None:
+                perspective_count = orchestration_parameters.perspective_count
             perspectives_to_use = self.select_random_perspectives_across_rirs(self.known_perspectives,
                                                                               perspective_count,
-                                                                              system_params.domain_or_ip_target)
+                                                                              mpic_request.domain_or_ip_target)
 
-        quorum_count = self.determine_required_quorum_count(system_params, perspective_count)
+        quorum_count = self.determine_required_quorum_count(orchestration_parameters, perspective_count)
 
         # Collect async calls to invoke for each perspective.
         async_calls_to_issue = self.collect_async_calls_to_issue(request_path, mpic_request, perspectives_to_use)
@@ -164,7 +164,7 @@ class MpicCoordinator:
 
     # Configures the async lambda function calls to issue for the check request.
     def collect_async_calls_to_issue(self, request_path, mpic_request, perspectives_to_use) -> list[RemoteCheckCallConfiguration]:
-        domain_or_ip_target = mpic_request.orchestration_parameters.domain_or_ip_target
+        domain_or_ip_target = mpic_request.domain_or_ip_target
         async_calls_to_issue = []
 
         if request_path in (RequestPath.CAA_CHECK, RequestPath.DCV_WITH_CAA_CHECK):

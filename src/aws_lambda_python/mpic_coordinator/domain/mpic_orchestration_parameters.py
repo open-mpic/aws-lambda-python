@@ -8,7 +8,6 @@ class BaseMpicOrchestrationParameters(BaseModel, ABC):
 
 
 class MpicRequestOrchestrationParameters(BaseMpicOrchestrationParameters):
-    domain_or_ip_target: str
     max_attempts: int | None = None
     perspectives: list[str] | None = None  # for diagnostic purposes
 

@@ -98,8 +98,8 @@ class TestMpicResponseBuilder:
         response = MpicResponseBuilder.build_response(request, 6, 5, persp_responses_per_check_type,
                                                       valid_by_check_type)
         response_body = MpicDcvResponse.model_validate(json.loads(response['body']))
-        assert response_body.dcv_parameters.validation_details.expected_challenge == request.dcv_check_parameters.validation_details.expected_challenge
-        assert response_body.dcv_parameters.validation_method == request.dcv_check_parameters.validation_method
+        assert response_body.dcv_check_parameters.validation_details.challenge_value == request.dcv_check_parameters.validation_details.challenge_value
+        assert response_body.dcv_check_parameters.validation_method == request.dcv_check_parameters.validation_method
 
     def build_response__should_set_is_valid_to_false_when_either_check_type_is_invalid(self):
         request = ValidRequestCreator.create_valid_dcv_with_caa_check_request()

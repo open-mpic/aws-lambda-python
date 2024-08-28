@@ -11,11 +11,14 @@ class CaaCheckParameters(BaseModel):
 
 
 class DcvValidationDetails(BaseModel):
-    challenge_prefix: str | None = None
-    record_type: DnsRecordType | None = None
-    challenge_path: str | None = None
-    expected_challenge: str
-    # TODO may need a challenge_suffix as well
+    dns_name_prefix: str | None = None
+    dns_record_type: DnsRecordType | None = None
+    http_token_path: str | None = None
+    challenge_value: str
+    # DNS records have 5 fields: name, ttl, class, type, rdata (which can be multipart itself)
+    # A or AAAA: name=domain_name type=A <rdata:address> (ip address)
+    # CNAME: name=domain_name_x type=CNAME <rdata:domain_name>
+    # TXT: name=domain_name type=TXT <rdata:text> (freeform text)
 
 
 class DcvCheckParameters(BaseModel):

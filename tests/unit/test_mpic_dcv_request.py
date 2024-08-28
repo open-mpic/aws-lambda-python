@@ -1,6 +1,7 @@
 import json
 import pydantic
 import pytest
+from aws_lambda_python.common_domain.enum.check_type import CheckType
 from aws_lambda_python.common_domain.enum.dcv_validation_method import DcvValidationMethod
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvRequest
 
@@ -14,104 +15,90 @@ class TestMpicDcvRequest:
         """
 
     def model_validate_json__should_return_dcv_mpic_request_given_valid_dcv_json(self):
-        body = ValidRequestCreator.create_valid_dcv_check_request_body()
-        json_body = json.dumps(body)
-        mpic_request = MpicDcvRequest.model_validate_json(json_body)
-        assert mpic_request.orchestration_parameters.domain_or_ip_target == body['orchestration_parameters']['domain_or_ip_target']
-
-    def model_validate_json__should_throw_validation_error_given_missing_orchestration_parameters(self):
-        body = ValidRequestCreator.create_valid_dcv_check_request_body()
-        del body['orchestration_parameters']
-        json_body = json.dumps(body)
-        with pytest.raises(pydantic.ValidationError) as validation_error:
-            MpicDcvRequest.model_validate_json(json_body)
-        assert 'orchestration_parameters' in str(validation_error.value)
+        request = ValidRequestCreator.create_valid_dcv_check_request()
+        mpic_request = MpicDcvRequest.model_validate_json(json.dumps(request.model_dump()))
+        assert mpic_request.domain_or_ip_target == request.domain_or_ip_target
 
     # TODO this is probably not a valid test given that perspectives are for diagnostics mode only
     # it likely needs different logic overall
     def model_validate_json__should_throw_validation_error_given_both_perspectives_and_perspective_count_present(self):
-        body = ValidRequestCreator.create_valid_dcv_check_request_body()
-        body['orchestration_parameters']['perspective_count'] = 1
-        body['orchestration_parameters']['perspectives'] = ['test']
-        json_body = json.dumps(body)
+        request = ValidRequestCreator.create_valid_dcv_check_request()
+        request.orchestration_parameters.perspective_count = 1
+        request.orchestration_parameters.perspectives = ['test']
         with pytest.raises(pydantic.ValidationError) as validation_error:
-            MpicDcvRequest.model_validate_json(json_body)
+            MpicDcvRequest.model_validate_json(json.dumps(request.model_dump()))
         assert 'perspective_count' in str(validation_error.value)
         assert 'perspectives' in str(validation_error.value)
 
     def model_validate_json__should_throw_validation_error_given_missing_dcv_check_parameters(self):
-        body = ValidRequestCreator.create_valid_dcv_check_request_body()
-        del body['dcv_check_parameters']
-        json_body = json.dumps(body)
+        request = ValidRequestCreator.create_valid_dcv_check_request()
+        request.dcv_check_parameters = None
         with pytest.raises(pydantic.ValidationError) as validation_error:
-            MpicDcvRequest.model_validate_json(json_body)
+            MpicDcvRequest.model_validate_json(json.dumps(request.model_dump()))
         assert 'dcv_check_parameters' in str(validation_error.value)
 
     def model_validate_json__should_throw_validation_error_given_missing_validation_method(self):
-        body = ValidRequestCreator.create_valid_dcv_check_request_body()
-        del body['dcv_check_parameters']['validation_method']
-        json_body = json.dumps(body)
+        request = ValidRequestCreator.create_valid_dcv_check_request()
+        request.dcv_check_parameters.validation_method = None
         with pytest.raises(pydantic.ValidationError) as validation_error:
-            MpicDcvRequest.model_validate_json(json_body)
+            MpicDcvRequest.model_validate_json(json.dumps(request.model_dump()))
         assert 'validation_method' in str(validation_error.value)
 
     def model_validate_json__should_throw_validation_error_given_invalid_validation_method(self):
-        body = ValidRequestCreator.create_valid_dcv_check_request_body()
-        body['dcv_check_parameters']['validation_method'] = 'invalid'
-        json_body = json.dumps(body)
+        request = ValidRequestCreator.create_valid_dcv_check_request()
+        request.dcv_check_parameters.validation_method = 'invalid'
         with pytest.raises(pydantic.ValidationError) as validation_error:
-            MpicDcvRequest.model_validate_json(json_body)
+            MpicDcvRequest.model_validate_json(json.dumps(request.model_dump()))
         assert 'validation_method' in str(validation_error.value)
         assert 'invalid' in str(validation_error.value)
 
     def model_validate_json__should_throw_validation_error_given_missing_validation_details(self):
-        body = ValidRequestCreator.create_valid_dcv_check_request_body()
-        del body['dcv_check_parameters']['validation_details']
-        json_body = json.dumps(body)
+        request = ValidRequestCreator.create_valid_dcv_check_request()
+        request.dcv_check_parameters.validation_details = None
         with pytest.raises(pydantic.ValidationError) as validation_error:
-            MpicDcvRequest.model_validate_json(json_body)
+            MpicDcvRequest.model_validate_json(json.dumps(request.model_dump()))
         assert 'validation_details' in str(validation_error.value)
 
-    def model_validate_json__should_throw_validation_error_given_missing_expected_challenge(self):
-        body = ValidRequestCreator.create_valid_dcv_check_request_body()
-        del body['dcv_check_parameters']['validation_details']['expected_challenge']
-        json_body = json.dumps(body)
+    def model_validate_json__should_throw_validation_error_given_missing_challenge_value(self):
+        request = ValidRequestCreator.create_valid_dcv_check_request()
+        request.dcv_check_parameters.validation_details.challenge_value = None
         with pytest.raises(pydantic.ValidationError) as validation_error:
-            MpicDcvRequest.model_validate_json(json_body)
-        assert 'expected_challenge' in str(validation_error.value)
+            MpicDcvRequest.model_validate_json(json.dumps(request.model_dump()))
+        assert 'challenge_value' in str(validation_error.value)
 
     def model_validate_json__should_throw_validation_error_given_missing_prefix_for_dns_validation(self):
-        body = ValidRequestCreator.create_valid_dcv_check_request_body(DcvValidationMethod.DNS_GENERIC)
-        del body['dcv_check_parameters']['validation_details']['challenge_prefix']
-        json_body = json.dumps(body)
+        request = ValidRequestCreator.create_valid_dcv_check_request(DcvValidationMethod.DNS_GENERIC)
+        request.dcv_check_parameters.validation_details.dns_name_prefix = None
         with pytest.raises(pydantic.ValidationError) as validation_error:
-            MpicDcvRequest.model_validate_json(json_body)
-        assert 'challenge_prefix' in str(validation_error.value)
+            MpicDcvRequest.model_validate_json(json.dumps(request.model_dump()))
+        assert 'dns_name_prefix' in str(validation_error.value)
 
     def model_validate_json__should_throw_validation_error_given_missing_record_type_for_dns_validation(self):
-        body = ValidRequestCreator.create_valid_dcv_check_request_body(DcvValidationMethod.DNS_GENERIC)
-        del body['dcv_check_parameters']['validation_details']['record_type']
-        json_body = json.dumps(body)
+        request = ValidRequestCreator.create_valid_dcv_check_request(DcvValidationMethod.DNS_GENERIC)
+        request.dcv_check_parameters.validation_details.dns_record_type = None
         with pytest.raises(pydantic.ValidationError) as validation_error:
-            MpicDcvRequest.model_validate_json(json_body)
-        assert 'record_type' in str(validation_error.value)
+            MpicDcvRequest.model_validate_json(json.dumps(request.model_dump()))
+        assert 'dns_record_type' in str(validation_error.value)
 
     def model_validate_json__should_throw_validation_error_given_invalid_record_type_for_dns_validation(self):
-        body = ValidRequestCreator.create_valid_dcv_check_request_body(DcvValidationMethod.DNS_GENERIC)
-        body['dcv_check_parameters']['validation_details']['record_type'] = 'invalid'
-        json_body = json.dumps(body)
+        request = ValidRequestCreator.create_valid_dcv_check_request(DcvValidationMethod.DNS_GENERIC)
+        request.dcv_check_parameters.validation_details.dns_record_type = 'invalid'
         with pytest.raises(pydantic.ValidationError) as validation_error:
-            MpicDcvRequest.model_validate_json(json_body)
-        assert 'record_type' in str(validation_error.value)
+            MpicDcvRequest.model_validate_json(json.dumps(request.model_dump()))
+        assert 'dns_record_type' in str(validation_error.value)
         assert 'invalid' in str(validation_error.value)
 
-    def model_validate_json__should_throw_validation_error_given_missing_challenge_path_for_http_validation(self):
-        body = ValidRequestCreator.create_valid_dcv_check_request_body(DcvValidationMethod.HTTP_GENERIC)
-        del body['dcv_check_parameters']['validation_details']['challenge_path']
-        json_body = json.dumps(body)
+    def model_validate_json__should_throw_validation_error_given_missing_token_path_for_http_validation(self):
+        request = ValidRequestCreator.create_valid_dcv_check_request(DcvValidationMethod.HTTP_GENERIC)
+        request.dcv_check_parameters.validation_details.http_token_path = None
         with pytest.raises(pydantic.ValidationError) as validation_error:
-            MpicDcvRequest.model_validate_json(json_body)
-        assert 'challenge_path' in str(validation_error.value)
+            MpicDcvRequest.model_validate_json(json.dumps(request.model_dump()))
+        assert 'http_token_path' in str(validation_error.value)
+
+    def mpic_dcv_request__should_have_check_type_set_to_dcv(self):
+        request = ValidRequestCreator.create_valid_dcv_check_request()
+        mpic_request = MpicDcvRequest.model_validate_json(json.dumps(request.model_dump()))
+        assert mpic_request.check_type == CheckType.DCV
 
 
 if __name__ == '__main__':

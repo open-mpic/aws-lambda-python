@@ -29,8 +29,8 @@ class TestDeployedMpicApi:
 
     def api_should_return_200_given_valid_caa_validation(self, api_client):
         request = MpicCaaRequest(
-            orchestration_parameters=MpicRequestOrchestrationParameters(domain_or_ip_target='test', perspective_count=3,
-                                                                        quorum_count=2),
+            domain_or_ip_target='example.com',
+            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
             caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['mozilla.com'])
         )
 
@@ -49,11 +49,11 @@ class TestDeployedMpicApi:
     @pytest.mark.skip(reason='Not implemented yet')
     def api_should_return_200_given_valid_dcv_validation(self, api_client):
         request = MpicDcvRequest(
-            orchestration_parameters=MpicRequestOrchestrationParameters(domain_or_ip_target='test', perspective_count=3,
-                                                                        quorum_count=2),
+            domain_or_ip_target='example.com',
+            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
             dcv_check_parameters=DcvCheckParameters(
                 validation_method=DcvValidationMethod.HTTP_GENERIC,
-                validation_details=DcvValidationDetails(prefix=None, record_type=None, path='/',
+                validation_details=DcvValidationDetails(dns_name_prefix=None, dns_record_type=None, http_token_path='/',
                                                         expected_challenge='test')
             )
         )
@@ -66,8 +66,8 @@ class TestDeployedMpicApi:
 
     def api_should_return_400_given_invalid_parameters_in_request(self, api_client):
         request = MpicCaaRequest(
-            orchestration_parameters=MpicRequestOrchestrationParameters(domain_or_ip_target='test', perspective_count=3,
-                                                                        quorum_count=5),  # invalid quorum count
+            domain_or_ip_target='example.com',
+            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=5),  # invalid quorum count
             caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['mozilla.com'])
         )
 

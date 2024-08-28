@@ -13,31 +13,18 @@ from aws_lambda_python.mpic_coordinator.domain.mpic_orchestration_parameters imp
 
 class ValidRequestCreator:
     @staticmethod
-    def create_valid_dcv_check_request_body(validation_method=DcvValidationMethod.DNS_GENERIC):
-        request = ValidRequestCreator.create_valid_dcv_check_request(validation_method)
-        return request.model_dump()
-
-    @staticmethod
-    def create_valid_caa_check_request_body():
-        request = ValidRequestCreator.create_valid_caa_check_request()
-        return request.model_dump()
-
-    @staticmethod
-    def create_valid_dcv_with_caa_check_request_body(validation_method=DcvValidationMethod.DNS_GENERIC):
-        request = ValidRequestCreator.create_valid_dcv_with_caa_check_request(validation_method)
-        return request.model_dump()
-
-    @staticmethod
     def create_valid_caa_check_request() -> MpicCaaRequest:
         return MpicCaaRequest(
-            orchestration_parameters=MpicRequestOrchestrationParameters(domain_or_ip_target='test', perspective_count=6, quorum_count=4),
+            domain_or_ip_target='test',
+            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=6, quorum_count=4),
             caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER)
         )
 
     @staticmethod
     def create_valid_dcv_check_request(validation_method=DcvValidationMethod.DNS_GENERIC) -> MpicDcvRequest:
         return MpicDcvRequest(
-            orchestration_parameters=MpicRequestOrchestrationParameters(domain_or_ip_target='test', perspective_count=6, quorum_count=4),
+            domain_or_ip_target='test',
+            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=6, quorum_count=4),
             dcv_check_parameters=DcvCheckParameters(
                 validation_method=validation_method,
                 validation_details=ValidRequestCreator.create_validation_details(validation_method)
@@ -47,7 +34,8 @@ class ValidRequestCreator:
     @staticmethod
     def create_valid_dcv_with_caa_check_request(validation_method=DcvValidationMethod.DNS_GENERIC) -> MpicDcvWithCaaRequest:
         return MpicDcvWithCaaRequest(
-            orchestration_parameters=MpicRequestOrchestrationParameters(domain_or_ip_target='test', perspective_count=6, quorum_count=4),
+            domain_or_ip_target='test',
+            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=6, quorum_count=4),
             caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER),
             dcv_check_parameters=DcvCheckParameters(
                 validation_method=validation_method,
@@ -70,9 +58,9 @@ class ValidRequestCreator:
         validation_details = {}
         match validation_method:
             case DcvValidationMethod.DNS_GENERIC:
-                validation_details = DcvValidationDetails(challenge_prefix='test', record_type=DnsRecordType.A, expected_challenge='test')
+                validation_details = DcvValidationDetails(dns_name_prefix='test', dns_record_type=DnsRecordType.A, challenge_value='test')
             case DcvValidationMethod.HTTP_GENERIC:
-                validation_details = DcvValidationDetails(challenge_path='http://example.com', expected_challenge='test')  # noqa E501 (http)
+                validation_details = DcvValidationDetails(http_token_path='http://example.com', challenge_value='test')  # noqa E501 (http)
             case DcvValidationMethod.TLS_USING_ALPN:
-                validation_details = DcvValidationDetails(expected_challenge='test')
+                validation_details = DcvValidationDetails(challenge_value='test')
         return validation_details

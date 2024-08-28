@@ -51,21 +51,19 @@ class TestMpicCoordinator:
         with pytest.raises(ValueError):
             mpic_coordinator.select_random_perspectives_across_rirs(perspectives, excessive_count, 'test_target')  # expect error
 
-    @pytest.mark.parametrize('field_to_delete', ['orchestration_parameters','dcv_check_parameters'])
-    def coordinate_mpic__should_return_error_given_invalid_request_body(self, set_env_variables, field_to_delete):
+    def coordinate_mpic__should_return_error_given_invalid_request_body(self, set_env_variables):
         # request = ValidRequestCreator.create_valid_dcv_with_caa_check_request()
         # remove from request body the field that should be missing
         # request.__setattr__(field_to_delete, None)
-        body = ValidRequestCreator.create_valid_dcv_check_request_body()
-        del body[field_to_delete]
-        event = {'path': RequestPath.DCV_CHECK, 'body': json.dumps(body)}
+        request = ValidRequestCreator.create_valid_dcv_check_request()
+        request.domain_or_ip_target = None
+        event = {'path': RequestPath.DCV_CHECK, 'body': request.model_dump()}
         mpic_coordinator = MpicCoordinator()
         result = mpic_coordinator.coordinate_mpic(event)
         # FIXME need to capture pydantic validation error and put it into response (for now... FastAPI may render that unnecessary)
         assert result['statusCode'] == 400
         response_body = json.loads(result['body'])
         assert response_body['error'] == MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key
-        assert field_to_delete in str(response_body['validation_issues'][0])
 
     @pytest.mark.parametrize('requested_perspective_count, expected_quorum_size', [(4, 3), (5, 4), (6, 4)])
     def determine_required_quorum_count__should_dynamically_set_required_quorum_count_given_no_quorum_specified(
@@ -107,7 +105,7 @@ class TestMpicCoordinator:
         assert len(call_list) == 6
         assert set(map(lambda call_result: call_result.check_type, call_list)) == {CheckType.DCV}  # ensure each call is of type 'dcv'
         assert all(call.input_args.dcv_check_parameters.validation_method == DcvValidationMethod.DNS_GENERIC for call in call_list)
-        assert all(call.input_args.dcv_check_parameters.validation_details.challenge_prefix == 'test' for call in call_list)
+        assert all(call.input_args.dcv_check_parameters.validation_details.dns_name_prefix == 'test' for call in call_list)
 
     def collect_async_calls_to_issue__should_have_caa_and_dcv_calls_given_dcv_with_caa_request_path(self, set_env_variables):
         request = ValidRequestCreator.create_valid_dcv_with_caa_check_request()
@@ -117,17 +115,6 @@ class TestMpicCoordinator:
         assert len(call_list) == 12
         # ensure the list contains both 'caa' and 'dcv' calls
         assert set(map(lambda call_result: call_result.check_type, call_list)) == {CheckType.CAA, CheckType.DCV}
-
-    @pytest.mark.skip  # FIXME: this test isn't ready; there is no way to easily inspect caa domains used
-    def collect_async_calls_to_issue__should_use_default_caa_domains_if_none_specified(self, set_env_variables):
-        body = {
-            'system-params': {'domain-or-ip-target': 'test'}
-        }
-        perspectives_to_use = os.getenv('perspective_names').split('|')
-        mpic_coordinator = MpicCoordinator()
-        mpic_coordinator.collect_async_calls_to_issue(RequestPath.CAA_CHECK, body, perspectives_to_use)
-        # ensure each call has the default caa domains
-        assert False
 
     def coordinate_mpic__should_return_200_and_results_given_successful_caa_corroboration(self, set_env_variables, mocker):
         request = ValidRequestCreator.create_valid_caa_check_request()

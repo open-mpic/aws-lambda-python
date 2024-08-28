@@ -20,17 +20,19 @@ class BaseMpicResponse(BaseModel, ABC):
 class MpicCaaResponse(BaseMpicResponse):
     check_type: Literal[CheckType.CAA] = CheckType.CAA
     perspectives: list[CaaCheckResponse] | None = None  # not set in less verbose mode
-    caa_parameters: CaaCheckParameters | None = None  # not set in less verbose mode
+    caa_check_parameters: CaaCheckParameters | None = None  # not set in less verbose mode
 
 
 class MpicDcvResponse(BaseMpicResponse):
     check_type: Literal[CheckType.DCV] = CheckType.DCV
     perspectives: list[DcvCheckResponse] | None = None  # not set in less verbose mode
-    dcv_parameters: DcvCheckParameters | None = None
+    dcv_check_parameters: DcvCheckParameters | None = None
 
 
 class MpicDcvWithCaaResponse(BaseMpicResponse):
     check_type: Literal[CheckType.DCV_WITH_CAA] = CheckType.DCV_WITH_CAA
+    caa_check_parameters: CaaCheckParameters | None = None
+    dcv_check_parameters: DcvCheckParameters | None = None
     perspectives_dcv: list[DcvCheckResponse] = None  # TODO define a DcvCheckResponse for the project
     perspectives_caa: list[CaaCheckResponse] = None
     is_valid_dcv: bool | None = False
