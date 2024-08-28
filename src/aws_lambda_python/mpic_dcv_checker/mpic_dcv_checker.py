@@ -45,14 +45,14 @@ class MpicDcvChecker:
             dcv_check_response = DcvCheckResponse(
                 perspective=self.AWS_REGION,
                 check_passed=(result == expected_response_content),
-                check_timestamp_ns=time.time_ns(),
-                details=DcvCheckResponseDetails(http_generic={'resolved_ip': '0.0.0.0'})  # FIXME get details
+                timestamp_ns=time.time_ns(),
+                details=DcvCheckResponseDetails()  # FIXME get details
             )
         else:
             dcv_check_response = DcvCheckResponse(
                 perspective=self.AWS_REGION,
                 check_passed=False,
-                check_timestamp_ns=time.time_ns(),
+                timestamp_ns=time.time_ns(),
                 errors=[ValidationError(error_type=str(response.status_code), error_message=response.reason)],
                 details=DcvCheckResponseDetails()
             )
@@ -90,8 +90,8 @@ class MpicDcvChecker:
             dcv_check_response = DcvCheckResponse(
                 perspective=self.AWS_REGION,
                 check_passed=expected_dns_record_content in records_as_strings,
-                check_timestamp_ns=time.time_ns(),
-                details=DcvCheckResponseDetails(dns_generic={})  # FIXME get details (or don't bother with this)
+                timestamp_ns=time.time_ns(),
+                details=DcvCheckResponseDetails()  # FIXME get details (or don't bother with this)
             )
             return {
                 'statusCode': 200,
@@ -102,7 +102,7 @@ class MpicDcvChecker:
             dcv_check_response = DcvCheckResponse(
                 perspective=self.AWS_REGION,
                 check_passed=False,
-                check_timestamp_ns=time.time_ns(),
+                timestamp_ns=time.time_ns(),
                 errors=[ValidationError(error_type=e.__class__.__name__, error_message=e.msg)],
                 details=DcvCheckResponseDetails()
             )
