@@ -75,16 +75,21 @@ class MpicDcvChecker:
 
         print(f"Resolving {dns_record_type.name} record for {name_to_resolve}...")
         try:
-            response = dns.resolver.resolve(name_to_resolve, dns_record_type)
-            record_data_as_text = []
-            for response_answer in response.response.answer:
+            lookup = dns.resolver.resolve(name_to_resolve, dns_record_type)
+            records_as_strings = []
+            for response_answer in lookup.response.answer:
                 if response_answer.rdtype == dns_record_type:
                     for record_data in response_answer:
-                        record_data_as_text.append(record_data.to_text()[1:-1])  # need to remove enclosing quotes
+                        # only need to remove enclosing quotes if they're there, e.g., for a TXT record
+                        record_data_as_string = record_data.to_text()
+                        if record_data_as_string[0] == '"' and record_data_as_string[-1] == '"':
+                            records_as_strings.append(record_data_as_string[1:-1])
+                        else:
+                            records_as_strings.append(record_data_as_string)
 
             dcv_check_response = DcvCheckResponse(
                 perspective=self.AWS_REGION,
-                check_passed=expected_dns_record_content in record_data_as_text,
+                check_passed=expected_dns_record_content in records_as_strings,
                 check_timestamp_ns=time.time_ns(),
                 details=DcvCheckResponseDetails(dns_generic={})  # FIXME get details (or don't bother with this)
             )

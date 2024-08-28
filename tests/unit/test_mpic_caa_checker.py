@@ -4,7 +4,7 @@ import dns
 import pytest
 from aws_lambda_python.common_domain.check_parameters import CaaCheckParameters
 from aws_lambda_python.common_domain.check_request import CaaCheckRequest
-from aws_lambda_python.common_domain.check_response import CaaCheckResponse, CaaCheckResponseDetails, AnnotatedCheckResponse
+from aws_lambda_python.common_domain.check_response import CaaCheckResponse, CaaCheckResponseDetails
 from aws_lambda_python.common_domain.enum.certificate_type import CertificateType
 from aws_lambda_python.mpic_caa_checker.mpic_caa_checker import MpicCaaChecker
 from dns.flags import Flag
