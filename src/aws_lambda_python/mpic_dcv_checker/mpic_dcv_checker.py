@@ -84,7 +84,7 @@ class MpicDcvChecker:
 
             dcv_check_response = DcvCheckResponse(
                 perspective=self.AWS_REGION,
-                check_passed=any([_ == expected_dns_record_content for _ in record_data_as_text]),
+                check_passed=expected_dns_record_content in record_data_as_text,
                 check_timestamp_ns=time.time_ns(),
                 details=DcvCheckResponseDetails(dns_generic={'resolved_ip': '0.0.0.0'})  # FIXME get details
             )

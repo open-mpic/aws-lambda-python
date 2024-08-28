@@ -9,6 +9,7 @@ from aws_lambda_python.common_domain.enum.certificate_type import CertificateTyp
 from aws_lambda_python.common_domain.enum.dcv_validation_method import DcvValidationMethod
 from aws_lambda_python.common_domain.enum.dns_record_type import DnsRecordType
 from aws_lambda_python.mpic_dcv_checker.mpic_dcv_checker import MpicDcvChecker
+from dns.flags import Flag
 from dns.rdtypes.ANY.CNAME import CNAME
 from dns.rdtypes.ANY.TXT import TXT
 from dns.rrset import RRset
@@ -38,20 +39,25 @@ class TestMpicDcvChecker:
         return rrset
 
     @staticmethod
-    def create_dns_query_answer(domain, dns_name_prefix, record_type: DnsRecordType, challenge_value, mocker):
+    def create_dns_query_answer(domain, dcv_validation_details: DcvValidationDetails, mocker):
+        challenge_value = dcv_validation_details.challenge_value
+        dns_name_prefix = dcv_validation_details.dns_name_prefix
+        record_type = dcv_validation_details.dns_record_type
         dns_record_1 = None
         if record_type == DnsRecordType.CNAME:
             dns_record_1 = CNAME(dns.rdataclass.IN, dns.rdatatype.CNAME, target_name=dns.name.from_text(f"{challenge_value}.ca1.com"))
         elif record_type == DnsRecordType.TXT:
             dns_record_1 = TXT(dns.rdataclass.IN, dns.rdatatype.TXT, strings=[challenge_value.encode('utf-8')])
         good_response = dns.message.QueryMessage()
+        good_response.flags = Flag.QR
         rrset_domain = f"{dns_name_prefix}.{domain}"
         response_question_rrset = RRset(name=dns.name.from_text(rrset_domain), rdclass=dns.rdataclass.IN, rdtype=dns.rdatatype.from_text(record_type))
         good_response.question = [response_question_rrset]
         response_answer_rrset = RRset(name=dns.name.from_text(rrset_domain), rdclass=dns.rdataclass.IN, rdtype=dns.rdatatype.from_text(record_type))
         response_answer_rrset.add(dns_record_1)
+        good_response.answer = [response_answer_rrset]  # caa checker doesn't look here, but dcv checker does
         mocker.patch('dns.message.Message.find_rrset', return_value=response_answer_rrset)  # needed for Answer constructor to work
-        return dns.resolver.Answer(qname=dns.name.from_text(domain), rdtype=dns.rdatatype.TXT, rdclass=dns.rdataclass.IN, response=good_response)
+        return dns.resolver.Answer(qname=dns.name.from_text(rrset_domain), rdtype=dns.rdatatype.from_text(record_type), rdclass=dns.rdataclass.IN, response=good_response)
 
     @staticmethod
     def create_http_check_request():
@@ -151,15 +157,14 @@ class TestMpicDcvChecker:
         assert dcv_check_response.errors[0].error_type == '404'
         assert dcv_check_response.errors[0].error_message == 'Not Found'
 
-    @pytest.mark.skip(reason='WIP')
+    # @pytest.mark.skip(reason='WIP')
     def perform_dns_validation__should_return_check_passed_true_with_details_given_expected_dns_record_found(self, set_env_variables, mocker):
         dcv_request = TestMpicDcvChecker.create_dns_check_request()
         dcv_details = dcv_request.dcv_check_parameters.validation_details
         expected_domain = f"{dcv_details.dns_name_prefix}.{dcv_request.domain_or_ip_target}"
+        test_dns_query_answer = TestMpicDcvChecker.create_dns_query_answer(dcv_request.domain_or_ip_target, dcv_details, mocker)
         mocker.patch('dns.resolver.resolve', side_effect=lambda domain_name, rdtype: (
-            TestMpicDcvChecker.create_dns_query_answer(dcv_request.domain_or_ip_target, dcv_details.dns_name_prefix,
-                                                       DnsRecordType.TXT, dcv_details.challenge_value, mocker
-                                                       ) if domain_name.to_text() == expected_domain else
+            test_dns_query_answer if domain_name == expected_domain else
             (_ for _ in ()).throw(dns.resolver.NoAnswer)
         ))
         dcv_checker = MpicDcvChecker()
