@@ -81,7 +81,7 @@ def main(raw_args=None):
         main_tf_string = main_tf_string.replace("{{perspective-names-list}}", f"\"{perspective_names_list}\"")
         
         # Generate the ARNs list for validators. Note that this is not a list of actual ARN values. It is just a list of ARN names that will be substituted by Open Tofu.
-        arn_validator_list = "|".join([f"${{aws_lambda_function.lambda_validator_{region}.arn}}" for region in regions])
+        arn_validator_list = "|".join([f"${{aws_lambda_function.mpic_dcv_checker_lambda_{region}.arn}}" for region in regions])
         main_tf_string = main_tf_string.replace("{{validator-arns-list}}", f"\"{arn_validator_list}\"")
         
         # Generate the ARNs list for CAA resolvers. Note that this is not a list of actual ARN values. It is just a list of ARN names that will be substituted by Open Tofu.
@@ -103,7 +103,7 @@ def main(raw_args=None):
 
         # Derive the out file from the input file name.
         if not args.main_tf_template.endswith(".tf.template"):
-            print(f"Error: invalid tf template name: {args.main_tf_template}. Make sure all tf tempalte files end in '.tf.template'.")
+            print(f"Error: invalid tf template name: {args.main_tf_template}. Make sure all tf template files end in '.tf.template'.")
             exit()
         
         out_file_name = f"{'.'.join(args.main_tf_template.split('.')[:-2])}.generated.tf"

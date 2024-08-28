@@ -28,7 +28,7 @@ class MpicCoordinator:
     def __init__(self):
         # Load lists of perspective names, validator arns, and caa arns from environment vars.
         self.known_perspectives = os.environ['perspective_names'].split("|")
-        self.validator_arn_list = os.environ['validator_arns'].split("|")
+        self.dcv_arn_list = os.environ['validator_arns'].split("|")  # TODO rename to dcv_arns
         self.caa_arn_list = os.environ['caa_arns'].split("|")
         self.default_perspective_count = int(os.environ['default_perspective_count'])
         self.enforce_distinct_rir_regions = int(os.environ['enforce_distinct_rir_regions']) == 1
@@ -37,7 +37,7 @@ class MpicCoordinator:
         # Create a dictionary of ARNs per check type per perspective to simplify lookup in the future.
         # (Assumes known_perspectives list, validator_arn_list, and caa_arn_list are the same length.)
         self.arns_per_perspective_per_check_type = {
-            CheckType.DCV: {self.known_perspectives[i]: self.validator_arn_list[i] for i in range(len(self.known_perspectives))},
+            CheckType.DCV: {self.known_perspectives[i]: self.dcv_arn_list[i] for i in range(len(self.known_perspectives))},
             CheckType.CAA: {self.known_perspectives[i]: self.caa_arn_list[i] for i in range(len(self.known_perspectives))}
         }
         # for correct deserialization of responses based on discriminator field (check type)

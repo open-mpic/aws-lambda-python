@@ -1,10 +1,5 @@
-lambda_validator.zip
-mpic_caa_checker_lambda.zip
-mpic_coordinator_lambda.zip
-mpic_coordinator_layer.zip
-mpic_caa_checker_layer.zip
-mpic_dcv_checker_layer.zip
-mpic_common_layer.zip
+mpic_*_lambda.zip
+mpic_*_layer.zip
 
 layer/create_layer_virtualenv
 layer/*_layer_content
