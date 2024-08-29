@@ -16,13 +16,14 @@ class BaseMpicRequest(BaseModel, ABC):
 
     @model_validator(mode='after')
     def check_perspectives_and_perspective_count_together(self) -> 'BaseMpicRequest':
-        assert not (self.orchestration_parameters.perspectives and self.orchestration_parameters.perspective_count), "Request contains both 'perspectives' and 'perspective_count'."
+        if self.orchestration_parameters:
+            assert not (self.orchestration_parameters.perspectives and self.orchestration_parameters.perspective_count), "Request contains both 'perspectives' and 'perspective_count'."
         return self
 
 
 class MpicCaaRequest(BaseMpicRequest):
     check_type: Literal[CheckType.CAA] = CheckType.CAA
-    caa_check_parameters: CaaCheckParameters
+    caa_check_parameters: CaaCheckParameters | None = None
 
 
 class MpicDcvRequest(BaseMpicRequest):

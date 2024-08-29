@@ -25,14 +25,6 @@ class TestMpicCaaRequest:
             MpicCaaRequest.model_validate_json(json.dumps(request.model_dump()))
         assert 'domain_or_ip_target' in str(validation_error.value)
 
-    # TODO are caa_check_parameters necessary? (domain list, certificate type)
-    def model_validate_json__should_throw_validation_error_given_missing_caa_check_parameters(self):
-        request = ValidRequestCreator.create_valid_caa_check_request()
-        request.caa_check_parameters = None
-        with pytest.raises(pydantic.ValidationError) as validation_error:
-            MpicCaaRequest.model_validate_json(json.dumps(request.model_dump()))
-        assert 'caa_check_parameters' in str(validation_error.value)
-
     def model_validate_json_should_throw_validation_error_given_invalid_certificate_type(self):
         request = ValidRequestCreator.create_valid_caa_check_request()
         request.caa_check_parameters.certificate_type = 'invalid'

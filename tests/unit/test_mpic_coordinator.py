@@ -127,6 +127,19 @@ class TestMpicCoordinator:
         response_body = json.loads(result['body'])
         assert response_body['is_valid'] is True
 
+    def coordinate_mpic__should_successfully_carry_out_caa_mpic_given_no_parameters_besides_target(self, set_env_variables, mocker):
+        request = ValidRequestCreator.create_valid_caa_check_request()
+        request.orchestration_parameters = None
+        request.caa_check_parameters = None
+        event = {'path': RequestPath.CAA_CHECK, 'body': json.dumps(request.model_dump())}
+        mocker.patch('aws_lambda_python.mpic_coordinator.mpic_coordinator.MpicCoordinator.thread_call',
+                     side_effect=self.create_payload_with_streaming_body)
+        mpic_coordinator = MpicCoordinator()
+        result = mpic_coordinator.coordinate_mpic(event)
+        assert result['statusCode'] == 200
+        response_body = json.loads(result['body'])
+        assert response_body['is_valid'] is True
+
     def create_payload_with_streaming_body(self, call_config):
         # note: all perspective response details will be identical in these tests due to this mocking
         expected_response_body = CaaCheckResponse(perspective='us-east-4', check_passed=True,

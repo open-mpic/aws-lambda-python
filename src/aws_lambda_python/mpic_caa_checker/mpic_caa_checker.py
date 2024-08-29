@@ -90,7 +90,9 @@ class MpicCaaChecker:
                 caa_domains = caa_request.caa_check_parameters.caa_domains
 
             # Use the cert type field to check if the domain is a wildcard.
-            is_wc_domain = caa_request.caa_check_parameters.certificate_type == CertificateType.TLS_SERVER_WILDCARD
+            certificate_type = caa_request.caa_check_parameters.certificate_type
+            if certificate_type is not None and certificate_type == CertificateType.TLS_SERVER_WILDCARD:
+                is_wc_domain = True
 
         rrset, domain = MpicCaaChecker.find_caa_record_and_domain(caa_request)
         caa_found = rrset is not None

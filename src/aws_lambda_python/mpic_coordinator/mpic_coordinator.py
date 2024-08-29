@@ -85,15 +85,16 @@ class MpicCoordinator:
         # Determine the perspectives and perspective count to use for this request.
         # TODO revisit this when diagnostic mode (allowing 'perspectives') is implemented
         perspective_count = self.default_perspective_count
-        if orchestration_parameters.perspectives is not None:
-            perspectives_to_use = orchestration_parameters.perspectives
-            perspective_count = len(perspectives_to_use)
-        else:
-            if orchestration_parameters.perspective_count is not None:
-                perspective_count = orchestration_parameters.perspective_count
-            perspectives_to_use = self.select_random_perspectives_across_rirs(self.known_perspectives,
-                                                                              perspective_count,
-                                                                              mpic_request.domain_or_ip_target)
+        if orchestration_parameters is not None:
+            if orchestration_parameters.perspectives is not None:
+                perspectives_to_use = orchestration_parameters.perspectives
+                perspective_count = len(perspectives_to_use)
+            else:
+                if orchestration_parameters.perspective_count is not None:
+                    perspective_count = orchestration_parameters.perspective_count
+        perspectives_to_use = self.select_random_perspectives_across_rirs(self.known_perspectives,
+                                                                          perspective_count,
+                                                                          mpic_request.domain_or_ip_target)
 
         quorum_count = self.determine_required_quorum_count(orchestration_parameters, perspective_count)
 
@@ -155,9 +156,9 @@ class MpicCoordinator:
 
     # Determines the minimum required quorum size if none is specified in the request.
     @staticmethod
-    def determine_required_quorum_count(system_params, perspective_count):
-        if system_params.quorum_count is not None:
-            required_quorum_count = system_params.quorum_count
+    def determine_required_quorum_count(orchestration_parameters, perspective_count):
+        if orchestration_parameters is not None and orchestration_parameters.quorum_count is not None:
+            required_quorum_count = orchestration_parameters.quorum_count
         else:
             required_quorum_count = perspective_count - 1 if perspective_count <= 5 else perspective_count - 2
         return required_quorum_count

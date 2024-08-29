@@ -11,30 +11,32 @@ class MpicRequestValidator:
     def is_request_valid(request_path, mpic_request, known_perspectives, diagnostic_mode=False) -> (bool, list):
         request_validation_issues = []
 
+        # TODO extract into a validate_orchestration_parameters method...
         # TODO align on this: if present, should 'perspectives' override 'perspective-count'? or conflict?
         # 'perspectives' is allowed if 'diagnostic_mode' is True
         # if 'diagnostic-mode' is false, 'perspectives' is not allowed
         # enforce that only one of 'perspectives' or 'perspective-count' is present
         should_validate_quorum_count = False
         requested_perspective_count = 0
-        if mpic_request.orchestration_parameters.perspectives is not None and diagnostic_mode:
-            requested_perspectives = mpic_request.orchestration_parameters.perspectives
-            requested_perspective_count = len(requested_perspectives)
-            if MpicRequestValidator.are_requested_perspectives_valid(requested_perspectives, known_perspectives):
-                should_validate_quorum_count = True
-            else:
-                request_validation_issues.append(MpicRequestValidationIssue(MpicRequestValidationMessages.INVALID_PERSPECTIVE_LIST))
-        elif mpic_request.orchestration_parameters.perspectives:
-            request_validation_issues.append(MpicRequestValidationIssue(MpicRequestValidationMessages.PERSPECTIVES_NOT_IN_DIAGNOSTIC_MODE))
-        elif mpic_request.orchestration_parameters.perspective_count is not None:
-            requested_perspective_count = mpic_request.orchestration_parameters.perspective_count
-            if MpicRequestValidator.is_requested_perspective_count_valid(requested_perspective_count, known_perspectives):
-                should_validate_quorum_count = True
-            else:
-                request_validation_issues.append(MpicRequestValidationIssue(MpicRequestValidationMessages.INVALID_PERSPECTIVE_COUNT, requested_perspective_count))
-        if should_validate_quorum_count and mpic_request.orchestration_parameters.quorum_count is not None:
-            quorum_count = mpic_request.orchestration_parameters.quorum_count
-            MpicRequestValidator.validate_quorum_count(requested_perspective_count, quorum_count, request_validation_issues)
+        if mpic_request.orchestration_parameters is not None:
+            if mpic_request.orchestration_parameters.perspectives is not None and diagnostic_mode:
+                requested_perspectives = mpic_request.orchestration_parameters.perspectives
+                requested_perspective_count = len(requested_perspectives)
+                if MpicRequestValidator.are_requested_perspectives_valid(requested_perspectives, known_perspectives):
+                    should_validate_quorum_count = True
+                else:
+                    request_validation_issues.append(MpicRequestValidationIssue(MpicRequestValidationMessages.INVALID_PERSPECTIVE_LIST))
+            elif mpic_request.orchestration_parameters.perspectives:
+                request_validation_issues.append(MpicRequestValidationIssue(MpicRequestValidationMessages.PERSPECTIVES_NOT_IN_DIAGNOSTIC_MODE))
+            elif mpic_request.orchestration_parameters.perspective_count is not None:
+                requested_perspective_count = mpic_request.orchestration_parameters.perspective_count
+                if MpicRequestValidator.is_requested_perspective_count_valid(requested_perspective_count, known_perspectives):
+                    should_validate_quorum_count = True
+                else:
+                    request_validation_issues.append(MpicRequestValidationIssue(MpicRequestValidationMessages.INVALID_PERSPECTIVE_COUNT, requested_perspective_count))
+            if should_validate_quorum_count and mpic_request.orchestration_parameters.quorum_count is not None:
+                quorum_count = mpic_request.orchestration_parameters.quorum_count
+                MpicRequestValidator.validate_quorum_count(requested_perspective_count, quorum_count, request_validation_issues)
 
         # TODO this should be checked in routing logic way before it gets here
         # check if request_path is supported in RequestPath enum

@@ -28,6 +28,14 @@ class TestMpicRequestValidator:
         assert is_request_valid is True
         assert len(validation_issues) == 0
 
+    def is_request_valid__should_return_true_given_valid_caa_check_without_orchestration_parameters_or_caa_check_details(self):
+        request = ValidRequestCreator.create_valid_caa_check_request()
+        request.orchestration_parameters = None
+        request.caa_check_parameters = None
+        is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(RequestPath.CAA_CHECK, request, self.known_perspectives)
+        assert is_request_valid is True
+        assert len(validation_issues) == 0
+
     def is_request_valid__should_return_false_and_message_given_caa_check_request_with_perspective_list_and_diagnostic_mode_false(self):
         request = ValidRequestCreator.create_valid_caa_check_request()
         request.orchestration_parameters.perspectives = self.known_perspectives[:6]
