@@ -77,7 +77,7 @@ class TestMpicCaaChecker:
         check_response_details = CaaCheckResponseDetails(present=True, found_at='example.com', response=test_dns_query_answer.rrset.to_text())
         assert self.is_result_as_expected(result, True, check_response_details) is True
 
-    def check_caa_should_return_200_and_disallow_issuance_given_non_matching_caa_record_found(self, set_env_variables, mocker):
+    def check_caa__should_return_200_and_disallow_issuance_given_non_matching_caa_record_found(self, set_env_variables, mocker):
         test_dns_query_answer = TestMpicCaaChecker.create_dns_query_answer('example.com', 'ca222.org', 'issue', mocker)
         mocker.patch('dns.resolver.resolve', side_effect=lambda domain_name, rdtype: (
             test_dns_query_answer if domain_name.to_text() == 'example.com.' else
@@ -94,7 +94,7 @@ class TestMpicCaaChecker:
                                                          response=test_dns_query_answer.rrset.to_text())
         assert self.is_result_as_expected(result, False, check_response_details) is True
 
-    def check_caa_should_return_200_and_allow_issuance_relying_on_default_caa_domains(self, set_env_variables, mocker):
+    def check_caa__should_return_200_and_allow_issuance_relying_on_default_caa_domains(self, set_env_variables, mocker):
         test_dns_query_answer = TestMpicCaaChecker.create_dns_query_answer('example.com', 'ca2.net', 'issue', mocker)
         mocker.patch('dns.resolver.resolve', side_effect=lambda domain_name, rdtype: (
             test_dns_query_answer if domain_name.to_text() == 'example.com.' else
@@ -107,7 +107,7 @@ class TestMpicCaaChecker:
         check_response_details = CaaCheckResponseDetails(present=True, found_at='example.com', response=test_dns_query_answer.rrset.to_text())
         assert self.is_result_as_expected(result, True, check_response_details) is True
 
-    def check_caa_should_include_timestamp_in_nanos_in_result(self, set_env_variables, mocker):
+    def check_caa__should_include_timestamp_in_nanos_in_result(self, set_env_variables, mocker):
         mocker.patch('dns.resolver.resolve', side_effect=lambda domain_name, rdtype: exec('raise(dns.resolver.NoAnswer)'))
         caa_request = CaaCheckRequest(domain_or_ip_target='example.com', caa_check_parameters=CaaCheckParameters(
                                           certificate_type=CertificateType.TLS_SERVER, caa_domains=['ca111.com']))
