@@ -14,7 +14,6 @@ from aws_lambda_python.common_domain.validation_error import ValidationError
 # noinspection PyUnusedLocal
 class MpicDcvChecker:
     def __init__(self):
-        self.default_caa_domain_list = os.environ['default_caa_domains'].split("|")
         self.AWS_REGION: Final[str] = os.environ['AWS_REGION']
 
     def check_dcv(self, event):

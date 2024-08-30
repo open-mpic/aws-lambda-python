@@ -140,6 +140,18 @@ class TestMpicDcvChecker:
         assert 'answer' in dcv_check_response.errors[0].error_message
         assert dcv_check_response.timestamp_ns is not None
 
+    def perform_http_validation__should_return_check_passed_false_with_details_given_bad_file_path(self, set_env_variables, mocker):
+        request = DcvCheckRequest(domain_or_ip_target='example.com',
+                                  dcv_check_parameters=DcvCheckParameters(
+                                     validation_method=DcvValidationMethod.HTTP_GENERIC,
+                                     validation_details=DcvValidationDetails(
+                                         http_token_path='/',
+                                         challenge_value='test')
+                                 ))
+        dcv_checker = MpicDcvChecker()
+        response = dcv_checker.perform_http_validation(request)
+        assert response['statusCode'] == 200
+
     def raise_(self, ex):
         # noinspection PyUnusedLocal
         def _raise(*args, **kwargs):

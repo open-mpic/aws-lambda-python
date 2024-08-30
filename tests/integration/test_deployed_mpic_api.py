@@ -54,7 +54,7 @@ class TestDeployedMpicApi:
             dcv_check_parameters=DcvCheckParameters(
                 validation_method=DcvValidationMethod.HTTP_GENERIC,
                 validation_details=DcvValidationDetails(dns_name_prefix=None, dns_record_type=None, http_token_path='/',
-                                                        expected_challenge='test')
+                                                        challenge_value='test')
             )
         )
 
@@ -63,6 +63,23 @@ class TestDeployedMpicApi:
         response_body = json.loads(response.text)
         print(json.dumps(response_body, indent=4))
         # finish test... (and figure out how to actually run it successfully and reliably)
+
+    def api_should_return_stuff(self, api_client):
+        request = MpicDcvRequest(
+            domain_or_ip_target='ifconfig.me',
+            dcv_check_parameters=DcvCheckParameters(
+                validation_method=DcvValidationMethod.HTTP_GENERIC,
+                validation_details=DcvValidationDetails(http_token_path='/',
+                                                        challenge_value='test')
+            )
+        )
+
+        response = api_client.post(RequestPath.DCV_CHECK, json.dumps(request.model_dump()))
+        assert response.status_code == 200
+        response_body = json.loads(response.text)
+        print(json.dumps(response_body, indent=4))
+        # finish test... (and figure out how to actually run it successfully and reliably)
+
 
     def api_should_return_400_given_invalid_parameters_in_request(self, api_client):
         request = MpicCaaRequest(
