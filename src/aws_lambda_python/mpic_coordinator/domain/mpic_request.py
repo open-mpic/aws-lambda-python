@@ -42,6 +42,6 @@ class MpicDcvRequest(BaseMpicRequest):
 
 class MpicDcvWithCaaRequest(MpicDcvRequest):  # inherits from MpicDcvRequest rather than BaseMpicRequest
     check_type: Literal[CheckType.DCV_WITH_CAA] = CheckType.DCV_WITH_CAA
-    caa_check_parameters: CaaCheckParameters
+    caa_check_parameters: CaaCheckParameters | None = None
 
 # TODO use an annotated discriminated union
