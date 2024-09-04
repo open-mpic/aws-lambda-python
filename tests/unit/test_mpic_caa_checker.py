@@ -173,12 +173,6 @@ class TestMpicCaaChecker:
         result = MpicCaaChecker.is_valid_for_issuance(caa_domains=['ca1.org'], is_wc_domain=True, rrset=test_rrset)
         assert result is True
 
-    def is_valid_for_issuance__should_return_true_given_no_issue_tags_and_issuewild_tag_for_non_wildcard_domain(self):
-        test_rrset = MockDnsObjectCreator.create_caa_rrset(MockDnsObjectCreator.create_caa_record(0, 'issuewild', 'ca1.org'),
-                                                           MockDnsObjectCreator.create_caa_record(0, 'mystery', 'ca2.org'))
-        result = MpicCaaChecker.is_valid_for_issuance(caa_domains=['ca1.org'], is_wc_domain=False, rrset=test_rrset)
-        assert result is True
-
     def is_valid_for_issuance__should_return_true_given_no_issue_tags_and_issuewild_tag_for_wildcard_domain(self):
         test_rrset = MockDnsObjectCreator.create_caa_rrset(MockDnsObjectCreator.create_caa_record(0, 'issuewild', 'ca1.org'),
                                                            MockDnsObjectCreator.create_caa_record(0, 'mystery', 'ca2.org'))
@@ -197,18 +191,18 @@ class TestMpicCaaChecker:
         result = MpicCaaChecker.is_valid_for_issuance(caa_domains=['ca1.org'], is_wc_domain=False, rrset=test_rrset)
         assert result is True
 
+    def is_valid_for_issuance__should_return_false_given_issue_tags_for_other_certificate_authorities_only(self):
+        test_rrset = MockDnsObjectCreator.create_caa_rrset(MockDnsObjectCreator.create_caa_record(0, 'issue', 'ca1.org'),
+                                                           MockDnsObjectCreator.create_caa_record(0, 'issue', 'ca2.org'))
+        result = MpicCaaChecker.is_valid_for_issuance(caa_domains=['ca3.org'], is_wc_domain=False, rrset=test_rrset)
+        assert result is False
+
     @pytest.mark.parametrize('known_tag', ['issue'])  # TODO what about issuewild, issuemail, and iodef? (they fail)
     def is_valid_for_issuance__should_return_true_given_critical_flag_and_known_tag(self, known_tag):
         test_rrset = MockDnsObjectCreator.create_caa_rrset(MockDnsObjectCreator.create_caa_record(128, known_tag, 'ca1.org'),
                                                            MockDnsObjectCreator.create_caa_record(0, 'issue', 'ca2.org'))
         result = MpicCaaChecker.is_valid_for_issuance(caa_domains=['ca1.org'], is_wc_domain=False, rrset=test_rrset)
         assert result is True
-
-    def is_valid_for_issuance__should_return_false_given_issue_tags_for_other_certificate_authorities_only(self):
-        test_rrset = MockDnsObjectCreator.create_caa_rrset(MockDnsObjectCreator.create_caa_record(0, 'issue', 'ca1.org'),
-                                                           MockDnsObjectCreator.create_caa_record(0, 'issue', 'ca2.org'))
-        result = MpicCaaChecker.is_valid_for_issuance(caa_domains=['ca3.org'], is_wc_domain=False, rrset=test_rrset)
-        assert result is False
 
     def is_valid_for_issuance__should_return_false_given_critical_flag_for_an_unknown_tag(self):
         test_rrset = MockDnsObjectCreator.create_caa_rrset(MockDnsObjectCreator.create_caa_record(128, 'mystery', 'ca1.org'),
@@ -222,17 +216,14 @@ class TestMpicCaaChecker:
         result = MpicCaaChecker.is_valid_for_issuance(caa_domains=['ca1.org'], is_wc_domain=True, rrset=test_rrset)
         assert result is False
 
-    def is_valid_for_issuance__should_return_false_given_issue_disallowed_for_all_issuewild_found_for_ca_and_non_wildcard_domain(self):
-        test_rrset = MockDnsObjectCreator.create_caa_rrset(MockDnsObjectCreator.create_caa_record(0, 'issue', ';'),
+    @pytest.mark.parametrize('domain_1_tag, domain_1_value, expected_result', [
+        ('issue', ';', False), ('issue', 'ca2.org', False), ('mystery', 'ca2.org', True)
+    ])
+    def is_valid_for_issuance__should_ignore_issuewild_tags_given_non_wildcard_domain(self, domain_1_tag, domain_1_value, expected_result):
+        test_rrset = MockDnsObjectCreator.create_caa_rrset(MockDnsObjectCreator.create_caa_record(0, domain_1_tag, domain_1_value),
                                                            MockDnsObjectCreator.create_caa_record(0, 'issuewild', 'ca1.org'))
         result = MpicCaaChecker.is_valid_for_issuance(caa_domains=['ca1.org'], is_wc_domain=False, rrset=test_rrset)
-        assert result is False
-
-    def is_valid_for_issuance__should_return_false_given_issue_for_other_cas_issuewild_for_ca_and_non_wildcard_domain(self):
-        test_rrset = MockDnsObjectCreator.create_caa_rrset(MockDnsObjectCreator.create_caa_record(0, 'issue', 'ca2.org'),
-                                                           MockDnsObjectCreator.create_caa_record(0, 'issuewild', 'ca1.org'))
-        result = MpicCaaChecker.is_valid_for_issuance(caa_domains=['ca1.org'], is_wc_domain=False, rrset=test_rrset)
-        assert result is False
+        assert result is expected_result
 
     def raise_(self, ex):
         # noinspection PyUnusedLocal
