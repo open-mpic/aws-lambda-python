@@ -157,6 +157,7 @@ class TestMpicCoordinator:
         response_body = json.loads(result['body'])
         assert response_body['is_valid'] is True
 
+    # noinspection PyUnusedLocal
     def create_payload_with_streaming_body(self, call_config):
         # note: all perspective response details will be identical in these tests due to this mocking
         expected_response_body = CaaCheckResponse(perspective='us-east-4', check_passed=True,

@@ -5,14 +5,11 @@ import pytest
 from aws_lambda_python.common_domain.check_parameters import DcvCheckParameters, DcvValidationDetails
 from aws_lambda_python.common_domain.check_request import DcvCheckRequest
 from aws_lambda_python.common_domain.check_response import DcvCheckResponse, DcvCheckResponseDetails
-from aws_lambda_python.common_domain.enum.certificate_type import CertificateType
 from aws_lambda_python.common_domain.enum.dcv_validation_method import DcvValidationMethod
 from aws_lambda_python.common_domain.enum.dns_record_type import DnsRecordType
 from aws_lambda_python.mpic_dcv_checker.mpic_dcv_checker import MpicDcvChecker
-from dns.flags import Flag
-from dns.rdtypes.ANY.CNAME import CNAME
-from dns.rdtypes.ANY.TXT import TXT
-from dns.rrset import RRset
+
+from mock_dns_object_creator import MockDnsObjectCreator
 
 
 # noinspection PyMethodMayBeStatic
@@ -28,27 +25,6 @@ class TestMpicDcvChecker:
             for k, v in envvars.items():
                 class_scoped_monkeypatch.setenv(k, v)
             yield class_scoped_monkeypatch  # restore the environment afterward
-
-    @staticmethod
-    def create_dns_query_answer(domain, dcv_validation_details: DcvValidationDetails, mocker):
-        challenge_value = dcv_validation_details.challenge_value
-        dns_name_prefix = dcv_validation_details.dns_name_prefix
-        record_type = dcv_validation_details.dns_record_type
-        dns_record_1 = None
-        if record_type == DnsRecordType.CNAME:
-            dns_record_1 = CNAME(dns.rdataclass.IN, dns.rdatatype.CNAME, target=challenge_value)
-        elif record_type == DnsRecordType.TXT:
-            dns_record_1 = TXT(dns.rdataclass.IN, dns.rdatatype.TXT, strings=[challenge_value.encode('utf-8')])
-        good_response = dns.message.QueryMessage()
-        good_response.flags = Flag.QR
-        rrset_domain = f"{dns_name_prefix}.{domain}"
-        response_question_rrset = RRset(name=dns.name.from_text(rrset_domain), rdclass=dns.rdataclass.IN, rdtype=dns.rdatatype.from_text(record_type))
-        good_response.question = [response_question_rrset]
-        response_answer_rrset = RRset(name=dns.name.from_text(rrset_domain), rdclass=dns.rdataclass.IN, rdtype=dns.rdatatype.from_text(record_type))
-        response_answer_rrset.add(dns_record_1)
-        good_response.answer = [response_answer_rrset]  # caa checker doesn't look here, but dcv checker does
-        mocker.patch('dns.message.Message.find_rrset', return_value=response_answer_rrset)  # needed for Answer constructor to work
-        return dns.resolver.Answer(qname=dns.name.from_text(rrset_domain), rdtype=dns.rdatatype.from_text(record_type), rdclass=dns.rdataclass.IN, response=good_response)
 
     @staticmethod
     def create_http_check_request():
@@ -140,14 +116,15 @@ class TestMpicDcvChecker:
         assert 'answer' in dcv_check_response.errors[0].error_message
         assert dcv_check_response.timestamp_ns is not None
 
-    def perform_http_validation__should_return_check_passed_false_with_details_given_bad_file_path(self, set_env_variables, mocker):
+    def perform_http_validation__should_return_check_passed_false_with_details_given_bad_file_path(self, set_env_variables):
         request = DcvCheckRequest(domain_or_ip_target='example.com',
                                   dcv_check_parameters=DcvCheckParameters(
                                      validation_method=DcvValidationMethod.HTTP_GENERIC,
                                      validation_details=DcvValidationDetails(
                                          http_token_path='/',
                                          challenge_value='test')
-                                 ))
+                                    )
+                                  )
         dcv_checker = MpicDcvChecker()
         response = dcv_checker.perform_http_validation(request)
         assert response['statusCode'] == 200
@@ -169,8 +146,11 @@ class TestMpicDcvChecker:
     def mock_dns_related_calls(self, dcv_request: DcvCheckRequest, mocker):
         dcv_details = dcv_request.dcv_check_parameters.validation_details
         expected_domain = f"{dcv_details.dns_name_prefix}.{dcv_request.domain_or_ip_target}"
-        test_dns_query_answer = TestMpicDcvChecker.create_dns_query_answer(dcv_request.domain_or_ip_target, dcv_details,
-                                                                           mocker)
+        record_data = {'value': dcv_details.challenge_value}
+        test_dns_query_answer = MockDnsObjectCreator.create_dns_query_answer(dcv_request.domain_or_ip_target,
+                                                                             dcv_details.dns_name_prefix,
+                                                                             dcv_details.dns_record_type,
+                                                                             record_data, mocker)
         mocker.patch('dns.resolver.resolve', side_effect=lambda domain_name, rdtype: (
             test_dns_query_answer if domain_name == expected_domain else self.raise_(dns.resolver.NoAnswer)
         ))
