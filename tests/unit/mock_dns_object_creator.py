@@ -8,25 +8,20 @@ from dns.rrset import RRset
 from aws_lambda_python.common_domain.enum.dns_record_type import DnsRecordType
 
 
-class MockCaaRecord:
-    def __init__(self, flags, tag, value):
-        self.flags = flags
-        self.tag = tag
-        self.value = value
-
-
 class MockDnsObjectCreator:
     @staticmethod
-    def create_caa_rrset(record_data_1: MockCaaRecord, record_data_2: MockCaaRecord):
+    def create_caa_rrset(caa_record_1: CAA, caa_record_2: CAA):
         test_rrset = RRset(name=dns.name.from_text('example.com'), rdclass=dns.rdataclass.IN, rdtype=dns.rdatatype.CAA)
-        caa_rdata_1 = CAA(dns.rdataclass.IN, dns.rdatatype.CAA, flags=record_data_1.flags, tag=record_data_1.tag, value=record_data_1.value)
-        caa_rdata_2 = CAA(dns.rdataclass.IN, dns.rdatatype.CAA, flags=record_data_2.flags, tag=record_data_2.tag, value=record_data_2.value)
-        test_rrset.add(caa_rdata_1)
-        test_rrset.add(caa_rdata_2)
+        test_rrset.add(caa_record_1)
+        test_rrset.add(caa_record_2)
         return test_rrset
 
     @staticmethod
-    def build_record_by_type(record_type, record_data):
+    def create_caa_record(flags, tag, value):
+        return MockDnsObjectCreator.create_record_by_type(DnsRecordType.CAA, {'flag': flags, 'tag': tag, 'value': value})
+
+    @staticmethod
+    def create_record_by_type(record_type, record_data):
         value = record_data['value']
         match record_type:
             case DnsRecordType.CNAME:
@@ -48,11 +43,11 @@ class MockDnsObjectCreator:
         dns_record = None
         match record_type:
             case DnsRecordType.CNAME:
-                dns_record = MockDnsObjectCreator.build_record_by_type(DnsRecordType.CNAME, record_data)
+                dns_record = MockDnsObjectCreator.create_record_by_type(DnsRecordType.CNAME, record_data)
             case DnsRecordType.TXT:
-                dns_record = MockDnsObjectCreator.build_record_by_type(DnsRecordType.TXT, record_data)
+                dns_record = MockDnsObjectCreator.create_record_by_type(DnsRecordType.TXT, record_data)
             case DnsRecordType.CAA:
-                dns_record = MockDnsObjectCreator.build_record_by_type(DnsRecordType.CAA, record_data)
+                dns_record = MockDnsObjectCreator.create_record_by_type(DnsRecordType.CAA, record_data)
         good_response = dns.message.QueryMessage()
         good_response.flags = Flag.QR | Flag.RD | Flag.RA
         if (record_name_prefix is not None) and (record_name_prefix != ''):  # if there is a domain name prefix
