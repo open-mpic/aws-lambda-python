@@ -8,7 +8,7 @@ class MpicRequestValidator:
     @staticmethod
     # returns a list of validation issues found in the request; if empty, request is (probably) valid
     # TODO should we create a flag to validate values separately from structure?
-    def is_request_valid(request_path, mpic_request, known_perspectives, diagnostic_mode=False) -> (bool, list):
+    def is_request_valid(mpic_request, known_perspectives, diagnostic_mode=False) -> (bool, list):
         request_validation_issues = []
 
         # TODO extract into a validate_orchestration_parameters method...
@@ -37,11 +37,6 @@ class MpicRequestValidator:
             if should_validate_quorum_count and mpic_request.orchestration_parameters.quorum_count is not None:
                 quorum_count = mpic_request.orchestration_parameters.quorum_count
                 MpicRequestValidator.validate_quorum_count(requested_perspective_count, quorum_count, request_validation_issues)
-
-        # TODO this should be checked in routing logic way before it gets here
-        # check if request_path is supported in RequestPath enum
-        if request_path not in iter(RequestPath):
-            request_validation_issues.append(MpicRequestValidationIssue(MpicRequestValidationMessages.UNSUPPORTED_REQUEST_PATH, request_path))
 
         # returns true if no validation issues found, false otherwise; includes list of validation issues found
         return len(request_validation_issues) == 0, request_validation_issues

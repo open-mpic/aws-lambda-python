@@ -13,7 +13,7 @@ from aws_lambda_python.common_domain.check_response import CheckResponse, Annota
 from aws_lambda_python.common_domain.check_request import CaaCheckRequest
 from aws_lambda_python.common_domain.check_request import DcvCheckRequest
 from aws_lambda_python.common_domain.enum.check_type import CheckType
-from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicCaaRequest
+from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicCaaRequest, MpicRequest, AnnotatedMpicRequest
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvRequest
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvWithCaaRequest
 from aws_lambda_python.mpic_coordinator.domain.remote_check_call_configuration import RemoteCheckCallConfiguration
@@ -41,27 +41,22 @@ class MpicCoordinator:
             CheckType.CAA: {self.known_perspectives[i]: self.caa_arn_list[i] for i in range(len(self.known_perspectives))}
         }
         # for correct deserialization of responses based on discriminator field (check type)
+        self.mpic_request_adapter: TypeAdapter[MpicRequest] = TypeAdapter(AnnotatedMpicRequest)
         self.check_response_adapter: TypeAdapter[CheckResponse] = TypeAdapter(AnnotatedCheckResponse)
 
     def coordinate_mpic(self, event):
         request_path = event['path']
+        if request_path not in iter(RequestPath):
+            return {
+                'statusCode': 400,
+                'headers': {'Content-Type': 'application/json'},
+                'body': json.dumps({'error': MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key,
+                                    'validation_issues': [MpicRequestValidationMessages.UNSUPPORTED_REQUEST_PATH.key]})
+            }
 
         # parse event body into mpic_request
         try:
-            match request_path:
-                case RequestPath.CAA_CHECK:
-                    mpic_request = MpicCaaRequest.model_validate_json(event['body'])
-                case RequestPath.DCV_CHECK:
-                    mpic_request = MpicDcvRequest.model_validate_json(event['body'])
-                case RequestPath.DCV_WITH_CAA_CHECK:
-                    mpic_request = MpicDcvWithCaaRequest.model_validate_json(event['body'])
-                case _:
-                    return {
-                        'statusCode': 400,  # must be snakeCase for well-formed AWS Lambda response
-                        'headers': {'Content-Type': 'application/json'},
-                        'body': json.dumps({'error': MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key,
-                                            'validation_issues': [MpicRequestValidationMessages.UNSUPPORTED_REQUEST_PATH.key]})
-                    }
+            mpic_request = self.mpic_request_adapter.validate_json(event['body'])
         except pydantic.ValidationError as validation_error:
             return {
                 'statusCode': 400,
@@ -70,7 +65,7 @@ class MpicCoordinator:
                                     'validation_issues': validation_error.errors()})
             }
 
-        is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(request_path, mpic_request, self.known_perspectives)
+        is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(mpic_request, self.known_perspectives)
 
         if not is_request_valid:
             return {
@@ -99,7 +94,7 @@ class MpicCoordinator:
         quorum_count = self.determine_required_quorum_count(orchestration_parameters, perspective_count)
 
         # Collect async calls to invoke for each perspective.
-        async_calls_to_issue = self.collect_async_calls_to_issue(request_path, mpic_request, perspectives_to_use)
+        async_calls_to_issue = self.collect_async_calls_to_issue(mpic_request, perspectives_to_use)
 
         perspective_responses_per_check_type, validity_per_perspective_per_check_type = (
             self.issue_async_calls_and_collect_responses(perspectives_to_use, async_calls_to_issue))
@@ -164,18 +159,19 @@ class MpicCoordinator:
         return required_quorum_count
 
     # Configures the async lambda function calls to issue for the check request.
-    def collect_async_calls_to_issue(self, request_path, mpic_request, perspectives_to_use) -> list[RemoteCheckCallConfiguration]:
+    def collect_async_calls_to_issue(self, mpic_request, perspectives_to_use) -> list[RemoteCheckCallConfiguration]:
         domain_or_ip_target = mpic_request.domain_or_ip_target
         async_calls_to_issue = []
 
-        if request_path in (RequestPath.CAA_CHECK, RequestPath.DCV_WITH_CAA_CHECK):
+        # check if mpic_request is an instance of MpicDcvWithCaaRequest, MpicCaaRequest, or MpicDcvRequest
+        if isinstance(mpic_request, MpicDcvWithCaaRequest) or isinstance(mpic_request, MpicCaaRequest):
             check_parameters = CaaCheckRequest(domain_or_ip_target=domain_or_ip_target, caa_check_parameters=mpic_request.caa_check_parameters)
             for perspective in perspectives_to_use:
                 arn = self.arns_per_perspective_per_check_type[CheckType.CAA][perspective]
                 call_config = RemoteCheckCallConfiguration(CheckType.CAA, perspective, arn, check_parameters)
                 async_calls_to_issue.append(call_config)
 
-        if request_path in (RequestPath.DCV_CHECK, RequestPath.DCV_WITH_CAA_CHECK):
+        if isinstance(mpic_request, MpicDcvWithCaaRequest) or isinstance(mpic_request, MpicDcvRequest):
             check_parameters = DcvCheckRequest(domain_or_ip_target=domain_or_ip_target, dcv_check_parameters=mpic_request.dcv_check_parameters)
             for perspective in perspectives_to_use:
                 arn = self.arns_per_perspective_per_check_type[CheckType.DCV][perspective]

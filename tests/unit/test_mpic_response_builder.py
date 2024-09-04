@@ -43,9 +43,9 @@ class TestMpicResponseBuilder:
         return responses
 
     @staticmethod
-    def create_validity_by_check_type(request_path=CheckType.DCV_WITH_CAA):
+    def create_validity_by_check_type(check_type=CheckType.DCV_WITH_CAA):
         validity_by_check_type = {}
-        match request_path:
+        match check_type:
             case CheckType.CAA:
                 validity_by_check_type[CheckType.CAA] = True
             case CheckType.DCV:

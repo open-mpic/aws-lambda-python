@@ -52,18 +52,35 @@ class TestMpicCoordinator:
             mpic_coordinator.select_random_perspectives_across_rirs(perspectives, excessive_count, 'test_target')  # expect error
 
     def coordinate_mpic__should_return_error_given_invalid_request_body(self, set_env_variables):
-        # request = ValidRequestCreator.create_valid_dcv_with_caa_check_request()
-        # remove from request body the field that should be missing
-        # request.__setattr__(field_to_delete, None)
         request = ValidRequestCreator.create_valid_dcv_check_request()
         request.domain_or_ip_target = None
-        event = {'path': RequestPath.DCV_CHECK, 'body': request.model_dump()}
+        event = {'path': RequestPath.MPIC, 'body': request.model_dump()}
         mpic_coordinator = MpicCoordinator()
         result = mpic_coordinator.coordinate_mpic(event)
         # FIXME need to capture pydantic validation error and put it into response (for now... FastAPI may render that unnecessary)
         assert result['statusCode'] == 400
         response_body = json.loads(result['body'])
         assert response_body['error'] == MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key
+
+    def coordinate_mpic__should_return_error_given_invalid_check_type(self, set_env_variables):
+        request = ValidRequestCreator.create_valid_dcv_check_request()
+        request.check_type = 'invalid_check_type'
+        event = {'path': RequestPath.MPIC, 'body': request.model_dump()}
+        mpic_coordinator = MpicCoordinator()
+        result = mpic_coordinator.coordinate_mpic(event)
+        assert result['statusCode'] == 400
+        response_body = json.loads(result['body'])
+        assert response_body['error'] == MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key
+
+    def coordinate_mpic__should_return_error_given_invalid_request_path(self, set_env_variables):
+        request = ValidRequestCreator.create_valid_dcv_check_request()
+        event = {'path': 'invalid_path', 'body': request.model_dump()}
+        mpic_coordinator = MpicCoordinator()
+        result = mpic_coordinator.coordinate_mpic(event)
+        assert result['statusCode'] == 400
+        response_body = json.loads(result['body'])
+        assert response_body['error'] == MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key
+        assert response_body['validation_issues'][0] == MpicRequestValidationMessages.UNSUPPORTED_REQUEST_PATH.key
 
     @pytest.mark.parametrize('requested_perspective_count, expected_quorum_size', [(4, 3), (5, 4), (6, 4)])
     def determine_required_quorum_count__should_dynamically_set_required_quorum_count_given_no_quorum_specified(
@@ -81,11 +98,11 @@ class TestMpicCoordinator:
         required_quorum_count = mpic_coordinator.determine_required_quorum_count(command.orchestration_parameters, 6)
         assert required_quorum_count == 5
 
-    def collect_async_calls_to_issue__should_have_only_caa_calls_given_caa_check_request_path(self, set_env_variables):
+    def collect_async_calls_to_issue__should_have_only_caa_calls_given_caa_check_type(self, set_env_variables):
         request = ValidRequestCreator.create_valid_caa_check_request()
         perspectives_to_use = os.getenv('perspective_names').split('|')
         mpic_coordinator = MpicCoordinator()
-        call_list = mpic_coordinator.collect_async_calls_to_issue(RequestPath.CAA_CHECK, request, perspectives_to_use)
+        call_list = mpic_coordinator.collect_async_calls_to_issue(request, perspectives_to_use)
         assert len(call_list) == 6
         assert set(map(lambda call_result: call_result.check_type, call_list)) == {CheckType.CAA}  # ensure each call is of type 'caa'
 
@@ -94,31 +111,31 @@ class TestMpicCoordinator:
         request.caa_check_parameters.caa_domains = ['example.com']
         perspectives_to_use = os.getenv('perspective_names').split('|')
         mpic_coordinator = MpicCoordinator()
-        call_list = mpic_coordinator.collect_async_calls_to_issue(RequestPath.CAA_CHECK, request, perspectives_to_use)
+        call_list = mpic_coordinator.collect_async_calls_to_issue(request, perspectives_to_use)
         assert all(call.input_args.caa_check_parameters.caa_domains == ['example.com'] for call in call_list)
 
-    def collect_async_calls_to_issue__should_have_only_dcv_calls_and_include_validation_input_args_given_dcv_request_path(self, set_env_variables):
+    def collect_async_calls_to_issue__should_have_only_dcv_calls_and_include_validation_input_args_given_dcv_check_type(self, set_env_variables):
         request = ValidRequestCreator.create_valid_dcv_check_request(DcvValidationMethod.DNS_GENERIC)
         perspectives_to_use = os.getenv('perspective_names').split('|')
         mpic_coordinator = MpicCoordinator()
-        call_list = mpic_coordinator.collect_async_calls_to_issue(RequestPath.DCV_CHECK, request, perspectives_to_use)
+        call_list = mpic_coordinator.collect_async_calls_to_issue(request, perspectives_to_use)
         assert len(call_list) == 6
         assert set(map(lambda call_result: call_result.check_type, call_list)) == {CheckType.DCV}  # ensure each call is of type 'dcv'
         assert all(call.input_args.dcv_check_parameters.validation_method == DcvValidationMethod.DNS_GENERIC for call in call_list)
         assert all(call.input_args.dcv_check_parameters.validation_details.dns_name_prefix == 'test' for call in call_list)
 
-    def collect_async_calls_to_issue__should_have_caa_and_dcv_calls_given_dcv_with_caa_request_path(self, set_env_variables):
+    def collect_async_calls_to_issue__should_have_caa_and_dcv_calls_given_dcv_with_caa_check_type(self, set_env_variables):
         request = ValidRequestCreator.create_valid_dcv_with_caa_check_request()
         perspectives_to_use = os.getenv('perspective_names').split('|')
         mpic_coordinator = MpicCoordinator()
-        call_list = mpic_coordinator.collect_async_calls_to_issue(RequestPath.DCV_WITH_CAA_CHECK, request, perspectives_to_use)
+        call_list = mpic_coordinator.collect_async_calls_to_issue(request, perspectives_to_use)
         assert len(call_list) == 12
         # ensure the list contains both 'caa' and 'dcv' calls
         assert set(map(lambda call_result: call_result.check_type, call_list)) == {CheckType.CAA, CheckType.DCV}
 
     def coordinate_mpic__should_return_200_and_results_given_successful_caa_corroboration(self, set_env_variables, mocker):
         request = ValidRequestCreator.create_valid_caa_check_request()
-        event = {'path': RequestPath.CAA_CHECK, 'body': json.dumps(request.model_dump())}
+        event = {'path': RequestPath.MPIC, 'body': json.dumps(request.model_dump())}
         mocker.patch('aws_lambda_python.mpic_coordinator.mpic_coordinator.MpicCoordinator.thread_call',
                      side_effect=self.create_payload_with_streaming_body)
         mpic_coordinator = MpicCoordinator()
@@ -131,7 +148,7 @@ class TestMpicCoordinator:
         request = ValidRequestCreator.create_valid_caa_check_request()
         request.orchestration_parameters = None
         request.caa_check_parameters = None
-        event = {'path': RequestPath.CAA_CHECK, 'body': json.dumps(request.model_dump())}
+        event = {'path': RequestPath.MPIC, 'body': json.dumps(request.model_dump())}
         mocker.patch('aws_lambda_python.mpic_coordinator.mpic_coordinator.MpicCoordinator.thread_call',
                      side_effect=self.create_payload_with_streaming_body)
         mpic_coordinator = MpicCoordinator()
@@ -144,10 +161,7 @@ class TestMpicCoordinator:
         # note: all perspective response details will be identical in these tests due to this mocking
         expected_response_body = CaaCheckResponse(perspective='us-east-4', check_passed=True,
                                                   details=CaaCheckResponseDetails(caa_record_present=False))
-        expected_response = {
-            'statusCode': 200,
-            'body': json.dumps(expected_response_body.model_dump())
-        }
+        expected_response = {'statusCode': 200, 'body': json.dumps(expected_response_body.model_dump())}
         json_bytes = json.dumps(expected_response).encode('utf-8')
         file_like_response = io.BytesIO(json_bytes)
         streaming_body_response = StreamingBody(file_like_response, len(json_bytes))

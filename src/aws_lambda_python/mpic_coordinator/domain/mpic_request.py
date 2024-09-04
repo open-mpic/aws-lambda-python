@@ -1,8 +1,10 @@
 from abc import ABC
-from typing import Literal
+from typing import Literal, Union
+
+from typing_extensions import Annotated
 
 from aws_lambda_python.common_domain.enum.check_type import CheckType
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, model_validator, Field
 
 from aws_lambda_python.mpic_coordinator.domain.mpic_orchestration_parameters import MpicRequestOrchestrationParameters
 from aws_lambda_python.common_domain.check_parameters import CaaCheckParameters, DcvCheckParameters
@@ -44,4 +46,6 @@ class MpicDcvWithCaaRequest(MpicDcvRequest):  # inherits from MpicDcvRequest rat
     check_type: Literal[CheckType.DCV_WITH_CAA] = CheckType.DCV_WITH_CAA
     caa_check_parameters: CaaCheckParameters | None = None
 
-# TODO use an annotated discriminated union
+
+MpicRequest = Union[MpicCaaRequest, MpicDcvRequest, MpicDcvWithCaaRequest]
+AnnotatedMpicRequest = Annotated[MpicRequest, Field(discriminator='check_type')]

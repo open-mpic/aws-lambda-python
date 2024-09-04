@@ -27,7 +27,7 @@ class TestDeployedMpicApi:
             yield api_client
             api_client.close()
 
-    def api_should_return_200_given_valid_caa_validation(self, api_client):
+    def api_should_return_200_given_and_passed_corroboration_given_successful_caa_check(self, api_client):
         request = MpicCaaRequest(
             domain_or_ip_target='example.com',
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
@@ -35,7 +35,7 @@ class TestDeployedMpicApi:
         )
 
         print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
-        response = api_client.post(RequestPath.CAA_CHECK, json.dumps(request.model_dump()))
+        response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
         # response_body_as_json = response.json()
         assert response.status_code == 200
         # assert response body has a list of perspectives with length 2, and each element has response code 200
@@ -58,13 +58,14 @@ class TestDeployedMpicApi:
             )
         )
 
-        response = api_client.post(RequestPath.DCV_CHECK, json.dumps(request.model_dump()))
+        print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
+        response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
         assert response.status_code == 200
         response_body = json.loads(response.text)
-        print(json.dumps(response_body, indent=4))
+        print("\nResponse:\n", json.dumps(response_body, indent=4))  # pretty print response body
         # finish test... (and figure out how to actually run it successfully and reliably)
 
-    def api_should_return_stuff(self, api_client):
+    def api_should_return_200_and_failed_corroboration_given_failed_dcv_check(self, api_client):
         request = MpicDcvRequest(
             domain_or_ip_target='ifconfig.me',
             dcv_check_parameters=DcvCheckParameters(
@@ -74,12 +75,11 @@ class TestDeployedMpicApi:
             )
         )
 
-        response = api_client.post(RequestPath.DCV_CHECK, json.dumps(request.model_dump()))
+        print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
+        response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
         assert response.status_code == 200
         response_body = json.loads(response.text)
-        print(json.dumps(response_body, indent=4))
-        # finish test... (and figure out how to actually run it successfully and reliably)
-
+        print("\nResponse:\n", json.dumps(response_body, indent=4))  # pretty print response body
 
     def api_should_return_400_given_invalid_parameters_in_request(self, api_client):
         request = MpicCaaRequest(
@@ -88,9 +88,11 @@ class TestDeployedMpicApi:
             caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['mozilla.com'])
         )
 
-        response = api_client.post(RequestPath.CAA_CHECK, json.dumps(request.model_dump()))
+        print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
+        response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
         assert response.status_code == 400
         response_body = json.loads(response.text)
+        print("\nResponse:\n", json.dumps(response_body, indent=4))  # pretty print response body
         assert response_body['error'] == MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key
         assert any(issue['issue_type'] == MpicRequestValidationMessages.INVALID_QUORUM_COUNT.key for issue in response_body['validation_issues'])
         
