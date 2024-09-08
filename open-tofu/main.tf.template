@@ -5,17 +5,25 @@ provider "aws" {
 }
 
 # Python open-mpic layer (contains third party libraries)
-resource "aws_lambda_layer_version" "python311-open-mpic-layer" {
+resource "aws_lambda_layer_version" "python311_open_mpic_layer" {
     filename            = "../layer/python311_layer_content.zip"
     layer_name          = "python_311_open_mpic_layer_{{deployment-id}}"
     source_code_hash    = "${filebase64sha256("../layer/python311_layer_content.zip")}"
     compatible_runtimes = ["python3.11"]
 }
 
+# Mpic Common layer for all lambdas (contains supporting first-party source code)
+resource "aws_lambda_layer_version" "mpic_common_layer" {
+    filename            = "../layer/mpic_common_layer_content.zip"
+    layer_name          = "mpic_common_layer_{{deployment-id}}"
+    source_code_hash    = "${filebase64sha256("../layer/mpic_common_layer_content.zip")}"
+    compatible_runtimes = ["python3.11"]
+}
+
 # Mpic Coordinator layer for the mpic coordinator lambda (contains supporting first-party source code)
-resource "aws_lambda_layer_version" "mpic-coordinator-layer" {
+resource "aws_lambda_layer_version" "mpic_coordinator_layer" {
     filename            = "../layer/mpic_coordinator_layer_content.zip"
-    layer_name          = "mpic-coordinator-layer_{{deployment-id}}"
+    layer_name          = "mpic_coordinator_layer_{{deployment-id}}"
     source_code_hash    = "${filebase64sha256("../layer/mpic_coordinator_layer_content.zip")}"
     compatible_runtimes = ["python3.11"]
 }
@@ -66,16 +74,18 @@ resource "aws_lambda_function" "mpic_coordinator_lambda" {
     handler       = "mpic_coordinator_lambda_function.lambda_handler"
     source_code_hash = filebase64sha256("../{{source-path}}/mpic_coordinator_lambda/mpic_coordinator_lambda.zip")
     runtime = "python3.11"
+    architectures = ["arm64"]
     timeout = 60
     layers = [
-        aws_lambda_layer_version.python311-open-mpic-layer.arn,
-        aws_lambda_layer_version.mpic-coordinator-layer.arn
+        aws_lambda_layer_version.python311_open_mpic_layer.arn,
+        aws_lambda_layer_version.mpic_common_layer.arn,
+        aws_lambda_layer_version.mpic_coordinator_layer.arn,
     ]
     environment {
       variables = {
         perspective_names = {{perspective-names-list}}
         validator_arns = {{validator-arns-list}}
-        caa_arns = {{caa-resolver-arns-list}}
+        caa_arns = {{mpic-caa-checker-arns-list}}
         default_perspective_count = {{default-perspective-count}}
         enforce_distinct_rir_regions = {{enforce-distinct-rir-regions}}
         hash_secret = {{hash-secret}}
@@ -93,9 +103,7 @@ resource "aws_api_gateway_rest_api" "open_mpic_api" {
 
 resource "aws_api_gateway_deployment" "deployment" {
   depends_on = [
-    aws_api_gateway_integration.validation_integration,
-    aws_api_gateway_integration.caa_integration,
-    aws_api_gateway_integration.validationwithcaa_integration,
+    aws_api_gateway_integration.mpic_integration
   ]
 
   rest_api_id = aws_api_gateway_rest_api.open_mpic_api.id

@@ -1,5 +1,5 @@
 # aws-lambda-python
-An implementation of the Open MPIC API using AWS-Lambda serverless fucntions written in Python as well as AWS API Gateway.
+An implementation of the Open MPIC API using AWS-Lambda serverless functions written in Python as well as AWS API Gateway.
 
 # Deployment
 As this API runs serverless in the cloud, it is not installed but rather deployed. The below instructions deploy the API in a user's AWS account and create a unique API endpoint for that user.
@@ -28,10 +28,7 @@ The following is an example of a test API call that uses bash command substituti
 ```
 curl -H 'Content-Type: application/json' -H "x-api-key: $(hatch run ./get_api_key.py)" \
       -d '{
-  "api-version": "1.0.0",
-  "system-params": {
-    "identifier": "example.com"
-  }
+  "domain_or_ip_target": "example.com"
 }' \
       -X POST \
       "$(hatch run ./get_api_url.py)/caa-check"
