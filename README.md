@@ -28,10 +28,11 @@ The following is an example of a test API call that uses bash command substituti
 ```
 curl -H 'Content-Type: application/json' -H "x-api-key: $(hatch run ./get_api_key.py)" \
       -d '{
+  "check_type": "caa",
   "domain_or_ip_target": "example.com"
 }' \
       -X POST \
-      "$(hatch run ./get_api_url.py)/caa-check"
+      "$(hatch run ./get_api_url.py)/mpic"
 ```
 
 The above sample must be run from the root directory of a deployed Open MPIC aws-lambda-python implementation for the bash command substitution to work. You can also run `hatch run ./get_api_key.py` and `hatch run ./get_api_url.py`, store these values and then substitute them into the above command. Once deployed, the API is globally accessible and authenticates requests via the `x-api-key` header, so the curl command with both of these values substituted can be run from any Internet-connected machine to trigger the API.
