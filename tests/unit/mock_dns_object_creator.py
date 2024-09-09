@@ -10,10 +10,10 @@ from aws_lambda_python.common_domain.enum.dns_record_type import DnsRecordType
 
 class MockDnsObjectCreator:
     @staticmethod
-    def create_caa_rrset(caa_record_1: CAA, caa_record_2: CAA):
+    def create_caa_rrset(*caa_records: CAA):
         test_rrset = RRset(name=dns.name.from_text('example.com'), rdclass=dns.rdataclass.IN, rdtype=dns.rdatatype.CAA)
-        test_rrset.add(caa_record_1)
-        test_rrset.add(caa_record_2)
+        for caa_record in caa_records:
+            test_rrset.add(caa_record)
         return test_rrset
 
     @staticmethod
