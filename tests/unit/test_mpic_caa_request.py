@@ -29,7 +29,7 @@ class TestMpicCaaRequest:
         request = ValidRequestCreator.create_valid_caa_check_request()
         request.caa_check_parameters.certificate_type = 'invalid'
         with pytest.raises(pydantic.ValidationError) as validation_error:
-            MpicCaaRequest.model_validate_json(json.dumps(request.model_dump()))
+            MpicCaaRequest.model_validate_json(json.dumps(request.model_dump(warnings=False)))
         assert 'certificate_type' in str(validation_error.value)
         assert 'invalid' in str(validation_error.value)
 
