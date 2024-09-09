@@ -72,6 +72,8 @@ class MpicDcvChecker:
             name_to_resolve = domain_or_ip_target
         expected_dns_record_content = request.dcv_check_parameters.validation_details.challenge_value
 
+        # TODO add leading underscore to name_to_resolve if it's not found?
+
         print(f"Resolving {dns_record_type.name} record for {name_to_resolve}...")
         try:
             lookup = dns.resolver.resolve(name_to_resolve, dns_record_type)
