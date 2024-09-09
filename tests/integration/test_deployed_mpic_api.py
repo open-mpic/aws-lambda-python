@@ -53,15 +53,50 @@ class TestDeployedMpicApi:
         assert (len(list(filter(lambda perspective: perspective.check_type == CheckType.CAA, perspectives_list)))
                 == request.orchestration_parameters.perspective_count)
 
-    @pytest.mark.parametrize('domain_or_ip_target, purpose_of_test', [
-        ('empty.basic.caatestsuite.com', 'Tests handling of 0 issue ";"'),
-        ('deny.basic.caatestsuite.com', 'Tests handling of 0 issue "caatestsuite.com"'),
-        ('uppercase-deny.basic.caatestsuite.com', 'Tests handling of uppercase issue tag (0 ISSUE "caatestsuite.com")'),
-        ('mixedcase-deny.basic.caatestsuite.com', 'Tests handling of mixed case issue tag (0 IsSuE "caatestsuite.com")'),
-        ('big.basic.caatestsuite.com', 'Tests handling of gigantic (1001) CAA record set (0 issue "caatestsuite.com")'),
+    @pytest.mark.parametrize('domain_or_ip_target, purpose_of_test, is_wildcard_domain', [
+        ('empty.basic.caatestsuite.com', 'Tests handling of 0 issue ";"', False),
+        ('deny.basic.caatestsuite.com', 'Tests handling of 0 issue "caatestsuite.com"', False),
+        ('uppercase-deny.basic.caatestsuite.com', 'Tests handling of uppercase issue tag (0 ISSUE "caatestsuite.com")', False),
+        ('mixedcase-deny.basic.caatestsuite.com', 'Tests handling of mixed case issue tag (0 IsSuE "caatestsuite.com")', False),
+        ('big.basic.caatestsuite.com', 'Tests handling of gigantic (1001) CAA record set (0 issue "caatestsuite.com")', False),
+        ('critical1.basic.caatestsuite.com', 'Tests handling of unknown critical property (128 caatestsuitedummyproperty "test")', False),
+        ('critical2.basic.caatestsuite.com', 'Tests handling of unknown critical property with another flag (130)', False),
+        ('sub1.deny.basic.caatestsuite.com', 'Tests basic tree climbing when CAA record is at parent domain', False),
+        ('sub2.sub1.deny.basic.caatestsuite.com', 'Tests tree climbing when CAA record is at grandparent domain', False),
+        ('deny.basic.caatestsuite.com', 'Tests handling of issue property for a wildcard domain', True),
+        ('deny-wild.basic.caatestsuite.com', 'Tests handling of issuewild for a wildcard domain', True),
+        ('cname-deny.basic.caatestsuite.com', 'Tests handling of CNAME, where CAA record is at CNAME target', False),
+        ('cname-cname-deny.basic.caatestsuite.com', 'Tests handling of CNAME chain, where CAA record is at ultimate target', False),
+        ('sub1.cname-deny.basic.caatestsuite.com', 'Tests handling of CNAME, where parent is CNAME and CAA record is at target', False),
+        ('deny.permit.basic.caatestsuite.com', 'Tests rejection when parent name contains a permissible CAA record set', False),
+        ('ipv6only.caatestsuite.com', 'Tests handling of record at IPv6-only authoritative name server', False),
+        ('expired.caatestsuite-dnssec.com', 'Tests rejection when expired DNSSEC signatures', False),
+        ('missing.caatestsuite-dnssec.com', 'Tests rejection when missing DNSSEC signatures', False),
+        ('blackhole.caatestsuite-dnssec.com', 'Tests rejection when DNSSEC chain goes to non-responsive server', False),
+        ('servfail.caatestsuite-dnssec.com', 'Tests rejection when DNSSEC chain goes to server returning SERVFAIL', False),
+        ('refused.caatestsuite-dnssec.com', 'Tests rejection when DNSSEC chain goes to server returning REFUSED', False),
+        ('xss.caatestsuite.com', 'Tests rejection when issue property has HTML and JS', False),
     ])
-    def api_should_return_is_valid_false_for_all_tests_in_do_not_issue_caa_test_suite(self, api_client,
-                                                                                      domain_or_ip_target, purpose_of_test):
+    def api_should_return_is_valid_false_for_all_tests_in_do_not_issue_caa_test_suite(self, api_client, domain_or_ip_target,
+                                                                                      purpose_of_test, is_wildcard_domain):
+        print(f"Running test for {domain_or_ip_target} ({purpose_of_test})")
+        request = MpicCaaRequest(
+            domain_or_ip_target=domain_or_ip_target,
+            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
+            caa_check_parameters=CaaCheckParameters(
+                certificate_type=CertificateType.TLS_SERVER if not is_wildcard_domain else CertificateType.TLS_SERVER_WILDCARD,
+                caa_domains=['example.com'])
+        )
+        response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
+        mpic_response = self.mpic_response_adapter.validate_json(response.text)
+        assert mpic_response.is_valid is False
+
+    @pytest.mark.skip(reason='Behavior not required in RFC 8659')
+    @pytest.mark.parametrize('domain_or_ip_target, purpose_of_test', [
+        ('dname-deny.basic.caatestsuite.com', 'Tests handling of 0 issue ";"'),
+        ('cname-deny-sub.basic.caatestsuite.com', 'Tests handling of 0 issue "caatestsuite.com"')
+    ])
+    def api_should_return_is_valid_false_for_do_not_issue_caa_test_suite_for_rfc_6844(self, api_client, domain_or_ip_target, purpose_of_test):
         print(f"Running test for {domain_or_ip_target} ({purpose_of_test})")
         request = MpicCaaRequest(
             domain_or_ip_target=domain_or_ip_target,
@@ -71,278 +106,6 @@ class TestDeployedMpicApi:
         response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
         mpic_response = self.mpic_response_adapter.validate_json(response.text)
         assert mpic_response.is_valid is False
-
-    def api_should_return_is_valid_false_for_do_not_issue_caa_test_suite_critical1_basic_caatestsuite_com(self, api_client):
-        request = MpicCaaRequest(
-            domain_or_ip_target='critical1.basic.caatestsuite.com',
-            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
-            caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['example.com'])
-        )
-        response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
-        mpic_response = self.mpic_response_adapter.validate_json(response.text)
-        assert mpic_response.is_valid is False
-
-    def api_should_return_is_valid_false_for_do_not_issue_caa_test_suite_critical2_basic_caatestsuite_com(self, api_client):
-        request = MpicCaaRequest(
-            domain_or_ip_target='critical2.basic.caatestsuite.com',
-            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
-            caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['example.com'])
-        )
-        response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
-        mpic_response = self.mpic_response_adapter.validate_json(response.text)
-        assert mpic_response.is_valid is False
-
-    def api_should_return_is_valid_false_for_do_not_issue_caa_test_suite_sub1_deny_basic_caatestsuite_com(self, api_client):
-        request = MpicCaaRequest(
-            domain_or_ip_target='sub1.deny.basic.caatestsuite.com',
-            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
-            caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['example.com'])
-        )
-        response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
-        mpic_response = self.mpic_response_adapter.validate_json(response.text)
-        assert mpic_response.is_valid is False
-
-    def api_should_return_is_valid_false_for_do_not_issue_caa_test_suite_sub2_sub1_deny_basic_caatestsuite_com(self, api_client):
-        request = MpicCaaRequest(
-            domain_or_ip_target='sub2.sub1.deny.basic.caatestsuite.com',
-            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
-            caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['example.com'])
-        )
-
-        print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
-        response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
-        # response_body_as_json = response.json()
-        # assert response body has a list of perspectives with length 2, and each element has response code 200
-        response_body = json.loads(response.text)
-        print("\nResponse:\n", json.dumps(response_body, indent=4))  # pretty print response body
-        assert response_body['is_valid'] is False
-
-    def api_should_return_is_valid_false_for_do_not_issue_caa_test_suite_star_deny_basic_caatestsuite_com(self, api_client):
-        request = MpicCaaRequest(
-            domain_or_ip_target='deny.basic.caatestsuite.com',
-            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
-            caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER_WILDCARD, caa_domains=['example.com'])
-        )
-
-        print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
-        response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
-        # response_body_as_json = response.json()
-        # assert response body has a list of perspectives with length 2, and each element has response code 200
-        response_body = json.loads(response.text)
-        print("\nResponse:\n", json.dumps(response_body, indent=4))  # pretty print response body
-        assert response_body['is_valid'] is False
-
-    def api_should_return_is_valid_false_for_do_not_issue_caa_test_suite_star_deny_wild_basic_caatestsuite_com(self, api_client):
-        request = MpicCaaRequest(
-            domain_or_ip_target='deny-wild.basic.caatestsuite.com',
-            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
-            caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER_WILDCARD, caa_domains=['example.com'])
-        )
-
-        print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
-        response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
-        # response_body_as_json = response.json()
-        # assert response body has a list of perspectives with length 2, and each element has response code 200
-        response_body = json.loads(response.text)
-        print("\nResponse:\n", json.dumps(response_body, indent=4))  # pretty print response body
-        assert response_body['is_valid'] is False
-
-    def api_should_return_is_valid_false_for_do_not_issue_caa_test_suite_cname_deny_basic_caatestsuite_com(self, api_client):
-        request = MpicCaaRequest(
-            domain_or_ip_target='cname-deny.basic.caatestsuite.com',
-            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
-            caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['example.com'])
-        )
-
-        print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
-        response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
-        # response_body_as_json = response.json()
-        # assert response body has a list of perspectives with length 2, and each element has response code 200
-        response_body = json.loads(response.text)
-        print("\nResponse:\n", json.dumps(response_body, indent=4))  # pretty print response body
-        assert response_body['is_valid'] is False
-
-    def api_should_return_is_valid_false_for_do_not_issue_caa_test_suite_cname_cname_deny_basic_caatestsuite_com(self, api_client):
-        request = MpicCaaRequest(
-            domain_or_ip_target='cname-cname-deny.basic.caatestsuite.com',
-            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
-            caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['example.com'])
-        )
-
-        print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
-        response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
-        # response_body_as_json = response.json()
-        # assert response body has a list of perspectives with length 2, and each element has response code 200
-        response_body = json.loads(response.text)
-        print("\nResponse:\n", json.dumps(response_body, indent=4))  # pretty print response body
-        assert response_body['is_valid'] is False
-
-    def api_should_return_is_valid_false_for_do_not_issue_caa_test_suite_sub1_cname_deny_basic_caatestsuite_com(self, api_client):
-        request = MpicCaaRequest(
-            domain_or_ip_target='sub1.cname-deny.basic.caatestsuite.com',
-            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
-            caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['example.com'])
-        )
-
-        print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
-        response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
-        # response_body_as_json = response.json()
-        # assert response body has a list of perspectives with length 2, and each element has response code 200
-        response_body = json.loads(response.text)
-        print("\nResponse:\n", json.dumps(response_body, indent=4))  # pretty print response body
-        assert response_body['is_valid'] is False
-
-    def api_should_return_is_valid_false_for_do_not_issue_caa_test_suite_deny_permit_basic_caatestsuite_com(self, api_client):
-        request = MpicCaaRequest(
-            domain_or_ip_target='deny.permit.basic.caatestsuite.com',
-            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
-            caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['example.com'])
-        )
-
-        print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
-        response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
-        # response_body_as_json = response.json()
-        # assert response body has a list of perspectives with length 2, and each element has response code 200
-        response_body = json.loads(response.text)
-        print("\nResponse:\n", json.dumps(response_body, indent=4))  # pretty print response body
-        assert response_body['is_valid'] is False
-
-    def api_should_return_is_valid_false_for_do_not_issue_caa_test_suite_ipv6only_caatestsuite_com(self, api_client):
-        request = MpicCaaRequest(
-            domain_or_ip_target='ipv6only.caatestsuite.com',
-            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
-            caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['example.com'])
-        )
-
-        print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
-        response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
-        # response_body_as_json = response.json()
-        # assert response body has a list of perspectives with length 2, and each element has response code 200
-        response_body = json.loads(response.text)
-        print("\nResponse:\n", json.dumps(response_body, indent=4))  # pretty print response body
-        assert response_body['is_valid'] is False
-
-    def api_should_return_is_valid_false_for_do_not_issue_caa_test_suite_expired_caatestsuite_dnssec_com(self, api_client):
-        request = MpicCaaRequest(
-            domain_or_ip_target='expired.caatestsuite-dnssec.com',
-            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
-            caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['example.com'])
-        )
-
-        print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
-        response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
-        # response_body_as_json = response.json()
-        # assert response body has a list of perspectives with length 2, and each element has response code 200
-        response_body = json.loads(response.text)
-        print("\nResponse:\n", json.dumps(response_body, indent=4))  # pretty print response body
-        assert response_body['is_valid'] is False
-
-    def api_should_return_is_valid_false_for_do_not_issue_caa_test_suite_missing_caatestsuite_dnssec_com(self, api_client):
-        request = MpicCaaRequest(
-            domain_or_ip_target='missing.caatestsuite-dnssec.com',
-            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
-            caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['example.com'])
-        )
-
-        print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
-        response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
-        # response_body_as_json = response.json()
-        # assert response body has a list of perspectives with length 2, and each element has response code 200
-        response_body = json.loads(response.text)
-        print("\nResponse:\n", json.dumps(response_body, indent=4))  # pretty print response body
-        assert response_body['is_valid'] is False
-
-    def api_should_return_is_valid_false_for_do_not_issue_caa_test_suite_blackhole_caatestsuite_dnssec_com(self, api_client):
-        request = MpicCaaRequest(
-            domain_or_ip_target='blackhole.caatestsuite-dnssec.com',
-            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
-            caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['example.com'])
-        )
-
-        print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
-        response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
-        # response_body_as_json = response.json()
-        # assert response body has a list of perspectives with length 2, and each element has response code 200
-        response_body = json.loads(response.text)
-        print("\nResponse:\n", json.dumps(response_body, indent=4))  # pretty print response body
-        assert response_body['is_valid'] is False
-
-    def api_should_return_is_valid_false_for_do_not_issue_caa_test_suite_servfail_caatestsuite_dnssec_com(self, api_client):
-        request = MpicCaaRequest(
-            domain_or_ip_target='servfail.caatestsuite-dnssec.com',
-            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
-            caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['example.com'])
-        )
-
-        print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
-        response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
-        # response_body_as_json = response.json()
-        # assert response body has a list of perspectives with length 2, and each element has response code 200
-        response_body = json.loads(response.text)
-        print("\nResponse:\n", json.dumps(response_body, indent=4))  # pretty print response body
-        assert response_body['is_valid'] is False
-
-    def api_should_return_is_valid_false_for_do_not_issue_caa_test_suite_refused_caatestsuite_dnssec_com(self, api_client):
-        request = MpicCaaRequest(
-            domain_or_ip_target='refused.caatestsuite-dnssec.com',
-            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
-            caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['example.com'])
-        )
-
-        print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
-        response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
-        # response_body_as_json = response.json()
-        # assert response body has a list of perspectives with length 2, and each element has response code 200
-        response_body = json.loads(response.text)
-        print("\nResponse:\n", json.dumps(response_body, indent=4))  # pretty print response body
-        assert response_body['is_valid'] is False
-
-    def api_should_return_is_valid_false_for_do_not_issue_caa_test_suite_xss_caatestsuite_com(self, api_client):
-        request = MpicCaaRequest(
-            domain_or_ip_target='xss.caatestsuite.com',
-            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
-            caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['example.com'])
-        )
-
-        print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
-        response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
-        # response_body_as_json = response.json()
-        # assert response body has a list of perspectives with length 2, and each element has response code 200
-        response_body = json.loads(response.text)
-        print("\nResponse:\n", json.dumps(response_body, indent=4))  # pretty print response body
-        assert response_body['is_valid'] is False
-
-    @pytest.mark.skip(reason='Behavior not required in RFC 8659')
-    def api_should_return_is_valid_false_for_do_not_issue_caa_test_suite_dname_deny_basic_caatestsuite_com(self, api_client):
-        request = MpicCaaRequest(
-            domain_or_ip_target='dname-deny.basic.caatestsuite.com',
-            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
-            caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['example.com'])
-        )
-
-        print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
-        response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
-        # response_body_as_json = response.json()
-        # assert response body has a list of perspectives with length 2, and each element has response code 200
-        response_body = json.loads(response.text)
-        print("\nResponse:\n", json.dumps(response_body, indent=4))  # pretty print response body
-        assert response_body['is_valid'] is False
-
-    @pytest.mark.skip(reason='Behavior not required in RFC 8659')
-    def api_should_return_is_valid_false_for_do_not_issue_caa_test_suite_cname_deny_sub_basic_caatestsuite_com(self, api_client):
-        request = MpicCaaRequest(
-            domain_or_ip_target='cname-deny-sub.basic.caatestsuite.com',
-            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
-            caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['example.com'])
-        )
-
-        print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
-        response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
-        # response_body_as_json = response.json()
-        # assert response body has a list of perspectives with length 2, and each element has response code 200
-        response_body = json.loads(response.text)
-        print("\nResponse:\n", json.dumps(response_body, indent=4))  # pretty print response body
-        assert response_body['is_valid'] is False
 
     @pytest.mark.skip(reason='Not implemented yet')
     def api_should_return_200_given_valid_dcv_validation(self, api_client):
