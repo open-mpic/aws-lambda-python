@@ -1,3 +1,8 @@
+lambda_caa_resolver/
+lambda_validator/
+src/aws_lambda_python/lambda_caa_resolver/
+src/aws_lambda_python/lambda_validator/
+
 mpic_*_lambda.zip
 mpic_*_layer.zip
 
