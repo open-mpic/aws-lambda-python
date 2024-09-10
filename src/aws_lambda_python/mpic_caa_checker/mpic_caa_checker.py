@@ -8,6 +8,7 @@ from dns.rrset import RRset
 
 from aws_lambda_python.common_domain.check_request import CaaCheckRequest
 from aws_lambda_python.common_domain.check_response import CaaCheckResponse, CaaCheckResponseDetails
+from aws_lambda_python.common_domain.validation_error import ValidationError
 from aws_lambda_python.common_domain.enum.certificate_type import CertificateType
 
 ISSUE_TAG: Final[str] = 'issue'
@@ -19,6 +20,7 @@ class MpicCaaLookupException(Exception): # This is a python exception type used 
 class MpicCaaChecker:
     def __init__(self):
         self.default_caa_domain_list = os.environ['default_caa_domains'].split("|")
+        self.rir_region: Final[str] = os.environ['rir_region']
         self.AWS_REGION: Final[str] = os.environ['AWS_REGION']
 
     @staticmethod
@@ -113,23 +115,22 @@ class MpicCaaChecker:
         except MpicCaaLookupException:
             caa_lookup_error = True
 
-        
+        perspective_name = self.rir_region + "." + self.AWS_REGION
 
         if caa_lookup_error:
-            # Testing code for coordinator error handling.
-            raise MpicCaaLookupException
-            response = CaaCheckResponse(perspective=self.AWS_REGION, check_passed=False,
-                                        details=CaaCheckResponseDetails(error="CAALookupError"), # Possibly should change to present=None to indicate the lookup failed.
+            response = CaaCheckResponse(perspective=perspective_name, check_passed=False,
+                                        errors=[ValidationError(error_type="mpic_error:caa_checker:lookup", error_message="There was an error looking up the CAA record.")],
+                                        details=CaaCheckResponseDetails(present=False), # Possibly should change to present=None to indicate the lookup failed.
                                         timestamp_ns=time.time_ns())
             result['body'] = json.dumps(response.model_dump())
         elif not caa_found:  # if domain has no CAA records: valid for issuance
-            response = CaaCheckResponse(perspective=self.AWS_REGION, check_passed=True,
+            response = CaaCheckResponse(perspective=perspective_name, check_passed=True,
                                         details=CaaCheckResponseDetails(present=False),
                                         timestamp_ns=time.time_ns())
             result['body'] = json.dumps(response.model_dump())
         else:
             valid_for_issuance = MpicCaaChecker.is_valid_for_issuance(caa_domains, is_wc_domain, rrset)
-            response = CaaCheckResponse(perspective=self.AWS_REGION, check_passed=valid_for_issuance,
+            response = CaaCheckResponse(perspective=perspective_name, check_passed=valid_for_issuance,
                                         details=CaaCheckResponseDetails(present=True,
                                                                         found_at=domain.to_text(omit_final_dot=True),
                                                                         response=rrset.to_text()),
