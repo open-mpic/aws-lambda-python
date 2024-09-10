@@ -54,23 +54,20 @@ class MpicCaaChecker:
         issue_tags = []
         issue_wild_tags = []
         has_unknown_critical_flags = False
-        has_bad_tag = False
 
         # Note: a record with critical flag and 'issue' tag will be considered valid for issuance
         for resource_record in rrset:
             tag = resource_record.tag.decode('utf-8')
+            tag_lower = tag.lower()
             val = resource_record.value.decode('utf-8')
-            if tag == ISSUE_TAG:
+            if tag_lower == ISSUE_TAG:
                 issue_tags.append(val)
-            elif tag == ISSUEWILD_TAG:
+            elif tag_lower == ISSUEWILD_TAG:
                 issue_wild_tags.append(val)
             elif resource_record.flags & 0b10000000:  # bitwise-and to check if flags are 128 (the critical flag)
                 has_unknown_critical_flags = True
-            #  test if issue tag has bad casing (upper case, mixed case)
-            elif tag.lower() == ISSUE_TAG or tag.lower() == ISSUEWILD_TAG:
-                has_bad_tag = True
 
-        if has_unknown_critical_flags or has_bad_tag:
+        if has_unknown_critical_flags:
             valid_for_issuance = False
         else:
             if is_wc_domain and len(issue_wild_tags) > 0:
