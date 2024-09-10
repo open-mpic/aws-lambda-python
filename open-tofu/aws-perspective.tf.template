@@ -62,6 +62,7 @@ resource "aws_vpc" "vpc_{{region}}" {
 resource "aws_subnet" "subnet_public_{{region}}" {
   vpc_id                  = aws_vpc.vpc_{{region}}.id
   cidr_block              = var.subnet_public_cidr_block_{{region}}
+  depends_on              = [aws_vpc.vpc_{{region}}]
   map_public_ip_on_launch = true
   tags = {
     Name = "mpic-{{region}}-vpc-subnet-public"
@@ -121,6 +122,7 @@ resource "aws_subnet" "subnet_private_{{region}}" {
   vpc_id                  = aws_vpc.vpc_{{region}}.id
   cidr_block              = var.subnet_private_cidr_block_{{region}}
   map_public_ip_on_launch = false
+  depends_on              = [aws_vpc.vpc_{{region}}]
   tags = {
     Name = "mpic-{{region}}-subnet-private"
   }
