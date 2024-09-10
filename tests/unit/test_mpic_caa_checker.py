@@ -20,6 +20,7 @@ class TestMpicCaaChecker:
         envvars = {
             'default_caa_domains': 'ca1.com|ca2.net|ca3.org',
             'AWS_REGION': 'us-east-4',
+            'rir_region': 'arin',
         }
         with pytest.MonkeyPatch.context() as class_scoped_monkeypatch:
             for k, v in envvars.items():
@@ -211,10 +212,10 @@ class TestMpicCaaChecker:
         assert result is False
 
     @pytest.mark.parametrize('issue_tag', ['ISSUE', 'IsSuE'])
-    def is_valid_for_issuance__should_return_false_given_invalid_casing_in_issue_tag(self, issue_tag):
+    def is_valid_for_issuance__should_return_true_given_nonstandard_casing_in_issue_tag(self, issue_tag):
         test_rrset = MockDnsObjectCreator.create_caa_rrset(MockDnsObjectCreator.create_caa_record(0, issue_tag, 'ca1.org'))
         result = MpicCaaChecker.is_valid_for_issuance(caa_domains=['ca1.org'], is_wc_domain=False, rrset=test_rrset)
-        assert result is False
+        assert result is True
 
     def is_valid_for_issuance__should_return_false_given_attempted_xss_via_caa_record(self):
         test_rrset = MockDnsObjectCreator.create_caa_rrset(MockDnsObjectCreator.create_caa_record(0, 'issue', 'ca1.org <script>alert("XSS")</script>'))
@@ -246,7 +247,8 @@ class TestMpicCaaChecker:
         result_body = json.loads(result['body'])
         response_object = CaaCheckResponse.model_validate(result_body)
         response_object.timestamp_ns = None  # ignore timestamp for comparison
-        expected_response = CaaCheckResponse(perspective='us-east-4', check_passed=check_passed, details=check_response_details)
+        expected_response = CaaCheckResponse(perspective='arin.us-east-4', check_passed=check_passed, details=check_response_details)
+        # Todo: confirm this is a proper way to compare python objects. Potentially the serialization from json.dumps may order object properties differently.
         return json.dumps(response_object.model_dump()) == json.dumps(expected_response.model_dump())
 
 

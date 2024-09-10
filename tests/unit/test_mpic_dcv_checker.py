@@ -20,6 +20,7 @@ class TestMpicDcvChecker:
         envvars = {
             'default_caa_domains': 'ca1.com|ca2.net|ca3.org',
             'AWS_REGION': 'us-east-4',
+            'rir_region': 'arin',
         }
         with pytest.MonkeyPatch.context() as class_scoped_monkeypatch:
             for k, v in envvars.items():
@@ -66,7 +67,7 @@ class TestMpicDcvChecker:
         result_body = json.loads(result['body'])
         response_object = DcvCheckResponse.model_validate(result_body)
         response_object.timestamp_ns = None  # ignore timestamp for comparison
-        expected_response = DcvCheckResponse(perspective='us-east-4', check_passed=True, details=DcvCheckResponseDetails())
+        expected_response = DcvCheckResponse(perspective='arin.us-east-4', check_passed=True, details=DcvCheckResponseDetails())
         assert json.dumps(response_object.model_dump()) == json.dumps(expected_response.model_dump())
 
     def perform_http_validation__should_return_check_passed_true_with_details_given_request_token_file_found(self, set_env_variables, mocker):
@@ -77,7 +78,7 @@ class TestMpicDcvChecker:
         assert response['statusCode'] == 200
         dcv_check_response = DcvCheckResponse.model_validate(json.loads(response['body']))
         assert dcv_check_response.check_passed is True
-        assert dcv_check_response.perspective == 'us-east-4'
+        assert dcv_check_response.perspective == 'arin.us-east-4'
         assert dcv_check_response.timestamp_ns is not None
 
     def perform_http_validation__should_return_check_passed_false_with_details_given_request_token_file_not_found(self, set_env_variables, mocker):
@@ -101,7 +102,7 @@ class TestMpicDcvChecker:
         assert response['statusCode'] == 200
         dcv_check_response = DcvCheckResponse.model_validate(json.loads(response['body']))
         assert dcv_check_response.check_passed is True
-        assert dcv_check_response.perspective == 'us-east-4'
+        assert dcv_check_response.perspective == 'arin.us-east-4'
         assert dcv_check_response.timestamp_ns is not None
 
     def perform_dns_validation__should_return_check_passed_false_with_details_given_expected_dns_record_not_found(self, set_env_variables, mocker):
