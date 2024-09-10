@@ -8,7 +8,7 @@ from dns.rrset import RRset
 
 from aws_lambda_python.common_domain.check_request import CaaCheckRequest
 from aws_lambda_python.common_domain.check_response import CaaCheckResponse, CaaCheckResponseDetails
-from aws_lambda_python.common_domain.errors import ValidationError
+from aws_lambda_python.common_domain.validation_error import ValidationError
 from aws_lambda_python.common_domain.enum.certificate_type import CertificateType
 from aws_lambda_python.common_domain.messages.ErrorMessages import ErrorMessages
 

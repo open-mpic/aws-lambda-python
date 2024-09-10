@@ -8,7 +8,7 @@ import requests
 from aws_lambda_python.common_domain.check_request import DcvCheckRequest
 from aws_lambda_python.common_domain.check_response import DcvCheckResponse, DcvCheckResponseDetails
 from aws_lambda_python.common_domain.enum.dcv_validation_method import DcvValidationMethod
-from aws_lambda_python.common_domain.errors import ValidationError
+from aws_lambda_python.common_domain.validation_error import ValidationError
 
 
 # noinspection PyUnusedLocal
