@@ -13,6 +13,8 @@ from aws_lambda_python.common_domain.enum.certificate_type import CertificateTyp
 ISSUE_TAG: Final[str] = 'issue'
 ISSUEWILD_TAG: Final[str] = 'issuewild'
 
+class MpicCaaLookupException(Exception): # This is a python exception type used for rase statements.
+    pass
 
 class MpicCaaChecker:
     def __init__(self):
@@ -46,6 +48,8 @@ class MpicCaaChecker:
             except dns.resolver.NoAnswer:
                 print(f'No CAA record found for {domain}; trying parent domain...')
                 domain = domain.parent()
+            except Exception as e:
+                raise MpicCaaLookupException
 
         return rrset, domain
 
@@ -94,14 +98,31 @@ class MpicCaaChecker:
             if certificate_type is not None and certificate_type == CertificateType.TLS_SERVER_WILDCARD:
                 is_wc_domain = True
 
-        rrset, domain = MpicCaaChecker.find_caa_record_and_domain(caa_request)
-        caa_found = rrset is not None
-
         result = {
             'statusCode': 200,  # note: must be snakeCase
             'headers': {'Content-Type': 'application/json'}
         }
-        if not caa_found:  # if domain has no CAA records: valid for issuance
+
+        caa_lookup_error = False
+        caa_found = False
+        domain = None
+        rrset = None
+        try:
+            rrset, domain = MpicCaaChecker.find_caa_record_and_domain(caa_request)
+            caa_found = rrset is not None
+        except MpicCaaLookupException:
+            caa_lookup_error = True
+
+        
+
+        if caa_lookup_error:
+            # Testing code for coordinator error handling.
+            raise MpicCaaLookupException
+            response = CaaCheckResponse(perspective=self.AWS_REGION, check_passed=False,
+                                        details=CaaCheckResponseDetails(error="CAALookupError"), # Possibly should change to present=None to indicate the lookup failed.
+                                        timestamp_ns=time.time_ns())
+            result['body'] = json.dumps(response.model_dump())
+        elif not caa_found:  # if domain has no CAA records: valid for issuance
             response = CaaCheckResponse(perspective=self.AWS_REGION, check_passed=True,
                                         details=CaaCheckResponseDetails(present=False),
                                         timestamp_ns=time.time_ns())

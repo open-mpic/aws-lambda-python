@@ -9,9 +9,10 @@ import random
 import hashlib
 
 import pydantic
-from aws_lambda_python.common_domain.check_response import CheckResponse, AnnotatedCheckResponse
+from aws_lambda_python.common_domain.check_response import CheckResponse, AnnotatedCheckResponse, CaaCheckResponse, CaaCheckResponseDetails
 from aws_lambda_python.common_domain.check_request import CaaCheckRequest
 from aws_lambda_python.common_domain.check_request import DcvCheckRequest
+from aws_lambda_python.common_domain.validation_error import ValidationError
 from aws_lambda_python.common_domain.enum.check_type import CheckType
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicCaaRequest, MpicRequest, AnnotatedMpicRequest
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvRequest
@@ -207,15 +208,25 @@ class MpicCoordinator:
                     stacktrace = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
                     print(f'{perspective} generated an exception: {stacktrace}')
                 else:
-                    perspective_response = json.loads(data['Payload'].read().decode('utf-8'))
-                    perspective_response_body = json.loads(perspective_response['body'])
-                    # deserialize perspective body to have a nested object in the output rather than a string
-                    check_response = self.check_response_adapter.validate_python(perspective_response_body)
-                    validity_per_perspective_per_check_type[check_type][perspective] |= check_response.check_passed
                     if check_type not in perspective_responses_per_check_type:
                         perspective_responses_per_check_type[check_type] = []
-                    # TODO make sure responses per perspective match API spec...
-                    perspective_responses_per_check_type[check_type].append(check_response)
+                    try:
+                        perspective_response = json.loads(data['Payload'].read().decode('utf-8'))
+                        perspective_response_body = json.loads(perspective_response['body'])
+                        # deserialize perspective body to have a nested object in the output rather than a string
+                        check_response = self.check_response_adapter.validate_python(perspective_response_body)
+                        validity_per_perspective_per_check_type[check_type][perspective] |= check_response.check_passed
+                        # TODO make sure responses per perspective match API spec...
+                        perspective_responses_per_check_type[check_type].append(check_response)
+                    except Exception as e:
+                        check_error_response = CaaCheckResponse(
+                            perspective=perspective, 
+                            check_passed=False, 
+                            errors=[ValidationError(error_type="mpic_error:coordinator:communication", error_message="Communication with the remote perspective failed.")],
+                            details=CaaCheckResponseDetails(present=False), # Possibly should change to present=None to indicate the lookup failed.
+                            timestamp_ns=time.time_ns())
+                        validity_per_perspective_per_check_type[check_type][perspective] |= check_error_response.check_passed
+                        perspective_responses_per_check_type[check_type].append(check_error_response)
         return perspective_responses_per_check_type, validity_per_perspective_per_check_type
 
     @staticmethod
