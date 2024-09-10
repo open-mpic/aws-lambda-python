@@ -8,6 +8,7 @@ import os
 import random
 import hashlib
 
+
 import pydantic
 from aws_lambda_python.common_domain.check_response import CheckResponse, AnnotatedCheckResponse, CaaCheckResponse, CaaCheckResponseDetails
 from aws_lambda_python.common_domain.check_request import CaaCheckRequest
@@ -212,6 +213,7 @@ class MpicCoordinator:
                         perspective_responses_per_check_type[check_type] = []
                     try:
                         perspective_response = json.loads(data['Payload'].read().decode('utf-8'))
+                        print(perspective_response)
                         perspective_response_body = json.loads(perspective_response['body'])
                         # deserialize perspective body to have a nested object in the output rather than a string
                         check_response = self.check_response_adapter.validate_python(perspective_response_body)
@@ -219,6 +221,7 @@ class MpicCoordinator:
                         # TODO make sure responses per perspective match API spec...
                         perspective_responses_per_check_type[check_type].append(check_response)
                     except Exception as e:
+                        print(traceback.format_exc())
                         check_error_response = CaaCheckResponse(
                             perspective=perspective, 
                             check_passed=False, 
