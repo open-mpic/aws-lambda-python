@@ -3,19 +3,27 @@ import json
 import pytest
 import os
 
+from pydantic import TypeAdapter
+
 from aws_lambda_python.common_domain.check_response import CaaCheckResponse, CaaCheckResponseDetails
 from aws_lambda_python.common_domain.enum.dcv_validation_method import DcvValidationMethod
 from aws_lambda_python.common_domain.enum.check_type import CheckType
+from aws_lambda_python.common_domain.messages.ErrorMessages import ErrorMessages
 from aws_lambda_python.mpic_coordinator.domain.enum.request_path import RequestPath
 from aws_lambda_python.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
 from aws_lambda_python.mpic_coordinator.mpic_coordinator import MpicCoordinator
 from botocore.response import StreamingBody
 
 from valid_request_creator import ValidRequestCreator
+from aws_lambda_python.mpic_coordinator.domain.mpic_response import MpicResponse, AnnotatedMpicResponse
 
 
 # noinspection PyMethodMayBeStatic
 class TestMpicCoordinator:
+    @classmethod
+    def setup_class(cls):
+        cls.mpic_response_adapter: TypeAdapter[MpicResponse] = TypeAdapter(AnnotatedMpicResponse)
+
     @staticmethod
     @pytest.fixture(scope='class')
     def set_env_variables():
@@ -141,8 +149,8 @@ class TestMpicCoordinator:
         mpic_coordinator = MpicCoordinator()
         result = mpic_coordinator.coordinate_mpic(event)
         assert result['statusCode'] == 200
-        response_body = json.loads(result['body'])
-        assert response_body['is_valid'] is True
+        mpic_response = self.mpic_response_adapter.validate_json(result['body'])
+        assert mpic_response.is_valid is True
 
     def coordinate_mpic__should_successfully_carry_out_caa_mpic_given_no_parameters_besides_target(self, set_env_variables, mocker):
         request = ValidRequestCreator.create_valid_caa_check_request()
@@ -154,8 +162,28 @@ class TestMpicCoordinator:
         mpic_coordinator = MpicCoordinator()
         result = mpic_coordinator.coordinate_mpic(event)
         assert result['statusCode'] == 200
-        response_body = json.loads(result['body'])
-        assert response_body['is_valid'] is True
+        mpic_response = self.mpic_response_adapter.validate_json(result['body'])
+        assert mpic_response.is_valid is True
+
+    @pytest.mark.parametrize('check_type', [CheckType.CAA, CheckType.DCV])
+    def coordinate_mpic__should_return_check_failure_message_given_remote_perspective_failure(self, set_env_variables, check_type, mocker):
+        request = None
+        match check_type:
+            case CheckType.CAA:
+                request = ValidRequestCreator.create_valid_caa_check_request()
+            case CheckType.DCV:
+                request = ValidRequestCreator.create_valid_dcv_check_request()
+        event = {'path': RequestPath.MPIC, 'body': json.dumps(request.model_dump())}
+        mocker.patch('aws_lambda_python.mpic_coordinator.mpic_coordinator.MpicCoordinator.thread_call',
+                     side_effect=self.create_payload_with_streaming_body_with_failure)
+        mpic_coordinator = MpicCoordinator()
+        result = mpic_coordinator.coordinate_mpic(event)
+        assert result['statusCode'] == 200
+        mpic_response = self.mpic_response_adapter.validate_json(result['body'])
+        assert mpic_response.is_valid is False
+        for perspective in mpic_response.perspectives:
+            assert perspective.check_passed is False
+            assert perspective.errors[0].error_type == ErrorMessages.COORDINATOR_COMMUNICATION_ERROR.key
 
     # noinspection PyUnusedLocal
     def create_payload_with_streaming_body(self, call_config):
@@ -168,6 +196,15 @@ class TestMpicCoordinator:
         streaming_body_response = StreamingBody(file_like_response, len(json_bytes))
         return {'Payload': streaming_body_response}
 
+    # noinspection PyUnusedLocal
+    def create_payload_with_streaming_body_with_failure(self, call_config):
+        # note: all perspective response details will be identical in these tests due to this mocking
+        expected_response_body = 'Something went wrong'
+        expected_response = {'statusCode': 500, 'body': expected_response_body}
+        json_bytes = json.dumps(expected_response).encode('utf-8')
+        file_like_response = io.BytesIO(json_bytes)
+        streaming_body_response = StreamingBody(file_like_response, len(json_bytes))
+        return {'Payload': streaming_body_response}
 
 if __name__ == '__main__':
     pytest.main()

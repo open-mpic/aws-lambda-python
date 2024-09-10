@@ -8,14 +8,17 @@ from dns.rrset import RRset
 
 from aws_lambda_python.common_domain.check_request import CaaCheckRequest
 from aws_lambda_python.common_domain.check_response import CaaCheckResponse, CaaCheckResponseDetails
-from aws_lambda_python.common_domain.validation_error import ValidationError
+from aws_lambda_python.common_domain.errors import ValidationError
 from aws_lambda_python.common_domain.enum.certificate_type import CertificateType
+from aws_lambda_python.common_domain.messages.ErrorMessages import ErrorMessages
 
 ISSUE_TAG: Final[str] = 'issue'
 ISSUEWILD_TAG: Final[str] = 'issuewild'
 
-class MpicCaaLookupException(Exception): # This is a python exception type used for rase statements.
+
+class MpicCaaLookupException(Exception):  # This is a python exception type used for rase statements.
     pass
+
 
 class MpicCaaChecker:
     def __init__(self):
@@ -50,7 +53,7 @@ class MpicCaaChecker:
             except dns.resolver.NoAnswer:
                 print(f'No CAA record found for {domain}; trying parent domain...')
                 domain = domain.parent()
-            except Exception as e:
+            except Exception:
                 raise MpicCaaLookupException
 
         return rrset, domain
@@ -118,20 +121,21 @@ class MpicCaaChecker:
         perspective_name = self.rir_region + "." + self.AWS_REGION
 
         if caa_lookup_error:
+            # TODO would be best to have error types and messages in a separate file to avoid hardcoding strings
             response = CaaCheckResponse(perspective=perspective_name, check_passed=False,
-                                        errors=[ValidationError(error_type="mpic_error:caa_checker:lookup", error_message="There was an error looking up the CAA record.")],
-                                        details=CaaCheckResponseDetails(present=False), # Possibly should change to present=None to indicate the lookup failed.
+                                        errors=[ValidationError(error_type=ErrorMessages.CAA_LOOKUP_ERROR.key, error_message=ErrorMessages.CAA_LOOKUP_ERROR.message)],
+                                        details=CaaCheckResponseDetails(caa_record_present=False),  # Possibly should change to present=None to indicate the lookup failed.
                                         timestamp_ns=time.time_ns())
             result['body'] = json.dumps(response.model_dump())
         elif not caa_found:  # if domain has no CAA records: valid for issuance
             response = CaaCheckResponse(perspective=perspective_name, check_passed=True,
-                                        details=CaaCheckResponseDetails(present=False),
+                                        details=CaaCheckResponseDetails(caa_record_present=False),
                                         timestamp_ns=time.time_ns())
             result['body'] = json.dumps(response.model_dump())
         else:
             valid_for_issuance = MpicCaaChecker.is_valid_for_issuance(caa_domains, is_wc_domain, rrset)
             response = CaaCheckResponse(perspective=perspective_name, check_passed=valid_for_issuance,
-                                        details=CaaCheckResponseDetails(present=True,
+                                        details=CaaCheckResponseDetails(caa_record_present=True,
                                                                         found_at=domain.to_text(omit_final_dot=True),
                                                                         response=rrset.to_text()),
                                         timestamp_ns=time.time_ns())

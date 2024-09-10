@@ -1,6 +1,6 @@
 from typing import Union, Literal
 
-from aws_lambda_python.common_domain.validation_error import ValidationError
+from aws_lambda_python.common_domain.errors import ValidationError
 from aws_lambda_python.common_domain.enum.check_type import CheckType
 from pydantic import BaseModel, Field
 from typing_extensions import Annotated
@@ -14,7 +14,7 @@ class BaseCheckResponse(BaseModel):
 
 
 class CaaCheckResponseDetails(BaseModel):
-    caa_record_present: bool = False
+    caa_record_present: bool = False  # TODO allow None to reflect potential error state
     found_at: str | None = None
     response: str | None = None
 

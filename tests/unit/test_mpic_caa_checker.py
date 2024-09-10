@@ -6,6 +6,8 @@ from aws_lambda_python.common_domain.check_parameters import CaaCheckParameters
 from aws_lambda_python.common_domain.check_request import CaaCheckRequest
 from aws_lambda_python.common_domain.check_response import CaaCheckResponse, CaaCheckResponseDetails
 from aws_lambda_python.common_domain.enum.certificate_type import CertificateType
+from aws_lambda_python.common_domain.errors import ValidationError
+from aws_lambda_python.common_domain.messages.ErrorMessages import ErrorMessages
 from aws_lambda_python.mpic_caa_checker.mpic_caa_checker import MpicCaaChecker
 from dns.rrset import RRset
 
@@ -35,7 +37,7 @@ class TestMpicCaaChecker:
         caa_checker = MpicCaaChecker()
         result = caa_checker.check_caa(caa_request)
         assert result['statusCode'] == 200
-        check_response_details = CaaCheckResponseDetails(present=False)
+        check_response_details = CaaCheckResponseDetails(caa_record_present=False)
         assert self.is_result_as_expected(result, True, check_response_details) is True
 
     def check_caa__should_return_200_and_allow_issuance_given_matching_caa_record_found(self, set_env_variables, mocker):
@@ -51,7 +53,7 @@ class TestMpicCaaChecker:
         caa_checker = MpicCaaChecker()
         result = caa_checker.check_caa(caa_request)
         assert result['statusCode'] == 200
-        check_response_details = CaaCheckResponseDetails(present=True, found_at='example.com', response=test_dns_query_answer.rrset.to_text())
+        check_response_details = CaaCheckResponseDetails(caa_record_present=True, found_at='example.com', response=test_dns_query_answer.rrset.to_text())
         assert self.is_result_as_expected(result, True, check_response_details) is True
 
     def check_caa__should_return_200_and_disallow_issuance_given_non_matching_caa_record_found(self, set_env_variables, mocker):
@@ -67,7 +69,7 @@ class TestMpicCaaChecker:
         caa_checker = MpicCaaChecker()
         result = caa_checker.check_caa(caa_request)
         assert result['statusCode'] == 200
-        check_response_details = CaaCheckResponseDetails(present=True, found_at='example.com',
+        check_response_details = CaaCheckResponseDetails(caa_record_present=True, found_at='example.com',
                                                          response=test_dns_query_answer.rrset.to_text())
         assert self.is_result_as_expected(result, False, check_response_details) is True
 
@@ -81,11 +83,11 @@ class TestMpicCaaChecker:
         caa_checker = MpicCaaChecker()
         result = caa_checker.check_caa(caa_request)
         assert result['statusCode'] == 200
-        check_response_details = CaaCheckResponseDetails(present=True, found_at='example.com', response=test_dns_query_answer.rrset.to_text())
+        check_response_details = CaaCheckResponseDetails(caa_record_present=True, found_at='example.com', response=test_dns_query_answer.rrset.to_text())
         assert self.is_result_as_expected(result, True, check_response_details) is True
 
     def check_caa__should_include_timestamp_in_nanos_in_result(self, set_env_variables, mocker):
-        mocker.patch('dns.resolver.resolve', side_effect=lambda domain_name, rdtype: exec('raise(dns.resolver.NoAnswer)'))
+        mocker.patch('dns.resolver.resolve', side_effect=lambda domain_name, rdtype: self.raise_(dns.resolver.NoAnswer))
         caa_request = CaaCheckRequest(domain_or_ip_target='example.com', caa_check_parameters=CaaCheckParameters(
                                           certificate_type=CertificateType.TLS_SERVER, caa_domains=['ca111.com']))
         caa_checker = MpicCaaChecker()
@@ -94,6 +96,17 @@ class TestMpicCaaChecker:
         result_body = json.loads(result['body'])
         response_object = CaaCheckResponse.model_validate(result_body)
         assert response_object.timestamp_ns is not None
+
+    def check_caa__should_return_failure_response_given_error_in_dns_lookup(self, set_env_variables, mocker):
+        mocker.patch('dns.resolver.resolve', side_effect=lambda domain_name, rdtype: self.raise_(dns.resolver.NoNameservers))
+        caa_request = CaaCheckRequest(domain_or_ip_target='example.com', caa_check_parameters=CaaCheckParameters(
+                                          certificate_type=CertificateType.TLS_SERVER, caa_domains=['ca111.com']))
+        caa_checker = MpicCaaChecker()
+        result = caa_checker.check_caa(caa_request)
+        assert result['statusCode'] == 200
+        check_response_details = CaaCheckResponseDetails(caa_record_present=False)
+        errors = [ValidationError(error_type=ErrorMessages.CAA_LOOKUP_ERROR.key, error_message=ErrorMessages.CAA_LOOKUP_ERROR.message)]
+        assert self.is_result_as_expected(result, False, check_response_details, errors) is True
 
     def find_caa_record_and_domain__should_return_rrset_and_domain_given_domain_with_caa_record(self, set_env_variables, mocker):
         # mock dns.resolver.resolve to return a valid response
@@ -243,13 +256,12 @@ class TestMpicCaaChecker:
             raise ex
         return _raise()
 
-    def is_result_as_expected(self, result, check_passed, check_response_details):
+    def is_result_as_expected(self, result, check_passed, check_response_details, errors=None):
         result_body = json.loads(result['body'])
         response_object = CaaCheckResponse.model_validate(result_body)
         response_object.timestamp_ns = None  # ignore timestamp for comparison
-        expected_response = CaaCheckResponse(perspective='arin.us-east-4', check_passed=check_passed, details=check_response_details)
-        # Todo: confirm this is a proper way to compare python objects. Potentially the serialization from json.dumps may order object properties differently.
-        return json.dumps(response_object.model_dump()) == json.dumps(expected_response.model_dump())
+        expected_response = CaaCheckResponse(perspective='arin.us-east-4', check_passed=check_passed, details=check_response_details, errors=errors)
+        return response_object == expected_response  # Pydantic allows direct comparison with equality operator
 
 
 if __name__ == '__main__':

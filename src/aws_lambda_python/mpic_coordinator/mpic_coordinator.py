@@ -7,14 +7,15 @@ from datetime import datetime
 import os
 import random
 import hashlib
-
-
 import pydantic
-from aws_lambda_python.common_domain.check_response import CheckResponse, AnnotatedCheckResponse, CaaCheckResponse, CaaCheckResponseDetails
+
+from aws_lambda_python.common_domain.check_response import CheckResponse, AnnotatedCheckResponse, CaaCheckResponse, \
+    CaaCheckResponseDetails, DcvCheckResponse, DcvCheckResponseDetails
 from aws_lambda_python.common_domain.check_request import CaaCheckRequest
 from aws_lambda_python.common_domain.check_request import DcvCheckRequest
-from aws_lambda_python.common_domain.validation_error import ValidationError
+from aws_lambda_python.common_domain.errors import ValidationError
 from aws_lambda_python.common_domain.enum.check_type import CheckType
+from aws_lambda_python.common_domain.messages.ErrorMessages import ErrorMessages
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicCaaRequest, MpicRequest, AnnotatedMpicRequest
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvRequest
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvWithCaaRequest
@@ -220,14 +221,27 @@ class MpicCoordinator:
                         validity_per_perspective_per_check_type[check_type][perspective] |= check_response.check_passed
                         # TODO make sure responses per perspective match API spec...
                         perspective_responses_per_check_type[check_type].append(check_response)
-                    except Exception as e:
+                    except Exception:  # TODO what exceptions are we expecting here?
                         print(traceback.format_exc())
-                        check_error_response = CaaCheckResponse(
-                            perspective=perspective, 
-                            check_passed=False, 
-                            errors=[ValidationError(error_type="mpic_error:coordinator:communication", error_message="Communication with the remote perspective failed.")],
-                            details=CaaCheckResponseDetails(present=False), # Possibly should change to present=None to indicate the lookup failed.
-                            timestamp_ns=time.time_ns())
+                        match check_type:
+                            case CheckType.CAA:
+                                check_error_response = CaaCheckResponse(
+                                    perspective=perspective,
+                                    check_passed=False,
+                                    errors=[ValidationError(error_type=ErrorMessages.COORDINATOR_COMMUNICATION_ERROR.key,
+                                                            error_message=ErrorMessages.COORDINATOR_COMMUNICATION_ERROR.message)],
+                                    details=CaaCheckResponseDetails(caa_record_present=False),  # TODO Possibly should None to indicate the lookup failed.
+                                    timestamp_ns=time.time_ns()
+                                )
+                            case CheckType.DCV:
+                                check_error_response = DcvCheckResponse(
+                                    perspective=perspective,
+                                    check_passed=False,
+                                    errors=[ValidationError(error_type=ErrorMessages.COORDINATOR_COMMUNICATION_ERROR.key,
+                                                            error_message=ErrorMessages.COORDINATOR_COMMUNICATION_ERROR.message)],
+                                    details=DcvCheckResponseDetails(),  # TODO what should go here in this case?
+                                    timestamp_ns=time.time_ns()
+                                )
                         validity_per_perspective_per_check_type[check_type][perspective] |= check_error_response.check_passed
                         perspective_responses_per_check_type[check_type].append(check_error_response)
         return perspective_responses_per_check_type, validity_per_perspective_per_check_type
