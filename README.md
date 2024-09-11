@@ -42,7 +42,7 @@ The API is compliant with the [Open MPIC Specification](https://github.com/open-
 Documentation based on the API specification can be viewed [here](https://open-mpic.org/documentation.html).
 
 ## Development
-Code changes can easily be deployed by editing the .py files and then rezipping the project via `./zip-all.sh`. Then, running `tofu apply` run from the open-tofu directory will update only on the required resources and leave the others unchanged. If any `.tf.template` files are changed or `config.yaml` is edited, `./configure.py` must be rerun followed by `tofu apply` in the open-tofu directory.
+Code changes can easily be deployed by editing the .py files and then rezipping the project via `./zip-all.sh` and `./2-package.sh` in the `layer` directory. Then, running `tofu apply` run from the open-tofu directory will update only on the required resources and leave the others unchanged. If any `.tf.template` files are changed or `config.yaml` is edited, `hatch run ./configure.py` must be rerun followed by `tofu apply` in the open-tofu directory.
 
 `.generated.tf` files should not be edited directly and are not checked into git. Edit `.tf.template` files and regenerate the files via `./configure.py`.
 
@@ -83,25 +83,29 @@ If you encounter issues running integration tests with the above commands, conta
 
 
 ## Tear-down
-If you would like to take the API down, run `tofu destroy` in the open-tofu directory and type `yes` at the prompt. This will remove all AWS resources created by Open Tofu for the API.
-`./clean.sh` in the root directory also clears generated/zip files.
+If you would like to take the API down, run `tofu destroy` in the open-tofu directory and type `yes` at the prompt. This will remove all AWS resources created by Open Tofu for the API. **There is currently a situation where AWS takes a very long time to release internal IP prefix resources from a VPC upon teardown. This can lead to `tofu destroy` hanging for a long time.** One mitigation is that `tofu destroy` can be run (which deprovisions almost all resources within minutes) and then aborted several minutes later with crtl+c. Then, after several hours, `tofu destroy` can be rerun which will deprovision the remaining IP prefix resources after sufficient time has passed for AWS to register the IP prefix objects are no longer associated with the VPC.
 
-# Timeline of remaining tasks
+After `tofu destroy`, `./clean.sh` in the root directory also clears generated/zip files.
+
+
+
+# Remaining tasks
 
 The Open MPIC project is currently under development. The pre-alpha release includes support for the HTTP and DNS domain validation methods using Amazon Web Services Lambda and API Gateway. The work items remaining to a feature-complete production-level product include the following: (subject to change)
 
-- API Testing scripts and usage examples. Tentative completion date: 7/25/2024
-- Support for additional features in the API specification. Some features in the API specification (like TLS-ALPN support) are not in the current prototype. We plan to make the prototype a complete implementation of the API specification. Tentative completion date: 8/10/2024
-- Final testing and debugging. Tentative completion date: 9/1/2024
+- Full alighnment with API spec v2
+- Additional integration testing
 
 Throughout the development process, we will address any GitHub issues raised, and may modify the API accordingly. We also welcome pull requests from the general community.
 
 ## Completed Tasks
+- API Testing scripts and usage examples. completion date: 9/11/2024
 - Automatic provisioning of lambda functions based on a configuration file. This will eliminate the need to create the lambda functions one by one and simply allow a single config file to specify the entire system configuration which is then deployed automatically. completion date: 6/29/2024
 - Full conformance to the published [API specification](https://github.com/open-mpic/open-mpic-specification). Because development on the current implementation began as we were standardizing the API specification, there are currently some discrepancies that we plan to resolve. This update will make calls to the lambda API compliant with the specification. completion date: 6/30/2024
 
 ## Tasks without assigned timelines
 There are several features that may be of interest to the community, but we don't yet have a specific completion timeline. These may be given higher priority based on feedback and community interest.
 
+- Refactoring to move non-AWS-specific functionality to a library (say lib-open-mpic) and contain AWS functionality in fewer files.
 - Support for retrieval of contact information from whois and DNS for the purpose of validation. Several validation methods require contact information to be retrieved via multiple perspectives (e.g., email to domain CAA contact) which is then used in a subsequent validation step (that may not actually require MPIC). The API could support this by allowing a single API call to retrieve the contact info and then perform a set comparison (based on the quorum policy) to return contact info that could be used for validation.
 - Support for CAA extensions. CAA issue tags can potentially have extensions to specify things like account ID or validation method per [RFC 8657](https://datatracker.ietf.org/doc/html/rfc8657). The API could potentially take validation method or account id as an optional parameter and perform the processing on these CAA extensions to have them correctly impact the API response.
