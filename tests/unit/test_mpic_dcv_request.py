@@ -48,7 +48,7 @@ class TestMpicDcvRequest:
         request = ValidRequestCreator.create_valid_dcv_check_request()
         request.dcv_check_parameters.validation_method = 'invalid'
         with pytest.raises(pydantic.ValidationError) as validation_error:
-            MpicDcvRequest.model_validate_json(json.dumps(request.model_dump()))
+            MpicDcvRequest.model_validate_json(json.dumps(request.model_dump(warnings=False)))
         assert 'validation_method' in str(validation_error.value)
         assert 'invalid' in str(validation_error.value)
 
@@ -84,7 +84,7 @@ class TestMpicDcvRequest:
         request = ValidRequestCreator.create_valid_dcv_check_request(DcvValidationMethod.DNS_GENERIC)
         request.dcv_check_parameters.validation_details.dns_record_type = 'invalid'
         with pytest.raises(pydantic.ValidationError) as validation_error:
-            MpicDcvRequest.model_validate_json(json.dumps(request.model_dump()))
+            MpicDcvRequest.model_validate_json(json.dumps(request.model_dump(warnings=False)))
         assert 'dns_record_type' in str(validation_error.value)
         assert 'invalid' in str(validation_error.value)
 

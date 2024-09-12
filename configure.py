@@ -128,7 +128,11 @@ def main(raw_args=None):
         aws_perspective_tf = stream.read()
 
         # Iterate through the different regions specified and produce an output file for each region.
-        for region in regions:
+        for perspective in config['perspectives']:
+            split_perspective = perspective.split(".")
+            region = split_perspective[1]
+            rir_region = split_perspective[0]
+
             aws_perspective_tf_region = aws_perspective_tf.replace("{{region}}", region)
             
             # Replace the deployment id.
@@ -139,6 +143,10 @@ def main(raw_args=None):
 
             # Set the source path for the lambda functions.
             aws_perspective_tf_region = aws_perspective_tf_region.replace("{{source-path}}", f"{config['source-path']}")
+
+            # Set the RIR region to load into env variables.
+            aws_perspective_tf_region = aws_perspective_tf_region.replace("{{rir-region}}", f"{rir_region}")
+
 
             if not args.aws_perspective_tf_template.endswith(".tf.template"):
                 print(f"Error: invalid tf template name: {args.aws_perspective_tf_template}. Make sure all tf template files end in '.tf.template'.")

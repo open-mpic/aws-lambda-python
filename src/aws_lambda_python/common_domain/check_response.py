@@ -14,7 +14,7 @@ class BaseCheckResponse(BaseModel):
 
 
 class CaaCheckResponseDetails(BaseModel):
-    caa_record_present: bool = False
+    caa_record_present: bool = False  # TODO allow None to reflect potential error state
     found_at: str | None = None
     response: str | None = None
 
