@@ -2,7 +2,9 @@ import io
 import json
 import pytest
 import os
+import importlib.resources as pkg_resources
 
+import yaml
 from pydantic import TypeAdapter
 
 from aws_lambda_python.common_domain.check_response import CaaCheckResponse, CaaCheckResponseDetails
@@ -184,6 +186,14 @@ class TestMpicCoordinator:
         for perspective in mpic_response.perspectives:
             assert perspective.check_passed is False
             assert perspective.errors[0].error_type == ErrorMessages.COORDINATOR_COMMUNICATION_ERROR.key
+
+    def load_aws_region_config__should_return_dict_of_aws_regions_with_proximity_info_by_region_code(self, set_env_variables):
+        aws_regions_yaml = yaml.safe_load(pkg_resources.open_text('resources', 'aws_region_config.yaml'))
+        loaded_aws_regions = MpicCoordinator.load_aws_region_config()
+        assert len(loaded_aws_regions.keys()) == len(aws_regions_yaml['aws_available_regions'])
+        # for example, us-east-1 is too close to us-east-2
+        assert 'us-east-2' in loaded_aws_regions['us-east-1'].too_close_region_codes
+        assert 'us-east-1' in loaded_aws_regions['us-east-2'].too_close_region_codes
 
     # noinspection PyUnusedLocal
     def create_payload_with_streaming_body(self, call_config):

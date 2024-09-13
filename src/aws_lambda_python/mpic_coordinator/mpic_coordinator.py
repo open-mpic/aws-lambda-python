@@ -8,6 +8,8 @@ import os
 import random
 import hashlib
 import pydantic
+import importlib.resources as pkg_resources
+import yaml
 
 from aws_lambda_python.common_domain.check_response import CheckResponse, AnnotatedCheckResponse, CaaCheckResponse, \
     CaaCheckResponseDetails, DcvCheckResponse, DcvCheckResponseDetails
@@ -16,6 +18,7 @@ from aws_lambda_python.common_domain.check_request import DcvCheckRequest
 from aws_lambda_python.common_domain.validation_error import ValidationError
 from aws_lambda_python.common_domain.enum.check_type import CheckType
 from aws_lambda_python.common_domain.messages.ErrorMessages import ErrorMessages
+from aws_lambda_python.mpic_coordinator.domain.aws_region import AwsRegion
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicCaaRequest, MpicRequest, AnnotatedMpicRequest
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvRequest
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvWithCaaRequest
@@ -50,33 +53,21 @@ class MpicCoordinator:
     def coordinate_mpic(self, event):
         request_path = event['path']
         if request_path not in iter(RequestPath):
-            return {
-                'statusCode': 400,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key,
-                                    'validation_issues': [MpicRequestValidationMessages.UNSUPPORTED_REQUEST_PATH.key]})
-            }
+            return MpicCoordinator.build_400_response(MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key,
+                                                      [MpicRequestValidationMessages.UNSUPPORTED_REQUEST_PATH.key])
 
         # parse event body into mpic_request
         try:
             mpic_request = self.mpic_request_adapter.validate_json(event['body'])
         except pydantic.ValidationError as validation_error:
-            return {
-                'statusCode': 400,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key,
-                                    'validation_issues': validation_error.errors()})
-            }
+            return MpicCoordinator.build_400_response(MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key,
+                                                      validation_error.errors())
 
         is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(mpic_request, self.known_perspectives)
 
         if not is_request_valid:
-            return {
-                'statusCode': 400,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key,
-                                    'validation_issues': [vars(issue) for issue in validation_issues]})
-            }
+            return MpicCoordinator.build_400_response(MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key,
+                                                      [vars(issue) for issue in validation_issues])
 
         orchestration_parameters = mpic_request.orchestration_parameters
 
@@ -121,6 +112,8 @@ class MpicCoordinator:
         if count > len(available_perspectives):
             raise ValueError(
                 f"Count ({count}) must be <= the number of available perspectives ({available_perspectives})")
+
+        # self.aws_region_config = MpicCoordinator.load_aws_region_config()  # TODO use this list for RIR/km rules
 
         # Compute the distinct list or RIRs from all perspectives being considered.
         rirs_available = list(set([perspective.split('.')[0] for perspective in available_perspectives]))
@@ -245,6 +238,27 @@ class MpicCoordinator:
                         validity_per_perspective_per_check_type[check_type][perspective] |= check_error_response.check_passed
                         perspective_responses_per_check_type[check_type].append(check_error_response)
         return perspective_responses_per_check_type, validity_per_perspective_per_check_type
+
+    @staticmethod
+    def load_aws_region_config():
+        """
+        Reads in the available AWS regions from a configuration yaml and returns them as a list.
+        :return: list of available AWS regions
+        """
+        with pkg_resources.open_text('resources', 'aws_region_config.yaml') as file:
+            aws_region_config_yaml = yaml.safe_load(file)
+            aws_region_type_adapter = TypeAdapter(list[AwsRegion])
+            aws_regions_list = aws_region_type_adapter.validate_python(aws_region_config_yaml['aws_available_regions'])
+            aws_regions_dict = {region.region_code: region for region in aws_regions_list}
+            return aws_regions_dict
+
+    @staticmethod
+    def build_400_response(error_name, issues_list):
+        return {
+            'statusCode': 400,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({'error': error_name, 'validation_issues': issues_list})
+        }
 
     @staticmethod
     def thread_call(call_config: RemoteCheckCallConfiguration):

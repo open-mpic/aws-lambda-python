@@ -1,0 +1,151 @@
+aws_available_regions:
+  -
+    region_code: "af-south-1"
+    region_name: "Africa (Cape Town)"
+    rir: "afrinic"
+    too_close_region_codes: []
+  -
+    region_code: "ap-east-1"
+    region_name: "Asia Pacific (Hong Kong)"
+    rir: "apnic"
+    too_close_region_codes: []
+  -
+    region_code: "ap-northeast-1"
+    region_name: "Asia Pacific (Tokyo)"
+    rir: "apnic"
+    too_close_region_codes: ["ap-northeast-3"]
+  -
+    region_code: "ap-northeast-2"
+    region_name: "Asia Pacific (Seoul)"
+    rir: "apnic"
+    too_close_region_codes: []
+  -
+    region_code: "ap-northeast-3"
+    region_name: "Asia Pacific (Osaka)"
+    rir: "apnic"
+    too_close_region_codes: ["ap-northeast-1"]
+  -
+    region_code: "ap-south-1"
+    region_name: "Asia Pacific (Mumbai)"
+    rir: "apnic"
+    too_close_region_codes: []
+  -
+    region_code: "ap-south-2"
+    region_name: "Asia Pacific (Hyderabad)"
+    rir: "apnic"
+    too_close_region_codes: []
+  -
+    region_code: "ap-southeast-1"
+    region_name: "Asia Pacific (Singapore)"
+    rir: "apnic"
+    too_close_region_codes: []
+  -
+    region_code: "ap-southeast-2"
+    region_name: "Asia Pacific (Sydney)"
+    rir: "apnic"
+    too_close_region_codes: []
+  -
+    region_code: "ap-southeast-3"
+    region_name: "Asia Pacific (Jakarta)"
+    rir: "apnic"
+    too_close_region_codes: []
+  -
+    region_code: "ap-southeast-4"
+    region_name: "Asia Pacific (Melbourne)"
+    rir: "apnic"
+    too_close_region_codes: []
+  -
+    region_code: "ap-southeast-5"
+    region_name: "Asia Pacific (Malaysia)"
+    rir: "apnic"
+    too_close_region_codes: []
+  -
+    region_code: "ca-central-1"
+    region_name: "Canada (Central)"
+    rir: "arin"
+    too_close_region_codes: []
+  -
+    region_code: "ca-west-1"
+    region_name: "Canada West (Calgary)"
+    rir: "arin"
+    too_close_region_codes: []
+  -
+    region_code: "eu-central-1"
+    region_name: "Europe (Frankfurt)"
+    rir: "ripe"
+    too_close_region_codes: ["eu-central-2"]
+  -
+    region_code: "eu-central-2"
+    region_name: "Europe (Zurich)"
+    rir: "ripe"
+    too_close_region_codes: ["eu-central-1", "eu-south-1"]
+  -
+    region_code: "eu-north-1"
+    region_name: "Europe (Stockholm)"
+    rir: "ripe"
+    too_close_region_codes: []
+  -
+    region_code: "eu-south-1"
+    region_name: "Europe (Milan)"
+    rir: "ripe"
+    too_close_region_codes: ["eu-central-2"]
+  -
+    region_code: "eu-south-2"
+    region_name: "Europe (Spain)"
+    rir: "ripe"
+    too_close_region_codes: []
+  -
+    region_code: "eu-west-1"
+    region_name: "Europe (Ireland)"
+    rir: "ripe"
+    too_close_region_codes: []
+  -
+    region_code: "eu-west-2"
+    region_name: "Europe (London)"
+    rir: "ripe"
+    too_close_region_codes: ["eu-west-3"]
+  -
+    region_code: "eu-west-3"
+    region_name: "Europe (Paris)"
+    rir: "ripe"
+    too_close_region_codes: ["eu-west-2"]
+  -
+    region_code: "il-central-1"
+    region_name: "Israel (Tel Aviv)"
+    rir: "ripe"
+    too_close_region_codes: []
+  -
+    region_code: "me-central-1"
+    region_name: "Middle East (UAE)"
+    rir: "ripe"
+    too_close_region_codes: ["me-south-1"]
+  -
+    region_code: "me-south-1"
+    region_name: "Middle East (Bahrain)"
+    rir: "ripe"
+    too_close_region_codes: ["me-central-1"]
+  -
+    region_code: "sa-east-1"
+    region_name: "South America (São Paulo)"
+    rir: "lacnic"
+    too_close_region_codes: []
+  -
+    region_code: "us-east-1"
+    region_name: "US East (N. Virginia)"
+    rir: "arin"
+    too_close_region_codes: ["us-east-2"]
+  -
+    region_code: "us-east-2"
+    region_name: "US East (Ohio)"
+    rir: "arin"
+    too_close_region_codes: ["us-east-1"]
+  -
+    region_code: "us-west-1"
+    region_name: "US West (N. California)"
+    rir: "arin"
+    too_close_region_codes: []
+  -
+    region_code: "us-west-2"
+    region_name: "US West (Oregon)"
+    rir: "arin"
+    too_close_region_codes: []
