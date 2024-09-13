@@ -91,6 +91,39 @@ class TestDeployedMpicApi:
         mpic_response = self.mpic_response_adapter.validate_json(response.text)
         assert mpic_response.is_valid is False
 
+    # NOTE: Open MPIC AWS-Lambda-Python currently is not able to communicate with an IPv6 only nameserver.
+    # This case is handled in a compliant manner as it is treated as a lookup failure.
+    # The test for proper communication with an IPv6 nameserver can be enabled with the following additional parameter to the list below.
+    # ('ipv6only.caatestsuite.com', 'Tests handling of record at IPv6-only authoritative name server', False),
+    @pytest.mark.parametrize('domain_or_ip_target, purpose_of_test, is_wildcard_domain', [
+        ('deny.basic.caatestsuite.com', 'Tests handling of 0 issue "caatestsuite.com"', False),
+        ('uppercase-deny.basic.caatestsuite.com', 'Tests handling of uppercase issue tag (0 ISSUE "caatestsuite.com")', False),
+        ('mixedcase-deny.basic.caatestsuite.com', 'Tests handling of mixed case issue tag (0 IsSuE "caatestsuite.com")', False),
+        ('big.basic.caatestsuite.com', 'Tests handling of gigantic (1001) CAA record set (0 issue "caatestsuite.com")', False),
+        ('sub1.deny.basic.caatestsuite.com', 'Tests basic tree climbing when CAA record is at parent domain', False),
+        ('sub2.sub1.deny.basic.caatestsuite.com', 'Tests tree climbing when CAA record is at grandparent domain', False),
+        ('deny.basic.caatestsuite.com', 'Tests handling of issue property for a wildcard domain', True),
+        ('deny-wild.basic.caatestsuite.com', 'Tests handling of issuewild for a wildcard domain', True),
+        ('cname-deny.basic.caatestsuite.com', 'Tests handling of CNAME, where CAA record is at CNAME target', False),
+        ('cname-cname-deny.basic.caatestsuite.com', 'Tests handling of CNAME chain, where CAA record is at ultimate target', False),
+        ('sub1.cname-deny.basic.caatestsuite.com', 'Tests handling of CNAME, where parent is CNAME and CAA record is at target', False),
+        ('permit.basic.caatestsuite.com', 'Tests acceptance when name contains a permissible CAA record set', False),
+        ('deny.permit.basic.caatestsuite.com', 'Tests acceptance on a CAA record set', False),
+    ])
+    def api_should_return_is_valid_true_for_valid_tests_in_caa_test_suite_when_caa_domain_is_caatestsuite_com(self, api_client, domain_or_ip_target,
+                                                                                      purpose_of_test, is_wildcard_domain):
+        print(f"Running test for {domain_or_ip_target} ({purpose_of_test})")
+        request = MpicCaaRequest(
+            domain_or_ip_target=domain_or_ip_target,
+            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
+            caa_check_parameters=CaaCheckParameters(
+                certificate_type=CertificateType.TLS_SERVER if not is_wildcard_domain else CertificateType.TLS_SERVER_WILDCARD,
+                caa_domains=['caatestsuite.com', 'example.com'])
+        )
+        response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
+        mpic_response = self.mpic_response_adapter.validate_json(response.text)
+        assert mpic_response.is_valid is True
+
     @pytest.mark.skip(reason='Behavior not required in RFC 8659')
     @pytest.mark.parametrize('domain_or_ip_target, purpose_of_test', [
         ('dname-deny.basic.caatestsuite.com', 'Tests handling of a DNAME when CAA record exists at DNAME target'),
