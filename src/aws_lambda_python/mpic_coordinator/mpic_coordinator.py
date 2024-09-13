@@ -1,5 +1,7 @@
 import json
 import traceback
+from itertools import cycle
+
 import boto3
 import time
 import concurrent.futures
@@ -115,34 +117,38 @@ class MpicCoordinator:
 
         # self.aws_region_config = MpicCoordinator.load_aws_region_config()  # TODO use this list for RIR/km rules
 
+        # Create list of region objects from perspective strings
+        available_regions = []
+        for perspective in available_perspectives:
+            perspective_parts = perspective.split('.')
+            available_regions.append(AwsRegion(region_code=perspective_parts[1], rir=perspective_parts[0]))
+
         # Compute the distinct list or RIRs from all perspectives being considered.
-        rirs_available = list(set([perspective.split('.')[0] for perspective in available_perspectives]))
+        rirs_available = list(set([region.rir for region in available_regions]))
 
         # TODO implement perspective cohort selection logic for floor(perspectives/count) > 1
+
         # Seed the random generator with the hash secret concatenated with the domain-or-ip-target in all lowercase.
         # This prevents the adversary from gaining an advantage by retrying and getting different vantage point sets.
-        # (An alternative would be to limit retries per domain-or-ip-target, which has its own pros/cons.)
         random.seed(hashlib.sha256((self.hash_secret + domain_or_ip_target.lower()).encode('ASCII')).digest())
 
         # Get a random ordering of RIRs
         random.shuffle(rirs_available)
 
         # Create a list of lists, grouping perspectives by their RIR.
-        perspectives_in_each_rir = [
-            [perspective for perspective in available_perspectives if perspective.split('.')[0] == rir]
-            for rir in rirs_available
-        ]
+        perspectives_per_rir = {
+            rir: [region for region in available_regions if region.rir == rir] for rir in rirs_available
+        }
 
         # RIR index loops through the different RIRs and adds a single chosen perspective from each RIR on each iteration.
         chosen_perspectives = []
-        rir_index = 0
+        rirs_cycle = cycle(rirs_available)
         while len(chosen_perspectives) < count:
-            if len(perspectives_in_each_rir[rir_index]) >= 1:
-                perspective_chosen = random.choice(perspectives_in_each_rir[rir_index])
-                chosen_perspectives.append(perspective_chosen)
-                perspectives_in_each_rir[rir_index].remove(perspective_chosen)
-            rir_index += 1
-            rir_index %= len(rirs_available)
+            next_rir = next(rirs_cycle)
+            if len(perspectives_per_rir[next_rir]) >= 1:
+                chosen_perspective = random.choice(perspectives_per_rir[next_rir])
+                chosen_perspectives.append(chosen_perspective.region_id())
+                perspectives_per_rir[next_rir].remove(chosen_perspective)
         return chosen_perspectives
 
     # Determines the minimum required quorum size if none is specified in the request.

@@ -61,6 +61,22 @@ class TestMpicCoordinator:
         with pytest.raises(ValueError):
             mpic_coordinator.select_random_perspectives_across_rirs(perspectives, excessive_count, 'test_target')  # expect error
 
+    @pytest.mark.skip(reason='This test is not yet implemented')
+    def create_perspective_cohorts__should_return_set_of_cohorts_with_requested_size(self, available_perspectives, cohort_size):
+        perspectives = os.getenv('perspective_names').split('|')
+        mpic_coordinator = MpicCoordinator()
+        cohorts = mpic_coordinator.organize_perspective_cohorts(perspectives, 3)
+        assert len(cohorts) == 3
+        assert all(len(cohort) == 2 for cohort in cohorts)
+
+    @pytest.mark.skip(reason='This test is not yet implemented')
+    def create_perspective_cohorts__should_return_multiple_disjoint_cohorts_with_multiple_rirs_in_each(self, available_perspectives, cohort_size):
+        perspectives = os.getenv('perspective_names').split('|')
+        mpic_coordinator = MpicCoordinator()
+        cohorts = mpic_coordinator.organize_perspective_cohorts(perspectives, 3)
+        assert len(cohorts) == 3
+        assert all(len(cohort) == 2 for cohort in cohorts)
+
     def coordinate_mpic__should_return_error_given_invalid_request_body(self, set_env_variables):
         request = ValidRequestCreator.create_valid_dcv_check_request()
         request.domain_or_ip_target = None
