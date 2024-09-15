@@ -67,16 +67,19 @@ class TestMpicCoordinator:
             mpic_coordinator.select_random_perspectives_across_rirs(perspectives, excessive_count, 'test_target')  # expect error
 
     # @pytest.mark.skip('This test is not yet implemented')
-    # perspectives_per_rir expects: (total_perspectives, total_rirs, max_per_rir, too_close_flag)
     @pytest.mark.parametrize('perspectives_per_rir, any_perspectives_too_close, cohort_size', [
-        ((10, 2, 5, False), False, 5),
-        ((10, 2, 5, True), True, 4),
-        ((6, 3, 2, False), False, 2),
-        ((6, 3, 2, True), True, 2),
-        ((18, 5, 8, True), True, 6),
-        ((18, 5, 8, False), False, 6),
-        ((3, 2, 2, False), False, 2),
-        ((3, 2, 2, False), False, 1)
+        # perspectives_per_rir expects: (total_perspectives, total_rirs, max_per_rir, too_close_flag)
+        ((3, 2, 2, False), False, 1),  # expect 3 cohorts of 1
+        ((3, 2, 2, False), False, 2),  # expect 1 cohort of 2
+        ((5, 2, 4, False), False, 5),  # expect 1 cohort of 5
+        ((6, 3, 2, False), False, 2),  # expect 3 cohorts of 2
+        ((6, 3, 2, True), True, 2),  # expect 3 cohorts of 2
+        ((10, 2, 5, False), False, 5),  # expect 2 cohorts of 5
+        ((10, 2, 5, True), True, 4),  # expect 2 cohorts of 4
+        ((18, 5, 8, True), True, 6),  # expect 3 cohorts of 6
+        ((18, 5, 8, False), False, 6),  # expect 3 cohorts of 6
+        ((18, 3, 6, True), True, 6),   # expect 3 cohorts of 6
+        ((18, 5, 7, True), True, 15),  # expect 1 cohort of 15
     ], indirect=['perspectives_per_rir'])
     def create_perspective_cohorts__should_return_set_of_cohorts_with_requested_size(self, perspectives_per_rir,
                                                                                      any_perspectives_too_close, cohort_size):
@@ -86,6 +89,7 @@ class TestMpicCoordinator:
         print(f"any perspectives too close: {any_perspectives_too_close}")
         pprint(perspectives_per_rir)
         cohorts = MpicCoordinator.create_perspective_cohorts(perspectives_per_rir, cohort_size)
+        print(f"total cohorts created: {len(cohorts)}")
         pprint(cohorts)
         assert len(cohorts) > 0
         if not any_perspectives_too_close:  # if no perspectives were too close, should have max possible cohorts

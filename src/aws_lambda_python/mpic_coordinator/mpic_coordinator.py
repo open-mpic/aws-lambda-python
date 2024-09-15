@@ -295,7 +295,7 @@ class MpicCoordinator:
         while len(cohorts_with_two_rirs) > 0:
             too_close_perspectives = []
             cohort = cohorts_with_two_rirs[0]  # get the (next) cohort
-            while len(cohort) < cohort_size and len(cohort) - cohort_size < len(list(chain.from_iterable(perspectives_per_rir.values()))):
+            while len(cohort) < cohort_size and cohort_size - len(cohort) <= len(list(chain.from_iterable(perspectives_per_rir.values()))):
                 # get the next rir
                 current_rir = next(rirs_cycle)
 
