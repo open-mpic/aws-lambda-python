@@ -263,34 +263,32 @@ class MpicCoordinator:
         rirs_cycle = cycle(rirs_available)
 
         # first, try to fill up cohorts with 2 distinct rirs each
-        while len(new_cohorts) > 0:  # remove cohorts from new_cohorts list when they have 2 rirs
-            current_rir = next(rirs_cycle)
-            cohort_index = 0
-            while cohort_index < len(new_cohorts):  # looping like this to allow for removal of cohorts
+        cohort_index = 0
+        for current_rir in rirs_available:
+            while cohort_index < len(new_cohorts):
                 cohort = new_cohorts[cohort_index]
-                assert len(cohort) <= 1  # should have at most 1 region in it at this point if we're here
 
-                # if cohort already has this rir, then we were unable to distribute enough rirs to cover it
-                # return its perspectives to the available list and remove it from new_cohorts
-                if current_rir in [region.rir for region in cohort]:
-                    for region in cohort:
-                        perspectives_per_rir[region.rir].append(region)
-                    del new_cohorts[cohort_index]
-                    continue
-
-                # if we are all out of perspectives for this rir, move on to the next rir
-                if len(perspectives_per_rir[current_rir]) == 0:
+                # if all out of perspectives for this rir, or already added this rir (looped back around)
+                # then move on to the next rir
+                if (len(perspectives_per_rir[current_rir]) == 0 or
+                        current_rir in [perspective.rir for perspective in cohort]):
                     break  # break out of cohort loop to get next rir
 
-                # get the next perspective for the current rir
-                perspective_to_add = perspectives_per_rir[current_rir].pop(0)
-                cohort.append(perspective_to_add)
+                cohort.append(perspectives_per_rir[current_rir].pop(0))
 
-                # if cohort has 2 rirs, move it to cohorts_with_enough_rirs
+                # if cohort has 2 rirs, move it to cohorts_with_two_rirs
                 if len(cohort) == 2:
                     cohorts_with_two_rirs.append(new_cohorts.pop(cohort_index))
                 else:
                     cohort_index += 1
+                if cohort_index >= len(new_cohorts):
+                    cohort_index = 0
+
+        # iterate over new_cohorts and remove the ones left at this point (failed to distribute 2 rirs to them)
+        for cohort in new_cohorts:
+            for perspective in cohort:
+                perspectives_per_rir[perspective.rir].append(perspective)
+        new_cohorts.clear()
 
         # now we have a list of cohorts with 2 rirs; time to distribute the rest of the perspectives
         # try to fill up one cohort at a time (seems like simpler logic) than trying to fill all cohorts at once
@@ -298,12 +296,12 @@ class MpicCoordinator:
             too_close_perspectives = []
             cohort = cohorts_with_two_rirs[0]  # get the (next) cohort
             while len(cohort) < cohort_size and len(cohort) - cohort_size < len(list(chain.from_iterable(perspectives_per_rir.values()))):
-                # get the next perspective for the current rir
+                # get the next rir
                 current_rir = next(rirs_cycle)
 
                 # if we are all out of perspectives for this rir, move on to the next rir
                 if len(perspectives_per_rir[current_rir]) == 0:
-                    break  # break out of cohort loop to get next rir
+                    continue  # continue to next rir
 
                 while len(perspectives_per_rir[current_rir]) > 0:
                     candidate_perspective = perspectives_per_rir[current_rir].pop(0)
