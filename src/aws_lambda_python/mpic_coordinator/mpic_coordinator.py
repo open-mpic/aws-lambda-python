@@ -20,7 +20,7 @@ from aws_lambda_python.common_domain.check_request import DcvCheckRequest
 from aws_lambda_python.common_domain.validation_error import ValidationError
 from aws_lambda_python.common_domain.enum.check_type import CheckType
 from aws_lambda_python.common_domain.messages.ErrorMessages import ErrorMessages
-from aws_lambda_python.mpic_coordinator.domain.aws_region import AwsRegion
+from aws_lambda_python.mpic_coordinator.domain.remote_perspective import RemotePerspective
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicCaaRequest, MpicRequest, AnnotatedMpicRequest
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvRequest
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvWithCaaRequest
@@ -121,7 +121,7 @@ class MpicCoordinator:
         available_regions = []
         for perspective in available_perspectives:
             perspective_parts = perspective.split('.')
-            available_regions.append(AwsRegion(region_code=perspective_parts[1], rir=perspective_parts[0]))
+            available_regions.append(RemotePerspective(code=perspective_parts[1], rir=perspective_parts[0]))
 
         # Compute the distinct list or RIRs from all perspectives being considered.
         rirs_available = list(set([region.rir for region in available_regions]))
@@ -246,6 +246,89 @@ class MpicCoordinator:
         return perspective_responses_per_check_type, validity_per_perspective_per_check_type
 
     @staticmethod
+    def create_perspective_cohorts(perspectives_per_rir: dict, cohort_size: int):
+        if cohort_size == 1:
+            return [[region] for region in perspectives_per_rir.values()]  # TODO limit cohort number in this case?
+        elif len(perspectives_per_rir.keys()) < 2:  # else if only one rir, can't meet requirements
+            return []  # TODO throw an error? check this case in the validator?
+
+        # the below is an upper bound for number of potential cohorts, assuming rir and distance rules can be met
+        number_of_potential_cohorts = len(perspectives_per_rir.keys()) // cohort_size
+        new_cohorts, cohorts_with_two_rirs, full_cohorts = [], [], []
+        for cohort_number in range(number_of_potential_cohorts):
+            new_cohorts.append([])  # start with list of empty cohorts (list of lists)
+        # get set of unique rirs from available_perspectives
+        rirs_available = perspectives_per_rir.keys()
+        # cycle through rirs in available_perspectives
+        rirs_cycle = cycle(rirs_available)
+
+        # first, try to fill up cohorts with 2 distinct rirs each
+        while len(new_cohorts) > 0:  # remove cohorts from new_cohorts list when they have 2 rirs
+            current_rir = next(rirs_cycle)
+            cohort_index = 0
+            while cohort_index < len(new_cohorts):  # looping like this to allow for removal of cohorts
+                cohort = new_cohorts[cohort_index]
+                assert len(cohort) <= 1  # should have at most 1 region in it at this point if we're here
+
+                # if cohort already has this rir, then we were unable to distribute enough rirs to cover it
+                # return its perspectives to the available list and remove it from new_cohorts
+                if current_rir in [region.rir for region in cohort]:
+                    for region in cohort:
+                        perspectives_per_rir[region.rir].append(region)
+                    del new_cohorts[cohort_index]
+                    continue
+
+                # if we are all out of perspectives for this rir, move on to the next rir
+                if len(perspectives_per_rir[current_rir]) == 0:
+                    break  # break out of cohort loop to get next rir
+
+                # get the next perspective for the current rir
+                perspective_to_add = perspectives_per_rir[current_rir].pop(0)
+                cohort.append(perspective_to_add)
+
+                # if cohort has 2 rirs, move it to cohorts_with_enough_rirs
+                if len(cohort) == 2:
+                    cohorts_with_two_rirs.append(new_cohorts.pop(cohort_index))
+                else:
+                    cohort_index += 1
+
+        # now we have a list of cohorts with 2 rirs; time to distribute the rest of the perspectives
+        # try to fill up one cohort at a time (seems like simpler logic) than trying to fill all cohorts at once
+        while len(cohorts_with_two_rirs) > 0:
+            too_close_perspectives = []
+            cohort = cohorts_with_two_rirs[0]  # get the (next) cohort
+            while len(cohort) < cohort_size and len(cohort) - cohort_size < len(perspectives_per_rir.values()):
+                # get the next perspective for the current rir
+                current_rir = next(rirs_cycle)
+
+                # if we are all out of perspectives for this rir, move on to the next rir
+                if len(perspectives_per_rir[current_rir]) == 0:
+                    break  # break out of cohort loop to get next rir
+
+                perspective_to_add = None
+                while len(perspectives_per_rir[current_rir]) > 0:
+                    candidate_perspective = perspectives_per_rir[current_rir].pop(0)
+                    if not any(candidate_perspective.is_perspective_too_close(perspective) for perspective in cohort):
+                        cohort.append(candidate_perspective)
+                        break
+                    else:
+                        too_close_perspectives.append(candidate_perspective)
+
+            # if cohort is full, move it to full_cohorts
+            if len(cohort) == cohort_size:
+                full_cohorts.append(cohorts_with_two_rirs[0])
+            else:  # otherwise, we ran out of perspectives to add to this cohort; it's a bad cohort so scrap it
+                for perspective in cohort:
+                    perspectives_per_rir[perspective.rir].append(perspective)
+            del cohorts_with_two_rirs[0]
+            # reset too_close_regions for next cohort
+            for perspective in too_close_perspectives:
+                perspectives_per_rir[perspective.rir].append(perspective)
+
+        # now we have a list of full cohorts
+        return full_cohorts
+
+    @staticmethod
     def load_aws_region_config():
         """
         Reads in the available AWS regions from a configuration yaml and returns them as a list.
@@ -253,9 +336,9 @@ class MpicCoordinator:
         """
         with pkg_resources.open_text('resources', 'aws_region_config.yaml') as file:
             aws_region_config_yaml = yaml.safe_load(file)
-            aws_region_type_adapter = TypeAdapter(list[AwsRegion])
+            aws_region_type_adapter = TypeAdapter(list[RemotePerspective])
             aws_regions_list = aws_region_type_adapter.validate_python(aws_region_config_yaml['aws_available_regions'])
-            aws_regions_dict = {region.region_code: region for region in aws_regions_list}
+            aws_regions_dict = {region.code: region for region in aws_regions_list}
             return aws_regions_dict
 
     @staticmethod

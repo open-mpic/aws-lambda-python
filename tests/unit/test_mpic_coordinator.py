@@ -208,8 +208,8 @@ class TestMpicCoordinator:
         loaded_aws_regions = MpicCoordinator.load_aws_region_config()
         assert len(loaded_aws_regions.keys()) == len(aws_regions_yaml['aws_available_regions'])
         # for example, us-east-1 is too close to us-east-2
-        assert 'us-east-2' in loaded_aws_regions['us-east-1'].too_close_region_codes
-        assert 'us-east-1' in loaded_aws_regions['us-east-2'].too_close_region_codes
+        assert 'us-east-2' in loaded_aws_regions['us-east-1'].too_close_codes
+        assert 'us-east-1' in loaded_aws_regions['us-east-2'].too_close_codes
 
     # noinspection PyUnusedLocal
     def create_payload_with_streaming_body(self, call_config):
