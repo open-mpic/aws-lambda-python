@@ -1,6 +1,6 @@
 import json
 import traceback
-from itertools import cycle
+from itertools import cycle, chain
 
 import boto3
 import time
@@ -110,21 +110,21 @@ class MpicCoordinator:
 
     # Returns a random subset of perspectives with a goal of maximum RIR diversity to increase diversity.
     # Perspectives must be of the form 'RIR.AWS-region'.
-    def select_random_perspectives_across_rirs(self, available_perspectives, count, domain_or_ip_target):
-        if count > len(available_perspectives):
+    def select_random_perspectives_across_rirs(self, available_perpectives_as_strings, count, domain_or_ip_target):
+        if count > len(available_perpectives_as_strings):
             raise ValueError(
-                f"Count ({count}) must be <= the number of available perspectives ({available_perspectives})")
+                f"Count ({count}) must be <= the number of available perspectives ({available_perpectives_as_strings})")
 
         # self.aws_region_config = MpicCoordinator.load_aws_region_config()  # TODO use this list for RIR/km rules
 
         # Create list of region objects from perspective strings
-        available_regions = []
-        for perspective in available_perspectives:
+        available_perspectives = []
+        for perspective in available_perpectives_as_strings:
             perspective_parts = perspective.split('.')
-            available_regions.append(RemotePerspective(code=perspective_parts[1], rir=perspective_parts[0]))
+            available_perspectives.append(RemotePerspective(code=perspective_parts[1], rir=perspective_parts[0]))
 
         # Compute the distinct list or RIRs from all perspectives being considered.
-        rirs_available = list(set([region.rir for region in available_regions]))
+        rirs_available = list(set([perspective.rir for perspective in available_perspectives]))
 
         # TODO implement perspective cohort selection logic for floor(perspectives/count) > 1
 
@@ -137,7 +137,7 @@ class MpicCoordinator:
 
         # Create a list of lists, grouping perspectives by their RIR.
         perspectives_per_rir = {
-            rir: [region for region in available_regions if region.rir == rir] for rir in rirs_available
+            rir: [region for region in available_perspectives if region.rir == rir] for rir in rirs_available
         }
 
         # RIR index loops through the different RIRs and adds a single chosen perspective from each RIR on each iteration.
@@ -248,12 +248,12 @@ class MpicCoordinator:
     @staticmethod
     def create_perspective_cohorts(perspectives_per_rir: dict, cohort_size: int):
         if cohort_size == 1:
-            return [[region] for region in perspectives_per_rir.values()]  # TODO limit cohort number in this case?
+            return [[region] for region in chain.from_iterable(perspectives_per_rir.values())]  # TODO limit cohort number in this case?
         elif len(perspectives_per_rir.keys()) < 2:  # else if only one rir, can't meet requirements
             return []  # TODO throw an error? check this case in the validator?
 
         # the below is an upper bound for number of potential cohorts, assuming rir and distance rules can be met
-        number_of_potential_cohorts = len(perspectives_per_rir.keys()) // cohort_size
+        number_of_potential_cohorts = len(list(chain.from_iterable(perspectives_per_rir.values()))) // cohort_size
         new_cohorts, cohorts_with_two_rirs, full_cohorts = [], [], []
         for cohort_number in range(number_of_potential_cohorts):
             new_cohorts.append([])  # start with list of empty cohorts (list of lists)
@@ -297,7 +297,7 @@ class MpicCoordinator:
         while len(cohorts_with_two_rirs) > 0:
             too_close_perspectives = []
             cohort = cohorts_with_two_rirs[0]  # get the (next) cohort
-            while len(cohort) < cohort_size and len(cohort) - cohort_size < len(perspectives_per_rir.values()):
+            while len(cohort) < cohort_size and len(cohort) - cohort_size < len(list(chain.from_iterable(perspectives_per_rir.values()))):
                 # get the next perspective for the current rir
                 current_rir = next(rirs_cycle)
 
@@ -305,7 +305,6 @@ class MpicCoordinator:
                 if len(perspectives_per_rir[current_rir]) == 0:
                     break  # break out of cohort loop to get next rir
 
-                perspective_to_add = None
                 while len(perspectives_per_rir[current_rir]) > 0:
                     candidate_perspective = perspectives_per_rir[current_rir].pop(0)
                     if not any(candidate_perspective.is_perspective_too_close(perspective) for perspective in cohort):

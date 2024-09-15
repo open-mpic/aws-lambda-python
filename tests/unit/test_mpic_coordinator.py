@@ -1,5 +1,8 @@
 import io
 import json
+from itertools import chain, cycle
+from pprint import pprint
+
 import pytest
 import os
 import importlib.resources as pkg_resources
@@ -12,6 +15,7 @@ from aws_lambda_python.common_domain.enum.dcv_validation_method import DcvValida
 from aws_lambda_python.common_domain.enum.check_type import CheckType
 from aws_lambda_python.common_domain.messages.ErrorMessages import ErrorMessages
 from aws_lambda_python.mpic_coordinator.domain.enum.request_path import RequestPath
+from aws_lambda_python.mpic_coordinator.domain.remote_perspective import RemotePerspective
 from aws_lambda_python.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
 from aws_lambda_python.mpic_coordinator.mpic_coordinator import MpicCoordinator
 from botocore.response import StreamingBody
@@ -25,6 +29,7 @@ class TestMpicCoordinator:
     @classmethod
     def setup_class(cls):
         cls.mpic_response_adapter: TypeAdapter[MpicResponse] = TypeAdapter(AnnotatedMpicResponse)
+        cls.all_perspectives_per_rir = TestMpicCoordinator.set_up_perspectives_per_rir_dict_from_file()
 
     @staticmethod
     @pytest.fixture(scope='class')
@@ -61,19 +66,43 @@ class TestMpicCoordinator:
         with pytest.raises(ValueError):
             mpic_coordinator.select_random_perspectives_across_rirs(perspectives, excessive_count, 'test_target')  # expect error
 
-    @pytest.mark.skip(reason='This test is not yet implemented')
-    def create_perspective_cohorts__should_return_set_of_cohorts_with_requested_size(self, available_perspectives, cohort_size):
-        perspectives = os.getenv('perspective_names').split('|')
-        mpic_coordinator = MpicCoordinator()
-        cohorts = mpic_coordinator.organize_perspective_cohorts(perspectives, 3)
-        assert len(cohorts) == 3
-        assert all(len(cohort) == 2 for cohort in cohorts)
+    # @pytest.mark.skip('This test is not yet implemented')
+    # perspectives_per_rir expects: (total_perspectives, total_rirs, max_per_rir, too_close_flag)
+    @pytest.mark.parametrize('perspectives_per_rir, any_perspectives_too_close, cohort_size', [
+        ((10, 2, 5, False), False, 5),
+        ((10, 2, 5, True), True, 4),
+        ((6, 3, 2, False), False, 2),
+        ((6, 3, 2, True), True, 2),
+        ((18, 5, 8, True), True, 6),
+        ((18, 5, 8, False), False, 6),
+        ((3, 2, 2, False), False, 2),
+        ((3, 2, 2, False), False, 1)
+    ], indirect=['perspectives_per_rir'])
+    def create_perspective_cohorts__should_return_set_of_cohorts_with_requested_size(self, perspectives_per_rir,
+                                                                                     any_perspectives_too_close, cohort_size):
+        total_perspectives = len(list(chain.from_iterable(perspectives_per_rir.values())))
+        print(f"\ntotal perspectives: {total_perspectives}")
+        print(f"total rirs: {len(perspectives_per_rir.keys())}")
+        print(f"any perspectives too close: {any_perspectives_too_close}")
+        pprint(perspectives_per_rir)
+        cohorts = MpicCoordinator.create_perspective_cohorts(perspectives_per_rir, cohort_size)
+        pprint(cohorts)
+        assert len(cohorts) > 0
+        if not any_perspectives_too_close:  # if no perspectives were too close, should have max possible cohorts
+            assert len(cohorts) == total_perspectives // cohort_size
+        for cohort in cohorts:
+            assert len(cohort) == cohort_size
+            # assert that no two perspectives in the cohort are too close to each other
+            for i in range(len(cohort)):
+                for j in range(i + 1, len(cohort)):
+                    assert not cohort[i].is_perspective_too_close(cohort[j])
+            # assert that all cohorts have at least 2 RIRs (unless desired cohort size is 1)
+            if cohort_size > 1:
+                assert len(set(map(lambda perspective: perspective.rir, cohort))) >= 2
 
     @pytest.mark.skip(reason='This test is not yet implemented')
-    def create_perspective_cohorts__should_return_multiple_disjoint_cohorts_with_multiple_rirs_in_each(self, available_perspectives, cohort_size):
-        perspectives = os.getenv('perspective_names').split('|')
-        mpic_coordinator = MpicCoordinator()
-        cohorts = mpic_coordinator.organize_perspective_cohorts(perspectives, 3)
+    def create_perspective_cohorts__should_return_multiple_disjoint_cohorts_with_multiple_rirs_in_each(self, perspectives_per_rir, cohort_size):
+        cohorts = MpicCoordinator.create_perspective_cohorts(perspectives_per_rir, cohort_size)
         assert len(cohorts) == 3
         assert all(len(cohort) == 2 for cohort in cohorts)
 
@@ -204,9 +233,9 @@ class TestMpicCoordinator:
             assert perspective.errors[0].error_type == ErrorMessages.COORDINATOR_COMMUNICATION_ERROR.key
 
     def load_aws_region_config__should_return_dict_of_aws_regions_with_proximity_info_by_region_code(self, set_env_variables):
-        aws_regions_yaml = yaml.safe_load(pkg_resources.open_text('resources', 'aws_region_config.yaml'))
         loaded_aws_regions = MpicCoordinator.load_aws_region_config()
-        assert len(loaded_aws_regions.keys()) == len(aws_regions_yaml['aws_available_regions'])
+        all_perspectives = list(chain.from_iterable(self.all_perspectives_per_rir.values()))
+        assert len(loaded_aws_regions.keys()) == len(all_perspectives)
         # for example, us-east-1 is too close to us-east-2
         assert 'us-east-2' in loaded_aws_regions['us-east-1'].too_close_codes
         assert 'us-east-1' in loaded_aws_regions['us-east-2'].too_close_codes
@@ -231,6 +260,75 @@ class TestMpicCoordinator:
         file_like_response = io.BytesIO(json_bytes)
         streaming_body_response = StreamingBody(file_like_response, len(json_bytes))
         return {'Payload': streaming_body_response}
+
+    @staticmethod
+    def set_up_perspectives_per_rir_dict_from_file():
+        perspectives_yaml = yaml.safe_load(pkg_resources.open_text('resources', 'aws_region_config.yaml'))
+        perspective_type_adapter = TypeAdapter(list[RemotePerspective])
+        perspectives = perspective_type_adapter.validate_python(perspectives_yaml['aws_available_regions'])
+        # get set of unique rirs from perspectives, each of which has a rir attribute
+        all_rirs = set(map(lambda perspective: perspective.rir, perspectives))
+        return {rir: [perspective for perspective in perspectives if perspective.rir == rir] for rir in all_rirs}
+
+    @pytest.fixture
+    def perspectives_per_rir(self, request):
+        total_perspectives = request.param[0]
+        total_rirs = request.param[1]
+        max_per_rir = request.param[2]
+        too_close_flag = request.param[3]
+        return self.create_perspectives_per_rir_given_requirements(total_perspectives, total_rirs, max_per_rir, too_close_flag)
+
+    def create_perspectives_per_rir_given_requirements(self, total_perspectives, total_rirs, max_per_rir, too_close_flag):
+        # get set (unique) of all rirs found in all_available_perspectives, each of which has a rir attribute
+        perspectives_per_rir = dict[str, list[RemotePerspective]]()
+        total_perspectives_added = 0
+        # set ordered_rirs to be a list of rirs ordered in descending order based on number of perspectives for each rir in all_perspectives_per_rir
+        all_rirs = list(self.all_perspectives_per_rir.keys())
+        all_rirs.sort(key=lambda rir: len(self.all_perspectives_per_rir[rir]), reverse=True)
+        while len(all_rirs) > total_rirs:
+            all_rirs.pop()
+        # in case total_perspectives is too high for the number actually available in the rirs left
+        max_available_perspectives = sum(len(self.all_perspectives_per_rir[rir]) for rir in all_rirs)
+
+        rirs_cycle = cycle(all_rirs)
+        while total_perspectives_added < total_perspectives and total_perspectives_added < max_available_perspectives:
+            current_rir = next(rirs_cycle)
+            all_perspectives_for_rir: list[RemotePerspective] = list(self.all_perspectives_per_rir[current_rir])
+            if current_rir not in perspectives_per_rir.keys():
+                perspectives_per_rir[current_rir] = []
+            while (len(perspectives_per_rir[current_rir]) < max_per_rir
+                   and len(all_perspectives_for_rir) > 0
+                   and total_perspectives_added < total_perspectives):
+                if too_close_flag and len(perspectives_per_rir[current_rir]) == 0:
+                    # find two perspectives in all_perspectives_for_rir that are too close to each other
+                    first_too_close_index = 0
+                    first_too_close_perspective = None
+                    second_too_close_index = 0
+                    for i in range(len(all_perspectives_for_rir)):
+                        if len(all_perspectives_for_rir[i].too_close_codes) > 0:
+                            first_too_close_index = i
+                            first_too_close_perspective = all_perspectives_for_rir[i]
+                            break
+                    for j in range(first_too_close_index + 1, len(all_perspectives_for_rir)):
+                        if first_too_close_perspective.is_perspective_too_close(all_perspectives_for_rir[j]):
+                            second_too_close_index = j
+                            break
+                    if second_too_close_index > 0:  # found two too close perspectives
+                        # pop the later one first so that the earlier one is not affected by the index change
+                        perspectives_per_rir[current_rir].append(all_perspectives_for_rir.pop(second_too_close_index))
+                        perspectives_per_rir[current_rir].append(all_perspectives_for_rir.pop(first_too_close_index))
+                        total_perspectives_added += 2
+                        continue
+
+                perspective_to_add = all_perspectives_for_rir.pop(0)
+                if not any(perspective_to_add.is_perspective_too_close(perspective) for perspective in perspectives_per_rir[current_rir]):
+                    perspectives_per_rir[current_rir].append(perspective_to_add)
+                    total_perspectives_added += 1
+                else:
+                    continue
+
+        return perspectives_per_rir
+
 
 if __name__ == '__main__':
     pytest.main()
