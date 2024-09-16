@@ -10,8 +10,6 @@ import os
 import random
 import hashlib
 import pydantic
-import importlib.resources as pkg_resources
-import yaml
 
 from aws_lambda_python.common_domain.check_response import CheckResponse, AnnotatedCheckResponse, CaaCheckResponse, \
     CaaCheckResponseDetails, DcvCheckResponse, DcvCheckResponseDetails
@@ -244,7 +242,6 @@ class MpicCoordinator:
                         validity_per_perspective_per_check_type[check_type][perspective] |= check_error_response.check_passed
                         perspective_responses_per_check_type[check_type].append(check_error_response)
         return perspective_responses_per_check_type, validity_per_perspective_per_check_type
-
 
     @staticmethod
     def build_400_response(error_name, issues_list):

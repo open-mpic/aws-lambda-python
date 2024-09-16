@@ -1,6 +1,6 @@
 from importlib import resources
 from itertools import cycle, chain
-
+import random
 import yaml
 from pydantic import TypeAdapter
 
@@ -8,6 +8,33 @@ from aws_lambda_python.mpic_coordinator.domain.remote_perspective import RemoteP
 
 
 class CohortCreator:
+    @staticmethod
+    def build_randomly_shuffled_available_perspectives_per_rir(available_perspectives: list[str], random_seed: bytes):
+        # convert available_perspectives to a list of RemotePerspective objects
+        remote_perspectives = []
+        all_possible_perspectives_by_code = CohortCreator.load_aws_region_config()
+
+        for perspective in available_perspectives:
+            perspective_rir = perspective.split('.')[0]
+            perspective_code = perspective.split('.')[1]
+
+            if perspective_code not in all_possible_perspectives_by_code.keys():
+                continue  # TODO throw an error? check this case in the validator?
+            else:
+                full_perspective = all_possible_perspectives_by_code[perspective_code]
+                # TODO discuss: do we even need RIRs specified in the input? code should be unique enough
+                remote_perspectives.append(full_perspective)
+
+        random.seed(random_seed)
+        random.shuffle(remote_perspectives)
+        perspectives_per_rir = {}
+        for perspective in remote_perspectives:
+            if perspective.rir not in perspectives_per_rir:
+                perspectives_per_rir[perspective.rir] = []
+            perspectives_per_rir[perspective.rir].append(perspective)
+
+        return perspectives_per_rir
+
     @staticmethod
     def load_aws_region_config():
         """
