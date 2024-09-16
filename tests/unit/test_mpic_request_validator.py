@@ -77,7 +77,7 @@ class TestMpicRequestValidator:
         assert MpicRequestValidationMessages.INVALID_PERSPECTIVE_LIST.key in [issue.issue_type for issue in validation_issues]
 
     # TODO should there be a more permissive validation (in diagnostic mode?) for quorum count?
-    @pytest.mark.parametrize('quorum_count', [1, -1, 10, 'abc', sys.maxsize+1])
+    @pytest.mark.parametrize('quorum_count', [1, -1, 0, 10, 'abc', sys.maxsize+1])
     def is_request_valid__should_return_false_and_message_given_invalid_quorum_count(self, quorum_count):
         request = ValidRequestCreator.create_valid_caa_check_request()
         request.orchestration_parameters.quorum_count = quorum_count
@@ -86,14 +86,6 @@ class TestMpicRequestValidator:
         assert MpicRequestValidationMessages.INVALID_QUORUM_COUNT.key in [issue.issue_type for issue in validation_issues]
         invalid_quorum_count_issue = next(issue for issue in validation_issues if issue.issue_type == MpicRequestValidationMessages.INVALID_QUORUM_COUNT.key)
         assert str(quorum_count) in invalid_quorum_count_issue.message
-
-    # TODO probably shouldn't allow a quorum count of zero, but that is an API spec update
-    def is_request_valid__should_allow_quorum_count_of_zero(self):
-        request = ValidRequestCreator.create_valid_caa_check_request()
-        request.orchestration_parameters.quorum_count = 0
-        is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(request, self.known_perspectives)
-        assert is_request_valid is True
-        assert len(validation_issues) == 0
 
 
 if __name__ == '__main__':
