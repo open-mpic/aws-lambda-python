@@ -18,6 +18,7 @@ from aws_lambda_python.common_domain.check_request import DcvCheckRequest
 from aws_lambda_python.common_domain.validation_error import ValidationError
 from aws_lambda_python.common_domain.enum.check_type import CheckType
 from aws_lambda_python.common_domain.messages.ErrorMessages import ErrorMessages
+from aws_lambda_python.mpic_coordinator.cohort_creator import CohortCreator
 from aws_lambda_python.mpic_coordinator.domain.remote_perspective import RemotePerspective
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicCaaRequest, MpicRequest, AnnotatedMpicRequest
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvRequest
@@ -81,6 +82,8 @@ class MpicCoordinator:
             else:
                 if orchestration_parameters.perspective_count is not None:
                     perspective_count = orchestration_parameters.perspective_count
+
+        # TODO replace with cohort creation logic. Then use the first cohort until retry logic is implemented.
         perspectives_to_use = self.select_random_perspectives_across_rirs(self.known_perspectives,
                                                                           perspective_count,
                                                                           mpic_request.domain_or_ip_target)
@@ -96,9 +99,6 @@ class MpicCoordinator:
         valid_by_check_type = {}
         for check_type in [CheckType.CAA, CheckType.DCV]:
             valid_perspective_count = sum(validity_per_perspective_per_check_type[check_type].values())
-
-            # TODO enforce requirement of 2+ RIRs in corroborating perspective set
-            # TODO enforce requirement of 500km distances between all corroborating perspectives
             valid_by_check_type[check_type] = valid_perspective_count >= quorum_count
 
         response = MpicResponseBuilder.build_response(mpic_request, perspective_count, quorum_count,
@@ -113,30 +113,11 @@ class MpicCoordinator:
             raise ValueError(
                 f"Count ({count}) must be <= the number of available perspectives ({available_perspectives_as_strings})")
 
-        # self.aws_region_config = MpicCoordinator.load_aws_region_config()  # TODO use this list for RIR/km rules
-
-        # Create list of region objects from perspective strings
-        available_perspectives = []
-        for perspective in available_perspectives_as_strings:
-            perspective_parts = perspective.split('.')
-            available_perspectives.append(RemotePerspective(code=perspective_parts[1], rir=perspective_parts[0]))
+        random_seed = hashlib.sha256((self.hash_secret + domain_or_ip_target.lower()).encode('ASCII')).digest()
+        perspectives_per_rir = CohortCreator.build_randomly_shuffled_available_perspectives_per_rir(available_perspectives_as_strings, random_seed)
 
         # Compute the distinct list or RIRs from all perspectives being considered.
-        rirs_available = list(set([perspective.rir for perspective in available_perspectives]))
-
-        # TODO implement perspective cohort selection logic for floor(perspectives/count) > 1
-
-        # Seed the random generator with the hash secret concatenated with the domain-or-ip-target in all lowercase.
-        # This prevents the adversary from gaining an advantage by retrying and getting different vantage point sets.
-        random.seed(hashlib.sha256((self.hash_secret + domain_or_ip_target.lower()).encode('ASCII')).digest())
-
-        # Get a random ordering of RIRs
-        random.shuffle(rirs_available)
-
-        # Create a list of lists, grouping perspectives by their RIR.
-        perspectives_per_rir = {
-            rir: [region for region in available_perspectives if region.rir == rir] for rir in rirs_available
-        }
+        rirs_available = perspectives_per_rir.keys()
 
         # RIR index loops through the different RIRs and adds a single chosen perspective from each RIR on each iteration.
         chosen_perspectives = []

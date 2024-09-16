@@ -9,7 +9,7 @@ from aws_lambda_python.mpic_coordinator.domain.remote_perspective import RemoteP
 
 class CohortCreator:
     @staticmethod
-    def build_randomly_shuffled_available_perspectives_per_rir(available_perspectives: list[str], random_seed: bytes):
+    def build_randomly_shuffled_available_perspectives_per_rir(available_perspectives: list[str], random_seed: bytes) -> dict[str, list[RemotePerspective]]:
         # convert available_perspectives to a list of RemotePerspective objects
         remote_perspectives = []
         all_possible_perspectives_by_code = CohortCreator.load_aws_region_config()
