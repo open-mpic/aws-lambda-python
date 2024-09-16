@@ -69,10 +69,10 @@ class TestCohortCreator:
         # perspectives_per_rir expects: (total_perspectives, total_rirs, max_per_rir, too_close_flag)
         ((3, 2, 2, False), False, 1),  # expect 3 cohorts of 1
         ((3, 2, 2, False), False, 2),  # expect 1 cohort of 2
-        ((5, 2, 4, False), False, 5),  # expect 1 cohort of 5
         ((6, 3, 2, False), False, 2),  # expect 3 cohorts of 2
         ((6, 3, 2, True), True, 2),  # expect 3 cohorts of 2
         ((10, 2, 5, False), False, 5),  # expect 2 cohorts of 5
+        ((10, 2, 5, True), True, 5),  # expect 1 cohort of 5
         ((10, 2, 5, True), True, 4),  # expect 2 cohorts of 4
         ((18, 5, 8, True), True, 6),  # expect 3 cohorts of 6
         ((18, 5, 8, False), False, 6),  # expect 3 cohorts of 6
@@ -105,11 +105,9 @@ class TestCohortCreator:
 
     @pytest.mark.parametrize('perspectives_per_rir, any_perspectives_too_close, cohort_size', [
         # perspectives_per_rir expects: (total_perspectives, total_rirs, max_per_rir, too_close_flag)
-        ((3, 1, 3, False), False, 3),  # expect 0 cohorts
-        ((3, 2, 2, True), True, 3),  # expect 0 cohorts
-        ((5, 2, 4, True), False, 5),  # expect 0 cohorts
-        ((6, 3, 2, True), False, 5),  # expect 0 cohorts
-        ((18, 5, 8, True), True, 18),  # expect 0 cohorts
+        ((3, 1, 3, False), False, 3),  # expect 0 cohorts due to too few rirs
+        ((3, 2, 2, True), True, 3),  # expect 0 cohorts due to too close perspectives
+        ((18, 5, 8, True), True, 18),  # expect 0 cohorts due to too close perspectives
     ], indirect=['perspectives_per_rir'])
     def create_perspective_cohorts__should_return_0_cohorts_given_no_cohort_would_meet_requirements(self, perspectives_per_rir,
                                                                                                     any_perspectives_too_close,
@@ -120,6 +118,14 @@ class TestCohortCreator:
         pprint(perspectives_per_rir)
         cohorts = CohortCreator.create_perspective_cohorts(perspectives_per_rir, cohort_size)
         assert len(cohorts) == 0
+
+    def create_perspective_cohorts__should_handle_uneven_numbers_of_perspectives_per_rir(self):
+        # 9 total perspectives, but can only make 2 cohorts of 3 perspectives each due to rir constraints
+        perspectives_per_rir = {'apnic': self.all_perspectives_per_rir['apnic'][:7],  # 7 perspectives from apnic
+                                'ripe': self.all_perspectives_per_rir['ripe'][:1],  # 1 from ripe
+                                'arin': self.all_perspectives_per_rir['arin'][:1]}  # 1 from arin
+        cohorts = CohortCreator.create_perspective_cohorts(perspectives_per_rir, 3)
+        assert len(cohorts) == 2
 
     @pytest.fixture
     def perspectives_per_rir(self, request):
@@ -132,6 +138,7 @@ class TestCohortCreator:
 
     def create_perspectives_per_rir_given_requirements(self, total_perspectives, total_rirs, max_per_rir,
                                                        too_close_flag):
+        assert total_perspectives <= total_rirs * max_per_rir
         # get set (unique) of all rirs found in all_available_perspectives, each of which has a rir attribute
         perspectives_per_rir = dict[str, list[RemotePerspective]]()
         total_perspectives_added = 0

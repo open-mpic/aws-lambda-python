@@ -1,5 +1,6 @@
 import json
 import traceback
+from itertools import cycle
 
 import boto3
 import time
@@ -81,32 +82,42 @@ class MpicCoordinator:
                 if orchestration_parameters.perspective_count is not None:
                     perspective_count = orchestration_parameters.perspective_count
 
-        # TODO replace with cohort creation logic. Then use the first cohort until retry logic is implemented.
-        perspectives_to_use = self.select_random_perspectives_across_rirs(self.known_perspectives,
-                                                                          perspective_count,
-                                                                          mpic_request.domain_or_ip_target)
+        perspective_cohorts = self.create_cohorts_of_randomly_selected_perspectives(self.known_perspectives,
+                                                                                    perspective_count,
+                                                                                    mpic_request.domain_or_ip_target)
 
         quorum_count = self.determine_required_quorum_count(orchestration_parameters, perspective_count)
 
-        # Collect async calls to invoke for each perspective.
-        async_calls_to_issue = self.collect_async_calls_to_issue(mpic_request, perspectives_to_use)
+        if orchestration_parameters is not None and orchestration_parameters.max_attempts is not None:
+            max_attempts = orchestration_parameters.max_attempts
+        else:
+            max_attempts = 1
+        attempts = 1
+        cohort_cycle = cycle(perspective_cohorts)
+        while attempts <= max_attempts:
+            perspectives_to_use = next(cohort_cycle)
 
-        perspective_responses_per_check_type, validity_per_perspective_per_check_type = (
-            self.issue_async_calls_and_collect_responses(perspectives_to_use, async_calls_to_issue))
+            # Collect async calls to invoke for each perspective.
+            async_calls_to_issue = self.collect_async_calls_to_issue(mpic_request, perspectives_to_use)
 
-        valid_by_check_type = {}
-        for check_type in [CheckType.CAA, CheckType.DCV]:
-            valid_perspective_count = sum(validity_per_perspective_per_check_type[check_type].values())
-            valid_by_check_type[check_type] = valid_perspective_count >= quorum_count
+            perspective_responses_per_check_type, validity_per_perspective_per_check_type = (
+                self.issue_async_calls_and_collect_responses(perspectives_to_use, async_calls_to_issue))
 
-        response = MpicResponseBuilder.build_response(mpic_request, perspective_count, quorum_count,
-                                                      perspective_responses_per_check_type, valid_by_check_type)
+            valid_by_check_type = {}
+            for check_type in [CheckType.CAA, CheckType.DCV]:
+                valid_perspective_count = sum(validity_per_perspective_per_check_type[check_type].values())
+                valid_by_check_type[check_type] = valid_perspective_count >= quorum_count
 
-        return response
+            if MpicCoordinator.are_checks_valid(mpic_request.check_type, valid_by_check_type) or attempts == max_attempts:
+                response = MpicResponseBuilder.build_response(mpic_request, perspective_count, quorum_count, attempts,
+                                                              perspective_responses_per_check_type, valid_by_check_type)
+                return response
+            else:
+                attempts += 1
 
     # Returns a random subset of perspectives with a goal of maximum RIR diversity to increase diversity.
     # Perspectives must be of the form 'RIR.AWS-region'.
-    def select_random_perspectives_across_rirs(self, available_perspectives_as_strings, count, domain_or_ip_target):
+    def create_cohorts_of_randomly_selected_perspectives(self, available_perspectives_as_strings, count, domain_or_ip_target):
         if count > len(available_perspectives_as_strings):
             raise ValueError(
                 f"Count ({count}) must be <= the number of available perspectives ({available_perspectives_as_strings})")
@@ -114,7 +125,7 @@ class MpicCoordinator:
         random_seed = hashlib.sha256((self.hash_secret + domain_or_ip_target.lower()).encode('ASCII')).digest()
         perspectives_per_rir = CohortCreator.build_randomly_shuffled_available_perspectives_per_rir(available_perspectives_as_strings, random_seed)
         cohorts = CohortCreator.create_perspective_cohorts(perspectives_per_rir, count)
-        return cohorts[0]
+        return cohorts
 
     # Determines the minimum required quorum size if none is specified in the request.
     @staticmethod
@@ -245,3 +256,13 @@ class MpicCoordinator:
         print(f"Response in region {call_config.perspective} took {toc - tic:0.4f} seconds to get response; \
               {tic - tic_init:.2f} seconds to start boto client; ended at {str(datetime.now())}\n")
         return response
+
+    @staticmethod
+    def are_checks_valid(check_type, validity_by_check_type) -> bool:
+        match check_type:
+            case CheckType.CAA:
+                return validity_by_check_type[CheckType.CAA]
+            case CheckType.DCV:
+                return validity_by_check_type[CheckType.DCV]
+            case CheckType.DCV_WITH_CAA:
+                return validity_by_check_type[CheckType.DCV] and validity_by_check_type[CheckType.CAA]
