@@ -11,6 +11,7 @@ from aws_lambda_python.common_domain.enum.dcv_validation_method import DcvValida
 from aws_lambda_python.common_domain.enum.check_type import CheckType
 from aws_lambda_python.common_domain.messages.ErrorMessages import ErrorMessages
 from aws_lambda_python.mpic_coordinator.domain.enum.request_path import RequestPath
+from aws_lambda_python.mpic_coordinator.domain.remote_perspective import RemotePerspective
 from aws_lambda_python.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
 from aws_lambda_python.mpic_coordinator.mpic_coordinator import MpicCoordinator
 from botocore.response import StreamingBody
@@ -41,16 +42,6 @@ class TestMpicCoordinator:
             for k, v in envvars.items():
                 class_scoped_monkeypatch.setenv(k, v)
             yield class_scoped_monkeypatch  # restore the environment afterward
-
-    # TODO discuss BR requirement of 2+ RIRs. If 2+ cannot be selected, is that an error state (500 code)?
-    # TODO discuss BR requirement of 500k+ regional distance. This is not currently implemented.
-    @pytest.mark.parametrize('requested_perspective_count, expected_unique_rirs', [(2, 2), (3, 3), (4, 3)])
-    def select_random_perspectives_across_rirs__should_select_diverse_rirs_given_list_where_some_share_same_rir(
-            self, set_env_variables, requested_perspective_count, expected_unique_rirs):
-        perspectives = os.getenv('perspective_names').split('|')  # same split logic as in actual calling code
-        mpic_coordinator = MpicCoordinator()
-        selected_perspectives = mpic_coordinator.select_random_perspectives_across_rirs(perspectives, requested_perspective_count, 'test_target')
-        assert len(set(map(lambda p: p.split('.')[0], selected_perspectives))) == expected_unique_rirs  # expect 3 unique rirs from setup data
 
     def select_random_perspectives_across_rirs__should_throw_error_given_requested_count_exceeds_total_perspectives(
             self, set_env_variables):
@@ -109,7 +100,8 @@ class TestMpicCoordinator:
 
     def collect_async_calls_to_issue__should_have_only_caa_calls_given_caa_check_type(self, set_env_variables):
         request = ValidRequestCreator.create_valid_caa_check_request()
-        perspectives_to_use = os.getenv('perspective_names').split('|')
+        perspective_names = os.getenv('perspective_names').split('|')
+        perspectives_to_use = [RemotePerspective.from_rir_code(perspective) for perspective in perspective_names]
         mpic_coordinator = MpicCoordinator()
         call_list = mpic_coordinator.collect_async_calls_to_issue(request, perspectives_to_use)
         assert len(call_list) == 6
@@ -118,14 +110,16 @@ class TestMpicCoordinator:
     def collect_async_calls_to_issue__should_include_caa_check_parameters_as_caa_params_in_input_args_if_present(self, set_env_variables):
         request = ValidRequestCreator.create_valid_caa_check_request()
         request.caa_check_parameters.caa_domains = ['example.com']
-        perspectives_to_use = os.getenv('perspective_names').split('|')
+        perspective_names = os.getenv('perspective_names').split('|')
+        perspectives_to_use = [RemotePerspective.from_rir_code(perspective) for perspective in perspective_names]
         mpic_coordinator = MpicCoordinator()
         call_list = mpic_coordinator.collect_async_calls_to_issue(request, perspectives_to_use)
         assert all(call.input_args.caa_check_parameters.caa_domains == ['example.com'] for call in call_list)
 
     def collect_async_calls_to_issue__should_have_only_dcv_calls_and_include_validation_input_args_given_dcv_check_type(self, set_env_variables):
         request = ValidRequestCreator.create_valid_dcv_check_request(DcvValidationMethod.DNS_GENERIC)
-        perspectives_to_use = os.getenv('perspective_names').split('|')
+        perspective_names = os.getenv('perspective_names').split('|')
+        perspectives_to_use = [RemotePerspective.from_rir_code(perspective) for perspective in perspective_names]
         mpic_coordinator = MpicCoordinator()
         call_list = mpic_coordinator.collect_async_calls_to_issue(request, perspectives_to_use)
         assert len(call_list) == 6
@@ -135,7 +129,8 @@ class TestMpicCoordinator:
 
     def collect_async_calls_to_issue__should_have_caa_and_dcv_calls_given_dcv_with_caa_check_type(self, set_env_variables):
         request = ValidRequestCreator.create_valid_dcv_with_caa_check_request()
-        perspectives_to_use = os.getenv('perspective_names').split('|')
+        perspective_names = os.getenv('perspective_names').split('|')
+        perspectives_to_use = [RemotePerspective.from_rir_code(perspective) for perspective in perspective_names]
         mpic_coordinator = MpicCoordinator()
         call_list = mpic_coordinator.collect_async_calls_to_issue(request, perspectives_to_use)
         assert len(call_list) == 12

@@ -1,13 +1,11 @@
 import json
 import traceback
-from itertools import cycle
 
 import boto3
 import time
 import concurrent.futures
 from datetime import datetime
 import os
-import random
 import hashlib
 import pydantic
 
@@ -19,12 +17,12 @@ from aws_lambda_python.common_domain.validation_error import ValidationError
 from aws_lambda_python.common_domain.enum.check_type import CheckType
 from aws_lambda_python.common_domain.messages.ErrorMessages import ErrorMessages
 from aws_lambda_python.mpic_coordinator.cohort_creator import CohortCreator
-from aws_lambda_python.mpic_coordinator.domain.remote_perspective import RemotePerspective
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicCaaRequest, MpicRequest, AnnotatedMpicRequest
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvRequest
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvWithCaaRequest
 from aws_lambda_python.mpic_coordinator.domain.remote_check_call_configuration import RemoteCheckCallConfiguration
 from aws_lambda_python.mpic_coordinator.domain.enum.request_path import RequestPath
+from aws_lambda_python.mpic_coordinator.domain.remote_perspective import RemotePerspective
 from aws_lambda_python.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
 from aws_lambda_python.mpic_coordinator.mpic_request_validator import MpicRequestValidator
 from aws_lambda_python.mpic_coordinator.mpic_response_builder import MpicResponseBuilder
@@ -115,20 +113,8 @@ class MpicCoordinator:
 
         random_seed = hashlib.sha256((self.hash_secret + domain_or_ip_target.lower()).encode('ASCII')).digest()
         perspectives_per_rir = CohortCreator.build_randomly_shuffled_available_perspectives_per_rir(available_perspectives_as_strings, random_seed)
-
-        # Compute the distinct list or RIRs from all perspectives being considered.
-        rirs_available = perspectives_per_rir.keys()
-
-        # RIR index loops through the different RIRs and adds a single chosen perspective from each RIR on each iteration.
-        chosen_perspectives = []
-        rirs_cycle = cycle(rirs_available)
-        while len(chosen_perspectives) < count:
-            next_rir = next(rirs_cycle)
-            if len(perspectives_per_rir[next_rir]) >= 1:
-                chosen_perspective = random.choice(perspectives_per_rir[next_rir])
-                chosen_perspectives.append(chosen_perspective.region_id())
-                perspectives_per_rir[next_rir].remove(chosen_perspective)
-        return chosen_perspectives
+        cohorts = CohortCreator.create_perspective_cohorts(perspectives_per_rir, count)
+        return cohorts[0]
 
     # Determines the minimum required quorum size if none is specified in the request.
     @staticmethod
@@ -140,7 +126,7 @@ class MpicCoordinator:
         return required_quorum_count
 
     # Configures the async lambda function calls to issue for the check request.
-    def collect_async_calls_to_issue(self, mpic_request, perspectives_to_use) -> list[RemoteCheckCallConfiguration]:
+    def collect_async_calls_to_issue(self, mpic_request, perspectives_to_use: list[RemotePerspective]) -> list[RemoteCheckCallConfiguration]:
         domain_or_ip_target = mpic_request.domain_or_ip_target
         async_calls_to_issue = []
 
@@ -148,14 +134,16 @@ class MpicCoordinator:
         if isinstance(mpic_request, MpicDcvWithCaaRequest) or isinstance(mpic_request, MpicCaaRequest):
             check_parameters = CaaCheckRequest(domain_or_ip_target=domain_or_ip_target, caa_check_parameters=mpic_request.caa_check_parameters)
             for perspective in perspectives_to_use:
-                arn = self.arns_per_perspective_per_check_type[CheckType.CAA][perspective]
+                # key is of the form 'RIR.AWS-region'
+                arn = self.arns_per_perspective_per_check_type[CheckType.CAA][perspective.to_rir_code()]
                 call_config = RemoteCheckCallConfiguration(CheckType.CAA, perspective, arn, check_parameters)
                 async_calls_to_issue.append(call_config)
 
         if isinstance(mpic_request, MpicDcvWithCaaRequest) or isinstance(mpic_request, MpicDcvRequest):
             check_parameters = DcvCheckRequest(domain_or_ip_target=domain_or_ip_target, dcv_check_parameters=mpic_request.dcv_check_parameters)
             for perspective in perspectives_to_use:
-                arn = self.arns_per_perspective_per_check_type[CheckType.DCV][perspective]
+                # key is of the form 'RIR.AWS-region'
+                arn = self.arns_per_perspective_per_check_type[CheckType.DCV][perspective.to_rir_code()]
                 call_config = RemoteCheckCallConfiguration(CheckType.DCV, perspective, arn, check_parameters)
                 async_calls_to_issue.append(call_config)
 
@@ -164,8 +152,10 @@ class MpicCoordinator:
     # Issues the async calls to the lambda functions and collects the responses.
     def issue_async_calls_and_collect_responses(self, perspectives_to_use, async_calls_to_issue) -> (dict, dict):
         perspective_responses_per_check_type = {}
-        validity_per_perspective_per_check_type = {CheckType.CAA: {r: False for r in perspectives_to_use},
-                                                   CheckType.DCV: {r: False for r in perspectives_to_use}}
+        validity_per_perspective_per_check_type = {
+            CheckType.CAA: {perspective.to_rir_code(): False for perspective in perspectives_to_use},
+            CheckType.DCV: {perspective.to_rir_code(): False for perspective in perspectives_to_use}
+        }
 
         perspective_count = len(perspectives_to_use)
 
@@ -176,17 +166,17 @@ class MpicCoordinator:
                                        async_calls_to_issue}
             for future in concurrent.futures.as_completed(futures_to_call_configs):
                 call_configuration = futures_to_call_configs[future]
-                perspective = call_configuration.perspective
+                perspective: RemotePerspective = call_configuration.perspective
                 check_type = call_configuration.check_type
                 now = time.perf_counter()
                 print(
-                    f"Unpacking future result for {perspective} at time {str(datetime.now())}: {now - exec_begin:.2f} \
+                    f"Unpacking future result for {perspective.to_rir_code()} at time {str(datetime.now())}: {now - exec_begin:.2f} \
                     seconds from beginning")
                 try:
                     data = future.result()
                 except Exception as e:
                     stacktrace = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
-                    print(f'{perspective} generated an exception: {stacktrace}')
+                    print(f'{perspective.to_rir_code()} generated an exception: {stacktrace}')
                 else:
                     if check_type not in perspective_responses_per_check_type:
                         perspective_responses_per_check_type[check_type] = []
@@ -196,7 +186,7 @@ class MpicCoordinator:
                         perspective_response_body = json.loads(perspective_response['body'])
                         # deserialize perspective body to have a nested object in the output rather than a string
                         check_response = self.check_response_adapter.validate_python(perspective_response_body)
-                        validity_per_perspective_per_check_type[check_type][perspective] |= check_response.check_passed
+                        validity_per_perspective_per_check_type[check_type][perspective.to_rir_code()] |= check_response.check_passed
                         # TODO make sure responses per perspective match API spec...
                         perspective_responses_per_check_type[check_type].append(check_response)
                     except Exception:  # TODO what exceptions are we expecting here?
@@ -204,7 +194,7 @@ class MpicCoordinator:
                         match check_type:
                             case CheckType.CAA:
                                 check_error_response = CaaCheckResponse(
-                                    perspective=perspective,
+                                    perspective=perspective.to_rir_code(),
                                     check_passed=False,
                                     errors=[ValidationError(error_type=ErrorMessages.COORDINATOR_COMMUNICATION_ERROR.key,
                                                             error_message=ErrorMessages.COORDINATOR_COMMUNICATION_ERROR.message)],
@@ -213,14 +203,14 @@ class MpicCoordinator:
                                 )
                             case CheckType.DCV:
                                 check_error_response = DcvCheckResponse(
-                                    perspective=perspective,
+                                    perspective=perspective.to_rir_code(),
                                     check_passed=False,
                                     errors=[ValidationError(error_type=ErrorMessages.COORDINATOR_COMMUNICATION_ERROR.key,
                                                             error_message=ErrorMessages.COORDINATOR_COMMUNICATION_ERROR.message)],
                                     details=DcvCheckResponseDetails(),  # TODO what should go here in this case?
                                     timestamp_ns=time.time_ns()
                                 )
-                        validity_per_perspective_per_check_type[check_type][perspective] |= check_error_response.check_passed
+                        validity_per_perspective_per_check_type[check_type][perspective.to_rir_code()] |= check_error_response.check_passed
                         perspective_responses_per_check_type[check_type].append(check_error_response)
         return perspective_responses_per_check_type, validity_per_perspective_per_check_type
 
