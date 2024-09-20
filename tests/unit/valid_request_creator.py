@@ -13,7 +13,7 @@ from aws_lambda_python.mpic_coordinator.domain.mpic_orchestration_parameters imp
 
 class ValidRequestCreator:
     @staticmethod
-    def create_valid_caa_check_request() -> MpicCaaRequest:
+    def create_valid_caa_mpic_request() -> MpicCaaRequest:
         return MpicCaaRequest(
             domain_or_ip_target='test',
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=6, quorum_count=4),
@@ -21,7 +21,7 @@ class ValidRequestCreator:
         )
 
     @staticmethod
-    def create_valid_dcv_check_request(validation_method=DcvValidationMethod.DNS_GENERIC) -> MpicDcvRequest:
+    def create_valid_dcv_mpic_request(validation_method=DcvValidationMethod.DNS_GENERIC) -> MpicDcvRequest:
         return MpicDcvRequest(
             domain_or_ip_target='test',
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=6, quorum_count=4),
@@ -32,7 +32,7 @@ class ValidRequestCreator:
         )
 
     @staticmethod
-    def create_valid_dcv_with_caa_check_request(validation_method=DcvValidationMethod.DNS_GENERIC) -> MpicDcvWithCaaRequest:
+    def create_valid_dcv_with_caa_mpic_request(validation_method=DcvValidationMethod.DNS_GENERIC) -> MpicDcvWithCaaRequest:
         return MpicDcvWithCaaRequest(
             domain_or_ip_target='test',
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=6, quorum_count=4),
@@ -47,11 +47,11 @@ class ValidRequestCreator:
     def create_valid_request(check_type: CheckType) -> BaseMpicRequest:
         match check_type:
             case CheckType.CAA:
-                return ValidRequestCreator.create_valid_caa_check_request()
+                return ValidRequestCreator.create_valid_caa_mpic_request()
             case CheckType.DCV:
-                return ValidRequestCreator.create_valid_dcv_check_request()
+                return ValidRequestCreator.create_valid_dcv_mpic_request()
             case CheckType.DCV_WITH_CAA:
-                return ValidRequestCreator.create_valid_dcv_with_caa_check_request()
+                return ValidRequestCreator.create_valid_dcv_with_caa_mpic_request()
 
     @classmethod
     def create_validation_details(cls, validation_method):

@@ -244,16 +244,18 @@ class MpicCoordinator:
         print(f"Started lambda call for region {call_config.perspective} at {str(datetime.now())}")
 
         tic_init = time.perf_counter()
-        client = boto3.client('lambda', call_config.perspective.split(".")[1])
+        # get region from perspective
+        # TODO get better coverage for this function
+        client = boto3.client('lambda', call_config.perspective.code)
         tic = time.perf_counter()
         response = client.invoke(  # AWS Lambda-specific structure
             FunctionName=call_config.lambda_arn,
             InvocationType='RequestResponse',
-            Payload=json.dumps(call_config.input_args.model_dump())
+            Payload=json.dumps(call_config.check_request.model_dump())
         )
         toc = time.perf_counter()
 
-        print(f"Response in region {call_config.perspective} took {toc - tic:0.4f} seconds to get response; \
+        print(f"Response in region {call_config.perspective.to_rir_code()} took {toc - tic:0.4f} seconds to get response; \
               {tic - tic_init:.2f} seconds to start boto client; ended at {str(datetime.now())}\n")
         return response
 

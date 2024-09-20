@@ -93,7 +93,7 @@ class TestMpicResponseBuilder:
                 assert response_body.is_valid == response_body.is_valid_dcv and response_body.is_valid_caa
 
     def build_response__should_include_validation_details_and_method_when_present_in_request_body(self):
-        request = ValidRequestCreator.create_valid_dcv_check_request()
+        request = ValidRequestCreator.create_valid_dcv_mpic_request()
         persp_responses_per_check_type = self.create_perspective_responses_per_check_type(CheckType.DCV)
         valid_by_check_type = self.create_validity_by_check_type(CheckType.DCV)
         response = MpicResponseBuilder.build_response(request, 6, 5, 1, persp_responses_per_check_type,
@@ -103,7 +103,7 @@ class TestMpicResponseBuilder:
         assert response_body.dcv_check_parameters.validation_method == request.dcv_check_parameters.validation_method
 
     def build_response__should_set_is_valid_to_false_when_either_check_type_is_invalid(self):
-        request = ValidRequestCreator.create_valid_dcv_with_caa_check_request()
+        request = ValidRequestCreator.create_valid_dcv_with_caa_mpic_request()
         persp_responses_per_check_type = self.create_perspective_responses_per_check_type(CheckType.DCV_WITH_CAA)
         valid_by_check_type = self.create_validity_by_check_type(CheckType.DCV_WITH_CAA)
         valid_by_check_type[CheckType.DCV] = False
