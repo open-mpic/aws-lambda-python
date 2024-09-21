@@ -17,7 +17,6 @@ class MpicDcvChecker:
         self.rir_region: Final[str] = os.environ['rir_region']
         self.AWS_REGION: Final[str] = os.environ['AWS_REGION']
 
-
     def check_dcv(self, event):
         dcv_request = DcvCheckRequest.model_validate(event)
 
@@ -69,7 +68,6 @@ class MpicDcvChecker:
     def perform_dns_validation(self, request):
         perspective_name = self.rir_region + "." + self.AWS_REGION
 
-        
         domain_or_ip_target = request.domain_or_ip_target  # TODO iterate up through parent domains to base domain?
         dns_name_prefix = request.dcv_check_parameters.validation_details.dns_name_prefix
         dns_record_type = dns.rdatatype.from_text(request.dcv_check_parameters.validation_details.dns_record_type)

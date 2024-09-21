@@ -50,7 +50,7 @@ class TestCohortCreator:
         assert len(shuffled_perspectives_per_rir.keys()) == 0
 
     def build_randomly_shuffled_available_perspectives_per_rir__should_enrich_each_perspective_with_name_and_list_of_too_close_perspectives(self):
-        named_perspectives = ['arin.us-east-1', 'arin.us-west-1', 'arin.ca-west-1', 'ripe.eu-west-1', 'ripe.eu-central-1', 'apnic.ap-southeast-1' ]
+        named_perspectives = ['arin.us-east-1', 'arin.us-west-1', 'arin.ca-west-1', 'ripe.eu-west-1', 'ripe.eu-central-1', 'apnic.ap-southeast-1']
         shuffled_perspectives_per_rir = CohortCreator.build_randomly_shuffled_available_perspectives_per_rir(named_perspectives, b'testSeed')
         shuffled_perspectives_flattened = list(chain.from_iterable(shuffled_perspectives_per_rir.values()))
         assert all(perspective.name is not None for perspective in shuffled_perspectives_flattened)

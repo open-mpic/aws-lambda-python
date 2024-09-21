@@ -7,7 +7,6 @@ import os
 
 from pydantic import TypeAdapter
 
-from aws_lambda_python.common_domain.check_parameters import DcvCheckParameters
 from aws_lambda_python.common_domain.check_request import DcvCheckRequest
 from aws_lambda_python.common_domain.check_response import CaaCheckResponse, CaaCheckResponseDetails, DcvCheckResponse, \
     DcvCheckResponseDetails
@@ -279,7 +278,8 @@ class TestMpicCoordinator:
         perspective_response_body = json.loads(perspective_response['body'])
         check_response = DcvCheckResponse.model_validate(perspective_response_body)
         assert check_response.check_passed is True
-        assert check_response.perspective == check_request.domain_or_ip_target # a hack but it works for now
+        # hijacking the value of 'perspective' to verify that the right arguments got passed to the call
+        assert check_response.perspective == check_request.domain_or_ip_target
 
     def create_successful_lambda_response(self, call_config: RemoteCheckCallConfiguration):
         expected_response_body = CaaCheckResponse(perspective=call_config.perspective.to_rir_code(), check_passed=True,
