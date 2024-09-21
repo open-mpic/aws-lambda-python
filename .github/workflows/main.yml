@@ -28,3 +28,6 @@ jobs:
         run: pipx install hatch
       - name: Run tests
         run: hatch run test:unit
+      - name: Check coverage
+        run: |
+hatch run test:coverage | grep TOTAL | python -c $'import sys\\nfor line in sys.stdin: \\n exit(1 if int([s for s in line.split(" ") if s != ""][3][:-2]) < 94 else 0)'
