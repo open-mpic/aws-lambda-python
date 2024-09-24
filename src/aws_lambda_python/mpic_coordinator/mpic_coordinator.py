@@ -12,15 +12,13 @@ import pydantic
 
 from aws_lambda_python.common_domain.check_response import CheckResponse, AnnotatedCheckResponse, CaaCheckResponse, \
     CaaCheckResponseDetails, DcvCheckResponse, DcvCheckResponseDetails
-from aws_lambda_python.common_domain.check_request import CaaCheckRequest
-from aws_lambda_python.common_domain.check_request import DcvCheckRequest
+from aws_lambda_python.common_domain.check_request import CaaCheckRequest, DcvCheckRequest
 from aws_lambda_python.common_domain.validation_error import ValidationError
 from aws_lambda_python.common_domain.enum.check_type import CheckType
 from aws_lambda_python.common_domain.messages.ErrorMessages import ErrorMessages
 from aws_lambda_python.mpic_coordinator.cohort_creator import CohortCreator
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicCaaRequest, MpicRequest, AnnotatedMpicRequest
-from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvRequest
-from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvWithCaaRequest
+from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvRequest, MpicDcvWithCaaRequest
 from aws_lambda_python.mpic_coordinator.domain.remote_check_call_configuration import RemoteCheckCallConfiguration
 from aws_lambda_python.mpic_coordinator.domain.enum.request_path import RequestPath
 from aws_lambda_python.mpic_coordinator.domain.remote_perspective import RemotePerspective

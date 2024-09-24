@@ -21,9 +21,9 @@ class CohortCreator:
             if perspective_code not in all_possible_perspectives_by_code.keys():
                 continue  # TODO throw an error? check this case in the validator?
             else:
-                full_perspective = all_possible_perspectives_by_code[perspective_code]
+                fully_defined_perspective = all_possible_perspectives_by_code[perspective_code]
                 # TODO discuss: do we even need RIRs specified in the input? code should be unique enough
-                remote_perspectives.append(full_perspective)
+                remote_perspectives.append(fully_defined_perspective)
 
         random.seed(random_seed)
         random.shuffle(remote_perspectives)

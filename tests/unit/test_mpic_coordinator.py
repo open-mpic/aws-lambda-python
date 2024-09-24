@@ -239,6 +239,8 @@ class TestMpicCoordinator:
         # assert that perspectives in first cohort and in second cohort are the same perspectives
         assert all(first_cohort[i].perspective == second_cohort[i].perspective for i in range(len(first_cohort)))
 
+    # TODO add test to enforce max_attempts maxing out at 3? where should this maximum even be configured?
+
     @pytest.mark.parametrize('check_type', [CheckType.CAA, CheckType.DCV, CheckType.DCV_WITH_CAA])
     def coordinate_mpic__should_return_check_failure_message_given_remote_perspective_failure(self, set_env_variables, check_type, mocker):
         request = None
