@@ -111,7 +111,7 @@ class TestDeployedMpicApi:
         ('deny.permit.basic.caatestsuite.com', 'Tests acceptance on a CAA record set', False),
     ])
     def api_should_return_is_valid_true_for_valid_tests_in_caa_test_suite_when_caa_domain_is_caatestsuite_com(self, api_client, domain_or_ip_target,
-                                                                                      purpose_of_test, is_wildcard_domain):
+                                                                                                              purpose_of_test, is_wildcard_domain):
         print(f"Running test for {domain_or_ip_target} ({purpose_of_test})")
         request = MpicCaaRequest(
             domain_or_ip_target=domain_or_ip_target,

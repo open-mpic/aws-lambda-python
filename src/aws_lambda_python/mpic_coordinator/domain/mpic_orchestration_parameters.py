@@ -8,7 +8,7 @@ class BaseMpicOrchestrationParameters(BaseModel, ABC):
 
 
 class MpicRequestOrchestrationParameters(BaseMpicOrchestrationParameters):
-    max_attempts: int | None = None
+    max_attempts: int | None = 1
     perspectives: list[str] | None = None  # for diagnostic purposes
 
 

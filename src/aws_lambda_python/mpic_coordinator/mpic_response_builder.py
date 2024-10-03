@@ -10,12 +10,12 @@ from aws_lambda_python.mpic_coordinator.domain.mpic_response import MpicCaaRespo
 
 class MpicResponseBuilder:
     @staticmethod
-    def build_response(request: BaseMpicRequest, perspective_count, quorum_count, perspective_responses_per_check_type, valid_by_check_type):
+    def build_response(request: BaseMpicRequest, perspective_count, quorum_count, attempts, perspective_responses_per_check_type, valid_by_check_type):
         # system_params_as_dict = vars(request.orchestration_parameters)
         actual_orchestration_parameters = MpicEffectiveOrchestrationParameters(
             perspective_count=perspective_count,
             quorum_count=quorum_count,
-            attempt_count=1  # TODO implement retry logic
+            attempt_count=attempts
         )
 
         if type(request) is MpicDcvRequest:  # type() instead of isinstance() because of inheritance

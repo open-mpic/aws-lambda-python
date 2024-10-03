@@ -19,6 +19,7 @@ cd .. # should be at layer directory
 # make mpic_coordinator lambda layer for mpic coordinator lambda function
 mkdir -p mpic_coordinator_layer_content/python/aws_lambda_python
 cp -r ../src/aws_lambda_python/mpic_coordinator mpic_coordinator_layer_content/python/aws_lambda_python/mpic_coordinator
+cp -r ../resources mpic_coordinator_layer_content/python/resources  # TODO consider a more elegant approach
 cd mpic_coordinator_layer_content
 zip -r ../mpic_coordinator_layer_content.zip python -x "${py_exclude[@]}" # Zip the mpic_coordinator lambda layer
 rm -r python # clean up, mostly not to bother the IDE which will find this duplicate code!
