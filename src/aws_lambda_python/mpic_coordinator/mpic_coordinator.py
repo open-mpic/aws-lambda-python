@@ -35,8 +35,10 @@ class MpicCoordinator:
         self.dcv_arn_list = os.environ['validator_arns'].split("|")  # TODO rename to dcv_arns
         self.caa_arn_list = os.environ['caa_arns'].split("|")
         self.default_perspective_count = int(os.environ['default_perspective_count'])
-        self.enforce_distinct_rir_regions = int(os.environ['enforce_distinct_rir_regions']) == 1
+        self.enforce_distinct_rir_regions = int(os.environ['enforce_distinct_rir_regions']) == 1  # TODO may not need...
+        self.global_max_attempts = int(os.environ['absolute_max_attempts']) if 'absolute_max_attempts' in os.environ else None
         self.hash_secret = os.environ['hash_secret']
+        # TODO fix config.yaml to use snake_case for keys
 
         # Create a dictionary of ARNs per check type per perspective to simplify lookup in the future.
         # (Assumes known_perspectives list, validator_arn_list, and caa_arn_list are the same length.)
@@ -88,6 +90,8 @@ class MpicCoordinator:
 
         if orchestration_parameters is not None and orchestration_parameters.max_attempts is not None:
             max_attempts = orchestration_parameters.max_attempts
+            if self.global_max_attempts is not None and max_attempts > self.global_max_attempts:
+                max_attempts = self.global_max_attempts
         else:
             max_attempts = 1
         attempts = 1

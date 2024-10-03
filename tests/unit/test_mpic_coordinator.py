@@ -198,7 +198,7 @@ class TestMpicCoordinator:
         # there are 3 rirs of 2 perspectives each in the test setup; expect 3 cohorts of 2 perspectives each
         request.orchestration_parameters = MpicRequestOrchestrationParameters(quorum_count=1, perspective_count=2, max_attempts=3)
         event = {'path': RequestPath.MPIC, 'body': json.dumps(request.model_dump())}
-        # create mocks that will fail the first two attempts and succeed for the third
+        # create mocks that will fail all attempts
         mocker.patch('aws_lambda_python.mpic_coordinator.mpic_coordinator.MpicCoordinator.thread_call',
                      side_effect=self.create_failing_lambda_response)
         mpic_coordinator = MpicCoordinator()
@@ -239,7 +239,29 @@ class TestMpicCoordinator:
         # assert that perspectives in first cohort and in second cohort are the same perspectives
         assert all(first_cohort[i].perspective == second_cohort[i].perspective for i in range(len(first_cohort)))
 
-    # TODO add test to enforce max_attempts maxing out at 3? where should this maximum even be configured?
+    def coordinate_mpic__should_cap_attempts_at_max_attempts_env_parameter_if_found(self, set_env_variables, mocker):
+        try:
+            os.environ['absolute_max_attempts'] = '2'
+            request = ValidRequestCreator.create_valid_caa_mpic_request()
+            # there are 3 rirs of 2 perspectives each in the test setup; expect 3 cohorts of 2 perspectives each
+            request.orchestration_parameters = MpicRequestOrchestrationParameters(quorum_count=1, perspective_count=2,
+                                                                                  max_attempts=4)
+            event = {'path': RequestPath.MPIC, 'body': json.dumps(request.model_dump())}
+            # create mocks that will fail all attempts
+            mocker.patch('aws_lambda_python.mpic_coordinator.mpic_coordinator.MpicCoordinator.thread_call',
+                         side_effect=self.create_failing_lambda_response)
+            mpic_coordinator = MpicCoordinator()
+            result = mpic_coordinator.coordinate_mpic(event)
+            assert result['statusCode'] == 200
+            mpic_response: MpicCaaResponse = self.mpic_response_adapter.validate_json(result['body'])
+            assert mpic_response.is_valid is False
+            assert mpic_response.actual_orchestration_parameters.attempt_count == 2
+        finally:
+            del os.environ['absolute_max_attempts']  # avoid polluting other tests
+
+    def constructor__should_treat_max_attempts_as_optional_and_default_to_none(self, set_env_variables):
+        mpic_coordinator = MpicCoordinator()
+        assert mpic_coordinator.global_max_attempts is None
 
     @pytest.mark.parametrize('check_type', [CheckType.CAA, CheckType.DCV, CheckType.DCV_WITH_CAA])
     def coordinate_mpic__should_return_check_failure_message_given_remote_perspective_failure(self, set_env_variables, check_type, mocker):
