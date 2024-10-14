@@ -1,8 +1,7 @@
 from abc import ABC
 from typing import Literal, Union
 
-from pydantic import BaseModel, Field
-from typing_extensions import Annotated
+from pydantic import BaseModel
 
 from aws_lambda_python.common_domain.enum.certificate_type import CertificateType
 from aws_lambda_python.common_domain.enum.dcv_validation_method import DcvValidationMethod
@@ -39,7 +38,3 @@ class DcvDnsGenericValidationDetails(DcvValidationDetails):
 
 class DcvCheckParameters(BaseModel):
     validation_details: Union[DcvHttpGenericValidationDetails, DcvDnsGenericValidationDetails]
-
-
-# CheckParameters =
-# AnnotatedCheckResponse = Annotated[CheckParameters, Field(discriminator='validation_method')]
