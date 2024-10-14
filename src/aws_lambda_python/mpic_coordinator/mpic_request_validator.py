@@ -1,4 +1,3 @@
-from aws_lambda_python.mpic_coordinator.domain.enum.request_path import RequestPath
 from aws_lambda_python.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
 from aws_lambda_python.mpic_coordinator.mpic_request_validation_issue import MpicRequestValidationIssue
 
@@ -53,11 +52,9 @@ class MpicRequestValidator:
 
     @staticmethod
     def validate_quorum_count(requested_perspective_count, quorum_count, request_validation_issues) -> None:
-        # quorum_count of 0 is OK; it signals log-only mode
         # quorum_count can be no less than perspectives-1 if perspectives <= 5
         # quorum_count can be no less than perspectives-2 if perspectives > 5
         quorum_is_valid = (isinstance(quorum_count, int) and (
-                            quorum_count == 0 or
                             (requested_perspective_count - 1 <= quorum_count <= requested_perspective_count <= 5) or
                             (4 <= requested_perspective_count - 2 <= quorum_count <= requested_perspective_count)
                           ))

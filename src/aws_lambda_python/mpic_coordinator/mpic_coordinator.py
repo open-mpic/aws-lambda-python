@@ -1,26 +1,27 @@
 import json
 import traceback
+from itertools import cycle
+
 import boto3
 import time
 import concurrent.futures
 from datetime import datetime
 import os
-import random
 import hashlib
 import pydantic
 
 from aws_lambda_python.common_domain.check_response import CheckResponse, AnnotatedCheckResponse, CaaCheckResponse, \
     CaaCheckResponseDetails, DcvCheckResponse, DcvCheckResponseDetails
-from aws_lambda_python.common_domain.check_request import CaaCheckRequest
-from aws_lambda_python.common_domain.check_request import DcvCheckRequest
+from aws_lambda_python.common_domain.check_request import CaaCheckRequest, DcvCheckRequest
 from aws_lambda_python.common_domain.validation_error import ValidationError
 from aws_lambda_python.common_domain.enum.check_type import CheckType
 from aws_lambda_python.common_domain.messages.ErrorMessages import ErrorMessages
+from aws_lambda_python.mpic_coordinator.cohort_creator import CohortCreator
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicCaaRequest, MpicRequest, AnnotatedMpicRequest
-from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvRequest
-from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvWithCaaRequest
+from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvRequest, MpicDcvWithCaaRequest
 from aws_lambda_python.mpic_coordinator.domain.remote_check_call_configuration import RemoteCheckCallConfiguration
 from aws_lambda_python.mpic_coordinator.domain.enum.request_path import RequestPath
+from aws_lambda_python.mpic_coordinator.domain.remote_perspective import RemotePerspective
 from aws_lambda_python.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
 from aws_lambda_python.mpic_coordinator.mpic_request_validator import MpicRequestValidator
 from aws_lambda_python.mpic_coordinator.mpic_response_builder import MpicResponseBuilder
@@ -34,8 +35,10 @@ class MpicCoordinator:
         self.dcv_arn_list = os.environ['validator_arns'].split("|")  # TODO rename to dcv_arns
         self.caa_arn_list = os.environ['caa_arns'].split("|")
         self.default_perspective_count = int(os.environ['default_perspective_count'])
-        self.enforce_distinct_rir_regions = int(os.environ['enforce_distinct_rir_regions']) == 1
+        self.enforce_distinct_rir_regions = int(os.environ['enforce_distinct_rir_regions']) == 1  # TODO may not need...
+        self.global_max_attempts = int(os.environ['absolute_max_attempts']) if 'absolute_max_attempts' in os.environ else None
         self.hash_secret = os.environ['hash_secret']
+        # TODO fix config.yaml to use snake_case for keys
 
         # Create a dictionary of ARNs per check type per perspective to simplify lookup in the future.
         # (Assumes known_perspectives list, validator_arn_list, and caa_arn_list are the same length.)
@@ -50,33 +53,21 @@ class MpicCoordinator:
     def coordinate_mpic(self, event):
         request_path = event['path']
         if request_path not in iter(RequestPath):
-            return {
-                'statusCode': 400,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key,
-                                    'validation_issues': [MpicRequestValidationMessages.UNSUPPORTED_REQUEST_PATH.key]})
-            }
+            return MpicCoordinator.build_400_response(MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key,
+                                                      [MpicRequestValidationMessages.UNSUPPORTED_REQUEST_PATH.key])
 
         # parse event body into mpic_request
         try:
             mpic_request = self.mpic_request_adapter.validate_json(event['body'])
         except pydantic.ValidationError as validation_error:
-            return {
-                'statusCode': 400,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key,
-                                    'validation_issues': validation_error.errors()})
-            }
+            return MpicCoordinator.build_400_response(MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key,
+                                                      validation_error.errors())
 
         is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(mpic_request, self.known_perspectives)
 
         if not is_request_valid:
-            return {
-                'statusCode': 400,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key,
-                                    'validation_issues': [vars(issue) for issue in validation_issues]})
-            }
+            return MpicCoordinator.build_400_response(MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key,
+                                                      [vars(issue) for issue in validation_issues])
 
         orchestration_parameters = mpic_request.orchestration_parameters
 
@@ -90,67 +81,53 @@ class MpicCoordinator:
             else:
                 if orchestration_parameters.perspective_count is not None:
                     perspective_count = orchestration_parameters.perspective_count
-        perspectives_to_use = self.select_random_perspectives_across_rirs(self.known_perspectives,
-                                                                          perspective_count,
-                                                                          mpic_request.domain_or_ip_target)
+
+        perspective_cohorts = self.create_cohorts_of_randomly_selected_perspectives(self.known_perspectives,
+                                                                                    perspective_count,
+                                                                                    mpic_request.domain_or_ip_target)
 
         quorum_count = self.determine_required_quorum_count(orchestration_parameters, perspective_count)
 
-        # Collect async calls to invoke for each perspective.
-        async_calls_to_issue = self.collect_async_calls_to_issue(mpic_request, perspectives_to_use)
+        if orchestration_parameters is not None and orchestration_parameters.max_attempts is not None:
+            max_attempts = orchestration_parameters.max_attempts
+            if self.global_max_attempts is not None and max_attempts > self.global_max_attempts:
+                max_attempts = self.global_max_attempts
+        else:
+            max_attempts = 1
+        attempts = 1
+        cohort_cycle = cycle(perspective_cohorts)
+        while attempts <= max_attempts:
+            perspectives_to_use = next(cohort_cycle)
 
-        perspective_responses_per_check_type, validity_per_perspective_per_check_type = (
-            self.issue_async_calls_and_collect_responses(perspectives_to_use, async_calls_to_issue))
+            # Collect async calls to invoke for each perspective.
+            async_calls_to_issue = self.collect_async_calls_to_issue(mpic_request, perspectives_to_use)
 
-        valid_by_check_type = {}
-        for check_type in [CheckType.CAA, CheckType.DCV]:
-            valid_perspective_count = sum(validity_per_perspective_per_check_type[check_type].values())
+            perspective_responses_per_check_type, validity_per_perspective_per_check_type = (
+                self.issue_async_calls_and_collect_responses(perspectives_to_use, async_calls_to_issue))
 
-            # TODO enforce requirement of 2+ RIRs in corroborating perspective set
-            # TODO enforce requirement of 500km distances between all corroborating perspectives
-            valid_by_check_type[check_type] = valid_perspective_count >= quorum_count
+            valid_by_check_type = {}
+            for check_type in [CheckType.CAA, CheckType.DCV]:
+                valid_perspective_count = sum(validity_per_perspective_per_check_type[check_type].values())
+                valid_by_check_type[check_type] = valid_perspective_count >= quorum_count
 
-        response = MpicResponseBuilder.build_response(mpic_request, perspective_count, quorum_count,
-                                                      perspective_responses_per_check_type, valid_by_check_type)
-
-        return response
+            if MpicCoordinator.are_checks_valid(mpic_request.check_type, valid_by_check_type) or attempts == max_attempts:
+                response = MpicResponseBuilder.build_response(mpic_request, perspective_count, quorum_count, attempts,
+                                                              perspective_responses_per_check_type, valid_by_check_type)
+                return response
+            else:
+                attempts += 1
 
     # Returns a random subset of perspectives with a goal of maximum RIR diversity to increase diversity.
     # Perspectives must be of the form 'RIR.AWS-region'.
-    def select_random_perspectives_across_rirs(self, available_perspectives, count, domain_or_ip_target):
-        if count > len(available_perspectives):
+    def create_cohorts_of_randomly_selected_perspectives(self, available_perspectives_as_strings, count, domain_or_ip_target):
+        if count > len(available_perspectives_as_strings):
             raise ValueError(
-                f"Count ({count}) must be <= the number of available perspectives ({available_perspectives})")
+                f"Count ({count}) must be <= the number of available perspectives ({available_perspectives_as_strings})")
 
-        # Compute the distinct list or RIRs from all perspectives being considered.
-        rirs_available = list(set([perspective.split('.')[0] for perspective in available_perspectives]))
-
-        # TODO implement perspective cohort selection logic for floor(perspectives/count) > 1
-        # Seed the random generator with the hash secret concatenated with the domain-or-ip-target in all lowercase.
-        # This prevents the adversary from gaining an advantage by retrying and getting different vantage point sets.
-        # (An alternative would be to limit retries per domain-or-ip-target, which has its own pros/cons.)
-        random.seed(hashlib.sha256((self.hash_secret + domain_or_ip_target.lower()).encode('ASCII')).digest())
-
-        # Get a random ordering of RIRs
-        random.shuffle(rirs_available)
-
-        # Create a list of lists, grouping perspectives by their RIR.
-        perspectives_in_each_rir = [
-            [perspective for perspective in available_perspectives if perspective.split('.')[0] == rir]
-            for rir in rirs_available
-        ]
-
-        # RIR index loops through the different RIRs and adds a single chosen perspective from each RIR on each iteration.
-        chosen_perspectives = []
-        rir_index = 0
-        while len(chosen_perspectives) < count:
-            if len(perspectives_in_each_rir[rir_index]) >= 1:
-                perspective_chosen = random.choice(perspectives_in_each_rir[rir_index])
-                chosen_perspectives.append(perspective_chosen)
-                perspectives_in_each_rir[rir_index].remove(perspective_chosen)
-            rir_index += 1
-            rir_index %= len(rirs_available)
-        return chosen_perspectives
+        random_seed = hashlib.sha256((self.hash_secret + domain_or_ip_target.lower()).encode('ASCII')).digest()
+        perspectives_per_rir = CohortCreator.build_randomly_shuffled_available_perspectives_per_rir(available_perspectives_as_strings, random_seed)
+        cohorts = CohortCreator.create_perspective_cohorts(perspectives_per_rir, count)
+        return cohorts
 
     # Determines the minimum required quorum size if none is specified in the request.
     @staticmethod
@@ -162,7 +139,7 @@ class MpicCoordinator:
         return required_quorum_count
 
     # Configures the async lambda function calls to issue for the check request.
-    def collect_async_calls_to_issue(self, mpic_request, perspectives_to_use) -> list[RemoteCheckCallConfiguration]:
+    def collect_async_calls_to_issue(self, mpic_request, perspectives_to_use: list[RemotePerspective]) -> list[RemoteCheckCallConfiguration]:
         domain_or_ip_target = mpic_request.domain_or_ip_target
         async_calls_to_issue = []
 
@@ -170,14 +147,16 @@ class MpicCoordinator:
         if isinstance(mpic_request, MpicDcvWithCaaRequest) or isinstance(mpic_request, MpicCaaRequest):
             check_parameters = CaaCheckRequest(domain_or_ip_target=domain_or_ip_target, caa_check_parameters=mpic_request.caa_check_parameters)
             for perspective in perspectives_to_use:
-                arn = self.arns_per_perspective_per_check_type[CheckType.CAA][perspective]
+                # key is of the form 'RIR.AWS-region'
+                arn = self.arns_per_perspective_per_check_type[CheckType.CAA][perspective.to_rir_code()]
                 call_config = RemoteCheckCallConfiguration(CheckType.CAA, perspective, arn, check_parameters)
                 async_calls_to_issue.append(call_config)
 
         if isinstance(mpic_request, MpicDcvWithCaaRequest) or isinstance(mpic_request, MpicDcvRequest):
             check_parameters = DcvCheckRequest(domain_or_ip_target=domain_or_ip_target, dcv_check_parameters=mpic_request.dcv_check_parameters)
             for perspective in perspectives_to_use:
-                arn = self.arns_per_perspective_per_check_type[CheckType.DCV][perspective]
+                # key is of the form 'RIR.AWS-region'
+                arn = self.arns_per_perspective_per_check_type[CheckType.DCV][perspective.to_rir_code()]
                 call_config = RemoteCheckCallConfiguration(CheckType.DCV, perspective, arn, check_parameters)
                 async_calls_to_issue.append(call_config)
 
@@ -186,8 +165,10 @@ class MpicCoordinator:
     # Issues the async calls to the lambda functions and collects the responses.
     def issue_async_calls_and_collect_responses(self, perspectives_to_use, async_calls_to_issue) -> (dict, dict):
         perspective_responses_per_check_type = {}
-        validity_per_perspective_per_check_type = {CheckType.CAA: {r: False for r in perspectives_to_use},
-                                                   CheckType.DCV: {r: False for r in perspectives_to_use}}
+        validity_per_perspective_per_check_type = {
+            CheckType.CAA: {perspective.to_rir_code(): False for perspective in perspectives_to_use},
+            CheckType.DCV: {perspective.to_rir_code(): False for perspective in perspectives_to_use}
+        }
 
         perspective_count = len(perspectives_to_use)
 
@@ -198,17 +179,17 @@ class MpicCoordinator:
                                        async_calls_to_issue}
             for future in concurrent.futures.as_completed(futures_to_call_configs):
                 call_configuration = futures_to_call_configs[future]
-                perspective = call_configuration.perspective
+                perspective: RemotePerspective = call_configuration.perspective
                 check_type = call_configuration.check_type
                 now = time.perf_counter()
                 print(
-                    f"Unpacking future result for {perspective} at time {str(datetime.now())}: {now - exec_begin:.2f} \
+                    f"Unpacking future result for {perspective.to_rir_code()} at time {str(datetime.now())}: {now - exec_begin:.2f} \
                     seconds from beginning")
                 try:
                     data = future.result()
                 except Exception as e:
                     stacktrace = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
-                    print(f'{perspective} generated an exception: {stacktrace}')
+                    print(f'{perspective.to_rir_code()} generated an exception: {stacktrace}')
                 else:
                     if check_type not in perspective_responses_per_check_type:
                         perspective_responses_per_check_type[check_type] = []
@@ -218,7 +199,7 @@ class MpicCoordinator:
                         perspective_response_body = json.loads(perspective_response['body'])
                         # deserialize perspective body to have a nested object in the output rather than a string
                         check_response = self.check_response_adapter.validate_python(perspective_response_body)
-                        validity_per_perspective_per_check_type[check_type][perspective] |= check_response.check_passed
+                        validity_per_perspective_per_check_type[check_type][perspective.to_rir_code()] |= check_response.check_passed
                         # TODO make sure responses per perspective match API spec...
                         perspective_responses_per_check_type[check_type].append(check_response)
                     except Exception:  # TODO what exceptions are we expecting here?
@@ -226,7 +207,7 @@ class MpicCoordinator:
                         match check_type:
                             case CheckType.CAA:
                                 check_error_response = CaaCheckResponse(
-                                    perspective=perspective,
+                                    perspective=perspective.to_rir_code(),
                                     check_passed=False,
                                     errors=[ValidationError(error_type=ErrorMessages.COORDINATOR_COMMUNICATION_ERROR.key,
                                                             error_message=ErrorMessages.COORDINATOR_COMMUNICATION_ERROR.message)],
@@ -235,16 +216,24 @@ class MpicCoordinator:
                                 )
                             case CheckType.DCV:
                                 check_error_response = DcvCheckResponse(
-                                    perspective=perspective,
+                                    perspective=perspective.to_rir_code(),
                                     check_passed=False,
                                     errors=[ValidationError(error_type=ErrorMessages.COORDINATOR_COMMUNICATION_ERROR.key,
                                                             error_message=ErrorMessages.COORDINATOR_COMMUNICATION_ERROR.message)],
                                     details=DcvCheckResponseDetails(),  # TODO what should go here in this case?
                                     timestamp_ns=time.time_ns()
                                 )
-                        validity_per_perspective_per_check_type[check_type][perspective] |= check_error_response.check_passed
+                        validity_per_perspective_per_check_type[check_type][perspective.to_rir_code()] |= check_error_response.check_passed
                         perspective_responses_per_check_type[check_type].append(check_error_response)
         return perspective_responses_per_check_type, validity_per_perspective_per_check_type
+
+    @staticmethod
+    def build_400_response(error_name, issues_list):
+        return {
+            'statusCode': 400,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({'error': error_name, 'validation_issues': issues_list})
+        }
 
     @staticmethod
     def thread_call(call_config: RemoteCheckCallConfiguration):
@@ -257,15 +246,27 @@ class MpicCoordinator:
         print(f"Started lambda call for region {call_config.perspective} at {str(datetime.now())}")
 
         tic_init = time.perf_counter()
-        client = boto3.client('lambda', call_config.perspective.split(".")[1])
+        # get region from perspective
+        # TODO get better coverage for this function
+        client = boto3.client('lambda', call_config.perspective.code)
         tic = time.perf_counter()
         response = client.invoke(  # AWS Lambda-specific structure
             FunctionName=call_config.lambda_arn,
             InvocationType='RequestResponse',
-            Payload=json.dumps(call_config.input_args.model_dump())
+            Payload=json.dumps(call_config.check_request.model_dump())
         )
         toc = time.perf_counter()
 
-        print(f"Response in region {call_config.perspective} took {toc - tic:0.4f} seconds to get response; \
+        print(f"Response in region {call_config.perspective.to_rir_code()} took {toc - tic:0.4f} seconds to get response; \
               {tic - tic_init:.2f} seconds to start boto client; ended at {str(datetime.now())}\n")
         return response
+
+    @staticmethod
+    def are_checks_valid(check_type, validity_by_check_type) -> bool:
+        match check_type:
+            case CheckType.CAA:
+                return validity_by_check_type[CheckType.CAA]
+            case CheckType.DCV:
+                return validity_by_check_type[CheckType.DCV]
+            case CheckType.DCV_WITH_CAA:
+                return validity_by_check_type[CheckType.DCV] and validity_by_check_type[CheckType.CAA]

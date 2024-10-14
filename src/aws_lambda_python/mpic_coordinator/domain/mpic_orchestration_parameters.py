@@ -3,8 +3,8 @@ from pydantic import BaseModel
 
 
 class BaseMpicOrchestrationParameters(BaseModel, ABC):
-    perspective_count: int
-    quorum_count: int
+    perspective_count: int | None = None
+    quorum_count: int | None = None
 
 
 class MpicRequestOrchestrationParameters(BaseMpicOrchestrationParameters):

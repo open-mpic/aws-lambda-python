@@ -51,7 +51,7 @@ Source = "https://github.com/open-mpic/aws-lambda-python"
 
 [tool.hatch]
 version.path = "src/aws_lambda_python/__about__.py"
-build.sources = ["src"]
+build.sources = ["src", "resources"]
 build.targets.wheel.packages = ["src/aws_lambda_python"]
 
 [tool.hatch.envs.default]
