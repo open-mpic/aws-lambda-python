@@ -91,6 +91,13 @@ def main(raw_args=None):
         # Replace default perspective count.
         main_tf_string = main_tf_string.replace("{{default-perspective-count}}", f"\"{config['default-perspective-count']}\"")
 
+        # Replace absolout max attempt count if present.
+        if "absolute-max-attempts" in config:
+            main_tf_string = main_tf_string.replace("{{absolut-max-attempts-with-key}}", f"absolute_max_attempts = \"{config['absolute-max-attempts']}\"")
+        else:
+            main_tf_string = main_tf_string.replace("{{absolut-max-attempts-with-key}}", "")
+            
+
         # Replace enforce distinct rir regions.
         main_tf_string = main_tf_string.replace("{{enforce-distinct-rir-regions}}", f"\"{1 if config['enforce-distinct-rir-regions'] else 0}\"")
 
