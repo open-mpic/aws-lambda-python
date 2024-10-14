@@ -43,6 +43,7 @@ class ValidRequestCreator:
             )
         )
 
+
     @staticmethod
     def create_valid_request(check_type: CheckType) -> BaseMpicRequest:
         match check_type:

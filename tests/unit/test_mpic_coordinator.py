@@ -173,6 +173,38 @@ class TestMpicCoordinator:
         mpic_response = self.mpic_response_adapter.validate_json(result['body'])
         assert mpic_response.is_valid is True
 
+    def coordinate_mpic__should_successfully_carry_out_caa_mpic_given_empty_orchestration_parameters(self, set_env_variables, mocker):
+        request = ValidRequestCreator.create_valid_caa_mpic_request()
+        request.orchestration_parameters = MpicRequestOrchestrationParameters()
+        request.caa_check_parameters = None
+        print(f"serialized body object: {json.dumps(request.model_dump(exclude_none=True))}")
+        event = {'path': RequestPath.MPIC, 'body': json.dumps(request.model_dump(exclude_none=True))}
+        mocker.patch('aws_lambda_python.mpic_coordinator.mpic_coordinator.MpicCoordinator.thread_call',
+                     side_effect=self.create_successful_lambda_response)
+        mpic_coordinator = MpicCoordinator()
+        result = mpic_coordinator.coordinate_mpic(event)
+        assert result['statusCode'] == 200
+        mpic_response = self.mpic_response_adapter.validate_json(result['body'])
+        assert mpic_response.is_valid is True
+
+    def coordinate_mpic__should_successfully_carry_out_caa_mpic_given_only_max_attempts_orchestration_parameters(self, set_env_variables, mocker):
+        request = ValidRequestCreator.create_valid_caa_mpic_request()
+        # Reset all fields in orchestration parameters to None
+        request.orchestration_parameters = MpicRequestOrchestrationParameters()
+        # Set max_attempts
+        request.orchestration_parameters.max_attempts = 2
+        request.caa_check_parameters = None
+        print(f"serialized body object: {json.dumps(request.model_dump(exclude_none=True))}")
+        event = {'path': RequestPath.MPIC, 'body': json.dumps(request.model_dump(exclude_none=True))}
+        mocker.patch('aws_lambda_python.mpic_coordinator.mpic_coordinator.MpicCoordinator.thread_call',
+                     side_effect=self.create_successful_lambda_response)
+        mpic_coordinator = MpicCoordinator()
+        result = mpic_coordinator.coordinate_mpic(event)
+        assert result['statusCode'] == 200
+        mpic_response = self.mpic_response_adapter.validate_json(result['body'])
+        assert mpic_response.is_valid is True
+
+
     # @pytest.mark.skip(reason='This test is not yet implemented')
     def coordinate_mpic__should_retry_corroboration_max_attempts_times_if_corroboration_fails(self, set_env_variables, mocker):
         request = ValidRequestCreator.create_valid_caa_mpic_request()
