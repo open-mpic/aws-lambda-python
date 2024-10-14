@@ -43,8 +43,7 @@ class TestMpicRequestValidator:
         assert is_request_valid is False
         assert MpicRequestValidationMessages.PERSPECTIVES_NOT_IN_DIAGNOSTIC_MODE.key in [issue.issue_type for issue in validation_issues]
 
-    @pytest.mark.parametrize('validation_method', [DcvValidationMethod.DNS_GENERIC, DcvValidationMethod.HTTP_GENERIC,
-                                                   DcvValidationMethod.TLS_USING_ALPN])
+    @pytest.mark.parametrize('validation_method', [DcvValidationMethod.DNS_GENERIC, DcvValidationMethod.HTTP_GENERIC])
     def is_request_valid__should_return_true_given_valid_dcv_check_request(self, validation_method):
         request = ValidRequestCreator.create_valid_dcv_mpic_request(validation_method)
         is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(request, self.known_perspectives)

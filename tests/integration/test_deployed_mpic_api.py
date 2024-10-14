@@ -3,11 +3,10 @@ import sys
 import pytest
 from pydantic import TypeAdapter
 
-from aws_lambda_python.common_domain.check_parameters import CaaCheckParameters
-from aws_lambda_python.common_domain.check_parameters import DcvCheckParameters, DcvValidationDetails
+from aws_lambda_python.common_domain.check_parameters import CaaCheckParameters, DcvHttpGenericValidationDetails
+from aws_lambda_python.common_domain.check_parameters import DcvCheckParameters
 from aws_lambda_python.common_domain.enum.certificate_type import CertificateType
 from aws_lambda_python.common_domain.enum.check_type import CheckType
-from aws_lambda_python.common_domain.enum.dcv_validation_method import DcvValidationMethod
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicCaaRequest
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvRequest
 from aws_lambda_python.mpic_coordinator.domain.mpic_orchestration_parameters import MpicRequestOrchestrationParameters
@@ -146,9 +145,8 @@ class TestDeployedMpicApi:
             domain_or_ip_target='example.com',
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
             dcv_check_parameters=DcvCheckParameters(
-                validation_method=DcvValidationMethod.HTTP_GENERIC,
-                validation_details=DcvValidationDetails(dns_name_prefix=None, dns_record_type=None, http_token_path='/',
-                                                        challenge_value='test')
+                validation_details=DcvHttpGenericValidationDetails(http_token_path='/',
+                                                                   challenge_value='test')
             )
         )
 
@@ -163,9 +161,8 @@ class TestDeployedMpicApi:
         request = MpicDcvRequest(
             domain_or_ip_target='ifconfig.me',
             dcv_check_parameters=DcvCheckParameters(
-                validation_method=DcvValidationMethod.HTTP_GENERIC,
-                validation_details=DcvValidationDetails(http_token_path='/',
-                                                        challenge_value='test')
+                validation_details=DcvHttpGenericValidationDetails(http_token_path='/',
+                                                                   challenge_value='test')
             )
         )
 

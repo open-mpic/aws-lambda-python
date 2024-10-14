@@ -37,16 +37,16 @@ class TestMpicDcvRequest:
             MpicDcvRequest.model_validate_json(json.dumps(request.model_dump()))
         assert 'dcv_check_parameters' in str(validation_error.value)
 
-    def model_validate_json__should_throw_validation_error_given_missing_validation_method(self):
+    def model_validate_json__should_throw_validation_error_given_missing_validation_method_in_validation_details(self):
         request = ValidRequestCreator.create_valid_dcv_mpic_request()
-        request.dcv_check_parameters.validation_method = None
+        request.dcv_check_parameters.validation_details.validation_method = None
         with pytest.raises(pydantic.ValidationError) as validation_error:
             MpicDcvRequest.model_validate_json(json.dumps(request.model_dump()))
         assert 'validation_method' in str(validation_error.value)
 
-    def model_validate_json__should_throw_validation_error_given_invalid_validation_method(self):
+    def model_validate_json__should_throw_validation_error_given_invalid_validation_method_in_validation_details(self):
         request = ValidRequestCreator.create_valid_dcv_mpic_request()
-        request.dcv_check_parameters.validation_method = 'invalid'
+        request.dcv_check_parameters.validation_details.validation_method = 'invalid'
         with pytest.raises(pydantic.ValidationError) as validation_error:
             MpicDcvRequest.model_validate_json(json.dumps(request.model_dump(warnings=False)))
         assert 'validation_method' in str(validation_error.value)

@@ -1,5 +1,5 @@
 from aws_lambda_python.common_domain.check_parameters import CaaCheckParameters, DcvCheckParameters, \
-    DcvValidationDetails
+    DcvDnsGenericValidationDetails, DcvHttpGenericValidationDetails
 from aws_lambda_python.common_domain.enum.certificate_type import CertificateType
 from aws_lambda_python.common_domain.enum.dcv_validation_method import DcvValidationMethod
 from aws_lambda_python.common_domain.enum.dns_record_type import DnsRecordType
@@ -26,7 +26,6 @@ class ValidRequestCreator:
             domain_or_ip_target='test',
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=6, quorum_count=4),
             dcv_check_parameters=DcvCheckParameters(
-                validation_method=validation_method,
                 validation_details=ValidRequestCreator.create_validation_details(validation_method)
             )
         )
@@ -38,7 +37,6 @@ class ValidRequestCreator:
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=6, quorum_count=4),
             caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER),
             dcv_check_parameters=DcvCheckParameters(
-                validation_method=validation_method,
                 validation_details=ValidRequestCreator.create_validation_details(validation_method)
             )
         )
@@ -59,9 +57,7 @@ class ValidRequestCreator:
         validation_details = {}
         match validation_method:
             case DcvValidationMethod.DNS_GENERIC:
-                validation_details = DcvValidationDetails(dns_name_prefix='test', dns_record_type=DnsRecordType.A, challenge_value='test')
+                validation_details = DcvDnsGenericValidationDetails(dns_name_prefix='test', dns_record_type=DnsRecordType.A, challenge_value='test')
             case DcvValidationMethod.HTTP_GENERIC:
-                validation_details = DcvValidationDetails(http_token_path='http://example.com', challenge_value='test')  # noqa E501 (http)
-            case DcvValidationMethod.TLS_USING_ALPN:
-                validation_details = DcvValidationDetails(challenge_value='test')
+                validation_details = DcvHttpGenericValidationDetails(http_token_path='http://example.com', challenge_value='test')  # noqa E501 (http)
         return validation_details
