@@ -50,7 +50,7 @@ class MpicCaaChecker:
                 print(f'Found a CAA record for {domain}! Response: {lookup.rrset.to_text()}')
                 rrset = lookup.rrset
                 break
-            except dns.resolver.NoAnswer:
+            except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN):
                 print(f'No CAA record found for {domain}; trying parent domain...')
                 domain = domain.parent()
             except Exception:
