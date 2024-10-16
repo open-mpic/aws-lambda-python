@@ -56,7 +56,7 @@ class TestMpicCaaChecker:
         check_response_details = CaaCheckResponseDetails(caa_record_present=True, found_at='example.com', response=test_dns_query_answer.rrset.to_text())
         assert self.is_result_as_expected(result, True, check_response_details) is True
 
-    def check_caa__should_return_200_and_allow_issuance_given_matching_caa_record_found_in_parent_for_not_existing_domain(self, set_env_variables, mocker):
+    def check_caa__should_return_200_and_allow_issuance_given_matching_caa_record_found_in_parent_of_nonexistent_domain(self, set_env_variables, mocker):
         test_dns_query_answer = MockDnsObjectCreator.create_caa_query_answer('example.com', 0, 'issue', 'ca111.com', mocker)
         mocker.patch('dns.resolver.resolve', side_effect=lambda domain_name, rdtype: (
             test_dns_query_answer if domain_name.to_text() == 'example.com.' else
