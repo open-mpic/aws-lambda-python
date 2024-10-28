@@ -1,7 +1,11 @@
-from aws_lambda_python.mpic_coordinator.mpic_coordinator import MpicCoordinator
+from aws_lambda_python.mpic_coordinator.mpic_coordinator import MpicCoordinator, MpicCoordinatorConfiguration
 from aws_lambda_python.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
 from aws_lambda_python.mpic_coordinator.domain.remote_check_call_configuration import RemoteCheckCallConfiguration
+from aws_lambda_python.common_domain.enum.check_type import CheckType
+from aws_lambda_python.mpic_coordinator.domain.enum.request_path import RequestPath
 import boto3
+import os
+import json
 
 known_perspectives = os.environ['perspective_names'].split("|")
 dcv_arn_list = os.environ['validator_arns'].split("|")  # TODO rename to dcv_arns
@@ -10,6 +14,7 @@ default_perspective_count = int(os.environ['default_perspective_count'])
 enforce_distinct_rir_regions = int(os.environ['enforce_distinct_rir_regions']) == 1  # TODO may not need...
 global_max_attempts = int(os.environ['absolute_max_attempts']) if 'absolute_max_attempts' in os.environ else None
 hash_secret = os.environ['hash_secret']
+
 
 arns_per_perspective_per_check_type = {
             CheckType.DCV: {known_perspectives[i]: dcv_arn_list[i] for i in range(len(known_perspectives))},
@@ -26,7 +31,7 @@ mpic_coordinator_configuration = MpicCoordinatorConfiguration(
 def call_remote_perspective(call_config: RemoteCheckCallConfiguration):
     # Uses dcv_arn_list, caa_arn_list
     client = boto3.client('lambda', call_config.perspective.code)
-    function_name = arns_per_perspective_per_check_type[check_type][call_config.perspective.to_rir_code()]
+    function_name = arns_per_perspective_per_check_type[call_config.check_type][call_config.perspective.to_rir_code()]
     response = client.invoke(  # AWS Lambda-specific structure
             FunctionName=function_name,
             InvocationType='RequestResponse',
