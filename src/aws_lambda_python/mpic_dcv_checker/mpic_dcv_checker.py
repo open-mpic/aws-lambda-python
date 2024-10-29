@@ -20,7 +20,7 @@ class MpicDcvChecker:
     def check_dcv(self, event):
         dcv_request = DcvCheckRequest.model_validate(event)
 
-        match dcv_request.dcv_check_parameters.validation_method:
+        match dcv_request.dcv_check_parameters.validation_details.validation_method:
             case DcvValidationMethod.HTTP_GENERIC:
                 return self.perform_http_validation(dcv_request)
             case DcvValidationMethod.DNS_GENERIC:
