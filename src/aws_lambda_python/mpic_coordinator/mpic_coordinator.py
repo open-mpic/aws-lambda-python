@@ -36,11 +36,9 @@ class MpicCoordinatorConfiguration:
         self.hash_secret = hash_secret
 
 
-
 class MpicCoordinator:
-
-    # call_remote_perspective_funtion: a "dumb" transport for serialized data to a remote perspective and a serialized response from the remote perspective. MPIC Coordinator is tasked with ensuring the data from this function is sane and handling the serialization/deserialization of the data. This function may raise an exception if something goes wrong.
-    def __init__(self, call_remote_perspective_funtion, mpic_coordinator_configuration: MpicCoordinatorConfiguration):
+    # call_remote_perspective_function: a "dumb" transport for serialized data to a remote perspective and a serialized response from the remote perspective. MPIC Coordinator is tasked with ensuring the data from this function is sane and handling the serialization/deserialization of the data. This function may raise an exception if something goes wrong.
+    def __init__(self, call_remote_perspective_function, mpic_coordinator_configuration: MpicCoordinatorConfiguration):
         self.known_perspectives = mpic_coordinator_configuration.known_perspectives
 
         self.default_perspective_count = mpic_coordinator_configuration.default_perspective_count
@@ -48,7 +46,7 @@ class MpicCoordinator:
         self.global_max_attempts = mpic_coordinator_configuration.global_max_attempts
         self.hash_secret = mpic_coordinator_configuration.hash_secret
         # TODO fix config.yaml to use snake_case for keys
-        self.call_remote_perspective_funtion = call_remote_perspective_funtion
+        self.call_remote_perspective_function = call_remote_perspective_function
         
         # for correct deserialization of responses based on discriminator field (check type)
         self.mpic_request_adapter: TypeAdapter[MpicRequest] = TypeAdapter(AnnotatedMpicRequest)
@@ -56,8 +54,10 @@ class MpicCoordinator:
 
     def coordinate_mpic(self, body):
         # Path validation should be done by whatever is calling lib-open-mpic.
-        #request_path = event['path']
-        #if request_path not in iter(RequestPath):
+
+        # TODO clean this up
+        # request_path = event['path']
+        # if request_path not in iter(RequestPath):
         #    return MpicCoordinator.build_400_response(MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key,
         #                                              [MpicRequestValidationMessages.UNSUPPORTED_REQUEST_PATH.key])
 
@@ -178,7 +178,7 @@ class MpicCoordinator:
         # example code: https://docs.python.org/3/library/concurrent.futures.html
         with concurrent.futures.ThreadPoolExecutor(max_workers=perspective_count) as executor:
             exec_begin = time.perf_counter()
-            futures_to_call_configs = {executor.submit(self.thread_call, self.call_remote_perspective_funtion, call_config): call_config for call_config in
+            futures_to_call_configs = {executor.submit(self.thread_call, self.call_remote_perspective_function, call_config): call_config for call_config in
                                        async_calls_to_issue}
             for future in concurrent.futures.as_completed(futures_to_call_configs):
                 call_configuration = futures_to_call_configs[future]

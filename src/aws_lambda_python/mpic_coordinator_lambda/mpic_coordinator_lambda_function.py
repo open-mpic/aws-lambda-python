@@ -29,6 +29,8 @@ mpic_coordinator_configuration = MpicCoordinatorConfiguration(
         enforce_distinct_rir_regions, 
         global_max_attempts, 
         hash_secret)
+
+
 # This function is a "dumb" transport for serialized data to a remote perspective and a serialized response from the remote perspective. MPIC Coordinator is tasked with ensuring the data from this function is sane. This function may raise an exception if something goes wrong.
 def call_remote_perspective(perspective: RemotePerspective, check_type: CheckType, check_request_serialized: str):
     # Uses dcv_arn_list, caa_arn_list
@@ -43,11 +45,12 @@ def call_remote_perspective(perspective: RemotePerspective, check_type: CheckTyp
 
     return response_payload['body']
 
+
 coordinator = MpicCoordinator(call_remote_perspective, mpic_coordinator_configuration)
 
 
 # noinspection PyUnusedLocal
-# for now we are not using context, but it is required by the lambda handler signature
+# for now, we are not using context, but it is required by the lambda handler signature
 def lambda_handler(event, context):
     request_path = event['path']
     if request_path not in iter(RequestPath):
