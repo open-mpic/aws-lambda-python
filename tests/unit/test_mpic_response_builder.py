@@ -7,7 +7,7 @@ from aws_lambda_python.mpic_coordinator.domain.mpic_response import BaseMpicResp
 from aws_lambda_python.mpic_coordinator.mpic_response_builder import MpicResponseBuilder
 from pydantic import TypeAdapter
 
-from valid_request_creator import ValidRequestCreator
+from valid_mpic_request_creator import ValidMpicRequestCreator
 
 
 class TestMpicResponseBuilder:
@@ -63,7 +63,7 @@ class TestMpicResponseBuilder:
     def build_response__should_return_response_given_mpic_request_configuration_and_results(self, check_type, perspective_count, quorum_count):
         persp_responses_per_check_type = self.create_perspective_responses_per_check_type(check_type)
         valid_by_check_type = self.create_validity_by_check_type(check_type)
-        request = ValidRequestCreator.create_valid_request(check_type)
+        request = ValidMpicRequestCreator.create_valid_mpic_request(check_type)
         response = MpicResponseBuilder.build_response(request, perspective_count, quorum_count, 2,
                                                       persp_responses_per_check_type, valid_by_check_type)
         assert response['statusCode'] == 200
@@ -93,7 +93,7 @@ class TestMpicResponseBuilder:
                 assert response_body.is_valid == response_body.is_valid_dcv and response_body.is_valid_caa
 
     def build_response__should_include_validation_details_and_method_when_present_in_request_body(self):
-        request = ValidRequestCreator.create_valid_dcv_mpic_request()
+        request = ValidMpicRequestCreator.create_valid_dcv_mpic_request()
         persp_responses_per_check_type = self.create_perspective_responses_per_check_type(CheckType.DCV)
         valid_by_check_type = self.create_validity_by_check_type(CheckType.DCV)
         response = MpicResponseBuilder.build_response(request, 6, 5, 1, persp_responses_per_check_type,
@@ -103,7 +103,7 @@ class TestMpicResponseBuilder:
         assert response_body.dcv_check_parameters.validation_details.validation_method == request.dcv_check_parameters.validation_details.validation_method
 
     def build_response__should_set_is_valid_to_false_when_either_check_type_is_invalid(self):
-        request = ValidRequestCreator.create_valid_dcv_with_caa_mpic_request()
+        request = ValidMpicRequestCreator.create_valid_dcv_with_caa_mpic_request()
         persp_responses_per_check_type = self.create_perspective_responses_per_check_type(CheckType.DCV_WITH_CAA)
         valid_by_check_type = self.create_validity_by_check_type(CheckType.DCV_WITH_CAA)
         valid_by_check_type[CheckType.DCV] = False

@@ -5,7 +5,6 @@ from itertools import cycle
 import time
 import concurrent.futures
 from datetime import datetime
-import os
 import hashlib
 import pydantic
 
@@ -19,7 +18,6 @@ from aws_lambda_python.mpic_coordinator.cohort_creator import CohortCreator
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicCaaRequest, MpicRequest, AnnotatedMpicRequest
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvRequest, MpicDcvWithCaaRequest
 from aws_lambda_python.mpic_coordinator.domain.remote_check_call_configuration import RemoteCheckCallConfiguration
-from aws_lambda_python.mpic_coordinator.domain.enum.request_path import RequestPath
 from aws_lambda_python.common_domain.remote_perspective import RemotePerspective
 from aws_lambda_python.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
 from aws_lambda_python.mpic_coordinator.mpic_request_validator import MpicRequestValidator
@@ -178,8 +176,8 @@ class MpicCoordinator:
         # example code: https://docs.python.org/3/library/concurrent.futures.html
         with concurrent.futures.ThreadPoolExecutor(max_workers=perspective_count) as executor:
             exec_begin = time.perf_counter()
-            futures_to_call_configs = {executor.submit(self.thread_call, self.call_remote_perspective_function, call_config): call_config for call_config in
-                                       async_calls_to_issue}
+            futures_to_call_configs = {executor.submit(self.thread_call, self.call_remote_perspective_function, call_config): call_config
+                                       for call_config in async_calls_to_issue}
             for future in concurrent.futures.as_completed(futures_to_call_configs):
                 call_configuration = futures_to_call_configs[future]
                 perspective: RemotePerspective = call_configuration.perspective
@@ -192,12 +190,7 @@ class MpicCoordinator:
                     perspective_responses_per_check_type[check_type] = []
                 try:
                     data = future.result()
-                    #perspective_response = json.loads(data['Payload'].read().decode('utf-8'))
-                    #print(data)
-                    perspective_response_body = json.loads(data)
-                    #perspective_response_body = json.loads(perspective_response['body'])
-                    # deserialize perspective body to have a nested object in the output rather than a string
-                    check_response = self.check_response_adapter.validate_python(perspective_response_body)
+                    check_response = self.check_response_adapter.validate_json(data)  # expecting a CheckResponse object
                     validity_per_perspective_per_check_type[check_type][perspective.to_rir_code()] |= check_response.check_passed
                     # TODO make sure responses per perspective match API spec...
                     perspective_responses_per_check_type[check_type].append(check_response)
@@ -237,29 +230,19 @@ class MpicCoordinator:
     @staticmethod
     def thread_call(call_remote_perspective_function, call_config: RemoteCheckCallConfiguration):
         """
-        Issues a call to a lambda function in a separate thread. This is a blocking call.
-        This is purely AWS specific and should not be used in other contexts.
+        Issues a call to a remote perspective in a separate thread. This is a blocking call.
         :param call_remote_perspective_function: function to call with arguments in call_config
-        :param call_config:
+        :param call_config: object containing arguments to pass to the remote function call
         :return:
         """
-        print(f"Started lambda call for region {call_config.perspective} at {str(datetime.now())}")
-
-        tic_init = time.perf_counter()
-        # get region from perspective
-        # TODO get better coverage for this function
-        #client = boto3.client('lambda', call_config.perspective.code)
+        print(f"Started remote perspective call for perspective {call_config.perspective} at {str(datetime.now())}")
         tic = time.perf_counter()
+        # TODO replace json dumps stuff with actual object
         response = call_remote_perspective_function(call_config.perspective, call_config.check_type, json.dumps(call_config.check_request.model_dump()))
-        #response = client.invoke(  # AWS Lambda-specific structure
-        #    FunctionName=call_config.lambda_arn,
-        #    InvocationType='RequestResponse',
-        #    Payload=json.dumps()
-        #)
         toc = time.perf_counter()
 
         print(f"Response in region {call_config.perspective.to_rir_code()} took {toc - tic:0.4f} seconds to get response; \
-              {tic - tic_init:.2f} seconds to start boto client; ended at {str(datetime.now())}\n")
+              ended at {str(datetime.now())}\n")
         return response
 
     @staticmethod
