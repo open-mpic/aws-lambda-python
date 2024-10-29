@@ -70,8 +70,8 @@ class TestMpicCaaChecker:
                                       caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER,
                                                                               caa_domains=['ca111.com']))
 
-        caa_checker = MpicCaaChecker()
-        result = caa_checker.check_caa(caa_request)
+        caa_checker = MpicCaaChecker(self.create_caa_checker_configuration())
+        result = caa_checker.check_caa(json.dumps(caa_request.model_dump()))
         assert result['statusCode'] == 200
         check_response_details = CaaCheckResponseDetails(caa_record_present=True, found_at='example.com', response=test_dns_query_answer.rrset.to_text())
         assert self.is_result_as_expected(result, True, check_response_details) is True
