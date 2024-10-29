@@ -235,10 +235,11 @@ class MpicCoordinator:
         }
 
     @staticmethod
-    def thread_call(call_remote_perspective_funtion, call_config: RemoteCheckCallConfiguration):
+    def thread_call(call_remote_perspective_function, call_config: RemoteCheckCallConfiguration):
         """
         Issues a call to a lambda function in a separate thread. This is a blocking call.
         This is purely AWS specific and should not be used in other contexts.
+        :param call_remote_perspective_function: function to call with arguments in call_config
         :param call_config:
         :return:
         """
@@ -249,7 +250,7 @@ class MpicCoordinator:
         # TODO get better coverage for this function
         #client = boto3.client('lambda', call_config.perspective.code)
         tic = time.perf_counter()
-        response = call_remote_perspective_funtion(call_config.perspective, call_config.check_type, json.dumps(call_config.check_request.model_dump()))
+        response = call_remote_perspective_function(call_config.perspective, call_config.check_type, json.dumps(call_config.check_request.model_dump()))
         #response = client.invoke(  # AWS Lambda-specific structure
         #    FunctionName=call_config.lambda_arn,
         #    InvocationType='RequestResponse',
