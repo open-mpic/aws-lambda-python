@@ -8,7 +8,7 @@ import os
 
 from pydantic import TypeAdapter
 
-from aws_lambda_python.common_domain.check_request import DcvCheckRequest
+from aws_lambda_python.common_domain.check_request import DcvCheckRequest, BaseCheckRequest, CaaCheckRequest
 from aws_lambda_python.common_domain.check_response import CaaCheckResponse, CaaCheckResponseDetails, DcvCheckResponse, \
     DcvCheckResponseDetails
 from aws_lambda_python.common_domain.enum.dcv_validation_method import DcvValidationMethod
@@ -16,7 +16,6 @@ from aws_lambda_python.common_domain.enum.check_type import CheckType
 from aws_lambda_python.common_domain.messages.ErrorMessages import ErrorMessages
 from aws_lambda_python.mpic_coordinator.domain.enum.request_path import RequestPath
 from aws_lambda_python.mpic_coordinator.domain.mpic_orchestration_parameters import MpicRequestOrchestrationParameters
-from aws_lambda_python.mpic_coordinator.domain.remote_check_call_configuration import RemoteCheckCallConfiguration
 from aws_lambda_python.common_domain.remote_perspective import RemotePerspective
 from aws_lambda_python.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
 from aws_lambda_python.mpic_coordinator.mpic_coordinator import MpicCoordinator, MpicCoordinatorConfiguration
@@ -162,11 +161,32 @@ class TestMpicCoordinator:
         # ensure the list contains both 'caa' and 'dcv' calls
         assert set(map(lambda call_result: call_result.check_type, call_list)) == {CheckType.CAA, CheckType.DCV}
 
-    def coordinate_mpic__should_return_200_and_results_given_successful_caa_corroboration(self, set_env_variables, mocker):
+    # TODO rename "thread_call" to something better like "call_remote_perspective"
+    def thread_call__should_call_remote_perspective_call_function_with_correct_parameters(self, set_env_variables):
+        request = ValidRequestCreator.create_valid_caa_mpic_request()
+        request.orchestration_parameters = MpicRequestOrchestrationParameters(quorum_count=2, perspective_count=2,
+                                                                              max_attempts=2)
+        event = {'path': RequestPath.MPIC, 'body': json.dumps(request.model_dump())}
+        mocked_remote_perspective_call_function = MagicMock()
+        mocked_remote_perspective_call_function.side_effect = TestMpicCoordinator.SideEffectForMockedPayloads(
+            self.create_successful_remote_caa_check_response, self.create_successful_remote_caa_check_response
+        )
+        mpic_coordinator_config = self.create_mpic_coordinator_configuration()
+        mpic_coordinator = MpicCoordinator(mocked_remote_perspective_call_function, mpic_coordinator_config)
+        mpic_coordinator.coordinate_mpic(event['body'])
+        call_args_list = mocked_remote_perspective_call_function.call_args_list
+        assert len(call_args_list) == 2
+        for call in call_args_list:
+            call_args = call.args
+            remote_perspective: RemotePerspective = call_args[0]
+            assert remote_perspective.to_rir_code() in mpic_coordinator_config.known_perspectives
+            assert call_args[1] == request.check_type
+            check_request = CaaCheckRequest.model_validate_json(call_args[2])
+            assert check_request.domain_or_ip_target == request.domain_or_ip_target
+
+    def coordinate_mpic__should_return_200_and_results_given_successful_caa_corroboration(self, set_env_variables):
         request = ValidRequestCreator.create_valid_caa_mpic_request()
         event = {'path': RequestPath.MPIC, 'body': json.dumps(request.model_dump())}
-        #mocker.patch('aws_lambda_python.mpic_coordinator.mpic_coordinator.MpicCoordinator.thread_call',
-        #             side_effect=self.create_successful_lambda_response)
         mpic_coordinator_config = self.create_mpic_coordinator_configuration()
         mpic_coordinator = MpicCoordinator(self.create_successful_remote_caa_check_response, mpic_coordinator_config)
         result = mpic_coordinator.coordinate_mpic(event['body'])
@@ -174,13 +194,11 @@ class TestMpicCoordinator:
         mpic_response = self.mpic_response_adapter.validate_json(result['body'])
         assert mpic_response.is_valid is True
 
-    def coordinate_mpic__should_successfully_carry_out_caa_mpic_given_no_parameters_besides_target(self, set_env_variables, mocker):
+    def coordinate_mpic__should_successfully_carry_out_caa_mpic_given_no_parameters_besides_target(self, set_env_variables):
         request = ValidRequestCreator.create_valid_caa_mpic_request()
         request.orchestration_parameters = None
         request.caa_check_parameters = None
         event = {'path': RequestPath.MPIC, 'body': json.dumps(request.model_dump())}
-        #mocker.patch('aws_lambda_python.mpic_coordinator.mpic_coordinator.MpicCoordinator.thread_call',
-        #             side_effect=self.create_successful_lambda_response)
         mpic_coordinator_config = self.create_mpic_coordinator_configuration()
         mpic_coordinator = MpicCoordinator(self.create_successful_remote_caa_check_response, mpic_coordinator_config)
         result = mpic_coordinator.coordinate_mpic(event['body'])
@@ -188,14 +206,12 @@ class TestMpicCoordinator:
         mpic_response = self.mpic_response_adapter.validate_json(result['body'])
         assert mpic_response.is_valid is True
 
-    def coordinate_mpic__should_successfully_carry_out_caa_mpic_given_empty_orchestration_parameters(self, set_env_variables, mocker):
+    def coordinate_mpic__should_successfully_carry_out_caa_mpic_given_empty_orchestration_parameters(self, set_env_variables):
         request = ValidRequestCreator.create_valid_caa_mpic_request()
         request.orchestration_parameters = MpicRequestOrchestrationParameters()
         request.caa_check_parameters = None
         print(f"serialized body object: {json.dumps(request.model_dump(exclude_none=True))}")
         event = {'path': RequestPath.MPIC, 'body': json.dumps(request.model_dump(exclude_none=True))}
-        #mocker.patch('aws_lambda_python.mpic_coordinator.mpic_coordinator.MpicCoordinator.thread_call',
-        #             side_effect=self.create_successful_lambda_response)
         mpic_coordinator_config = self.create_mpic_coordinator_configuration()
         mpic_coordinator = MpicCoordinator(self.create_successful_remote_caa_check_response, mpic_coordinator_config)
         result = mpic_coordinator.coordinate_mpic(event['body'])
@@ -203,7 +219,7 @@ class TestMpicCoordinator:
         mpic_response = self.mpic_response_adapter.validate_json(result['body'])
         assert mpic_response.is_valid is True
 
-    def coordinate_mpic__should_successfully_carry_out_caa_mpic_given_only_max_attempts_orchestration_parameters(self, set_env_variables, mocker):
+    def coordinate_mpic__should_successfully_carry_out_caa_mpic_given_only_max_attempts_orchestration_parameters(self, set_env_variables):
         request = ValidRequestCreator.create_valid_caa_mpic_request()
         # Reset all fields in orchestration parameters to None
         request.orchestration_parameters = MpicRequestOrchestrationParameters()
@@ -212,8 +228,6 @@ class TestMpicCoordinator:
         request.caa_check_parameters = None
         print(f"serialized body object: {json.dumps(request.model_dump(exclude_none=True))}")
         event = {'path': RequestPath.MPIC, 'body': json.dumps(request.model_dump(exclude_none=True))}
-        #mocker.patch('aws_lambda_python.mpic_coordinator.mpic_coordinator.MpicCoordinator.thread_call',
-        #             side_effect=self.create_successful_lambda_response)
         mpic_coordinator_config = self.create_mpic_coordinator_configuration()
         mpic_coordinator = MpicCoordinator(self.create_successful_remote_caa_check_response, mpic_coordinator_config)
         result = mpic_coordinator.coordinate_mpic(event['body'])
@@ -221,7 +235,7 @@ class TestMpicCoordinator:
         mpic_response = self.mpic_response_adapter.validate_json(result['body'])
         assert mpic_response.is_valid is True
 
-    def coordinate_mpic__should_retry_corroboration_max_attempts_times_if_corroboration_fails(self, set_env_variables, mocker):
+    def coordinate_mpic__should_retry_corroboration_max_attempts_times_if_corroboration_fails(self, set_env_variables):
         request = ValidRequestCreator.create_valid_caa_mpic_request()
         # there are 3 rirs of 2 perspectives each in the test setup; expect 3 cohorts of 2 perspectives each
         request.orchestration_parameters = MpicRequestOrchestrationParameters(quorum_count=1, perspective_count=2, max_attempts=3)
@@ -242,13 +256,13 @@ class TestMpicCoordinator:
         assert mpic_response.is_valid is True
         assert mpic_response.actual_orchestration_parameters.attempt_count == 3
 
-    def coordinate_mpic__should_return_check_failure_if_max_attempts_were_reached_without_successful_check(self, set_env_variables, mocker):
+    def coordinate_mpic__should_return_check_failure_if_max_attempts_were_reached_without_successful_check(self, set_env_variables):
         request = ValidRequestCreator.create_valid_caa_mpic_request()
         # there are 3 rirs of 2 perspectives each in the test setup; expect 3 cohorts of 2 perspectives each
         request.orchestration_parameters = MpicRequestOrchestrationParameters(quorum_count=1, perspective_count=2, max_attempts=3)
         event = {'path': RequestPath.MPIC, 'body': json.dumps(request.model_dump())}
-        # create mocks that will fail all attempts
         mpic_coordinator_config = self.create_mpic_coordinator_configuration()
+        # "mock" the remote perspective call function to fail all attempts
         mpic_coordinator = MpicCoordinator(self.create_failing_remote_caa_check_response, mpic_coordinator_config)
         result = mpic_coordinator.coordinate_mpic(event['body'])
         assert result['statusCode'] == 200
@@ -256,7 +270,7 @@ class TestMpicCoordinator:
         assert mpic_response.is_valid is False
         assert mpic_response.actual_orchestration_parameters.attempt_count == 3
 
-    def coordinate_mpic__should_cycle_through_perspective_cohorts_if_attempts_exceeds_cohort_number(self, set_env_variables, mocker):
+    def coordinate_mpic__should_cycle_through_perspective_cohorts_if_attempts_exceeds_cohort_number(self, set_env_variables):
         mpic_coordinator_config = self.create_mpic_coordinator_configuration()
 
         first_request = ValidRequestCreator.create_valid_caa_mpic_request()
@@ -296,7 +310,7 @@ class TestMpicCoordinator:
         # assert that perspectives in first cohort and in second cohort are the same perspectives
         assert all(first_cohort_sorted[i].perspective == second_cohort_sorted[i].perspective for i in range(len(first_cohort_sorted)))
 
-    def coordinate_mpic__should_cap_attempts_at_max_attempts_env_parameter_if_found(self, set_env_variables, mocker):
+    def coordinate_mpic__should_cap_attempts_at_max_attempts_env_parameter_if_found(self, set_env_variables):
         mpic_coordinator_configuration = self.create_mpic_coordinator_configuration()
         mpic_coordinator_configuration.global_max_attempts = 2
         request = ValidRequestCreator.create_valid_caa_mpic_request()
@@ -313,27 +327,8 @@ class TestMpicCoordinator:
         assert mpic_response.is_valid is False
         assert mpic_response.actual_orchestration_parameters.attempt_count == 2
 
-    def constructor__should_treat_max_attempts_as_optional_and_default_to_none(self, set_env_variables):
-        mpic_coordinator_configuration = self.create_mpic_coordinator_configuration()
-        mpic_coordinator = MpicCoordinator(self.create_successful_remote_caa_check_response, mpic_coordinator_configuration)
-        assert mpic_coordinator.global_max_attempts is None
-
-    def constructor__should_set_configuration_and_remote_perspective_call_function(self, set_env_variables):
-        mpic_coordinator_configuration = self.create_mpic_coordinator_configuration()
-
-        def call_remote_perspective():
-            return 'this_is_a_dummy_response'
-
-        mpic_coordinator = MpicCoordinator(call_remote_perspective, mpic_coordinator_configuration)
-        assert mpic_coordinator.global_max_attempts == mpic_coordinator_configuration.global_max_attempts
-        assert mpic_coordinator.known_perspectives == mpic_coordinator_configuration.known_perspectives
-        assert mpic_coordinator.default_perspective_count == mpic_coordinator_configuration.default_perspective_count
-        assert mpic_coordinator.enforce_distinct_rir_regions == mpic_coordinator_configuration.enforce_distinct_rir_regions
-        assert mpic_coordinator.hash_secret == mpic_coordinator_configuration.hash_secret
-        assert mpic_coordinator.call_remote_perspective_function == call_remote_perspective
-
     @pytest.mark.parametrize('check_type', [CheckType.CAA, CheckType.DCV, CheckType.DCV_WITH_CAA])
-    def coordinate_mpic__should_return_check_failure_message_given_remote_perspective_failure(self, set_env_variables, check_type, mocker):
+    def coordinate_mpic__should_return_check_failure_message_given_remote_perspective_failure(self, set_env_variables, check_type):
         request = None
         match check_type:
             case CheckType.CAA:
@@ -358,24 +353,24 @@ class TestMpicCoordinator:
             assert perspective.check_passed is False
             assert perspective.errors[0].error_type == ErrorMessages.COORDINATOR_COMMUNICATION_ERROR.key
 
-    @pytest.mark.skip(reason='This test should be moved to test the lambda function file since that now defines the reference to boto3.')
-    def thread_call__should_call_lambda_function_with_correct_parameters(self, set_env_variables, mocker):
-        mocker.patch('botocore.client.BaseClient._make_api_call', side_effect=self.create_successful_boto3_api_call_response)
+    def constructor__should_treat_max_attempts_as_optional_and_default_to_none(self, set_env_variables):
         mpic_coordinator_configuration = self.create_mpic_coordinator_configuration()
         mpic_coordinator = MpicCoordinator(self.create_successful_remote_caa_check_response, mpic_coordinator_configuration)
-        mpic_coordinator = MpicCoordinator()
-        mpic_request = ValidRequestCreator.create_valid_dcv_mpic_request()
-        check_request = DcvCheckRequest(domain_or_ip_target='using.for.test',
-                                        dcv_check_parameters=mpic_request.dcv_check_parameters)
-        call_config = RemoteCheckCallConfiguration(CheckType.DCV, RemotePerspective(code='us-east-2', rir='arin'),
-                                                   lambda_arn='test_arn', check_request=check_request)
-        response = mpic_coordinator.thread_call(call_config)
-        perspective_response = json.loads(response['Payload'].read().decode('utf-8'))
-        perspective_response_body = json.loads(perspective_response['body'])
-        check_response = DcvCheckResponse.model_validate(perspective_response_body)
-        assert check_response.check_passed is True
-        # hijacking the value of 'perspective' to verify that the right arguments got passed to the call
-        assert check_response.perspective == check_request.domain_or_ip_target
+        assert mpic_coordinator.global_max_attempts is None
+
+    def constructor__should_set_configuration_and_remote_perspective_call_function(self, set_env_variables):
+        mpic_coordinator_configuration = self.create_mpic_coordinator_configuration()
+
+        def call_remote_perspective():
+            return 'this_is_a_dummy_response'
+
+        mpic_coordinator = MpicCoordinator(call_remote_perspective, mpic_coordinator_configuration)
+        assert mpic_coordinator.global_max_attempts == mpic_coordinator_configuration.global_max_attempts
+        assert mpic_coordinator.known_perspectives == mpic_coordinator_configuration.known_perspectives
+        assert mpic_coordinator.default_perspective_count == mpic_coordinator_configuration.default_perspective_count
+        assert mpic_coordinator.enforce_distinct_rir_regions == mpic_coordinator_configuration.enforce_distinct_rir_regions
+        assert mpic_coordinator.hash_secret == mpic_coordinator_configuration.hash_secret
+        assert mpic_coordinator.call_remote_perspective_function == call_remote_perspective
 
     def create_mpic_coordinator_configuration(self):
         known_perspectives = os.environ['perspective_names'].split("|")
@@ -392,33 +387,21 @@ class TestMpicCoordinator:
         return mpic_coordinator_configuration
 
     # This also can be used for call_remote_perspective
-    def create_successful_remote_caa_check_response(self, perspective: RemotePerspective, check_type: CheckType, check_request_serialized: str):
+    # noinspection PyUnusedLocal
+    def create_successful_remote_caa_check_response(self, perspective: RemotePerspective, check_type: CheckType,
+                                                    check_request_serialized: str):
         expected_response_body = CaaCheckResponse(perspective=perspective.to_rir_code(), check_passed=True,
                                                   details=CaaCheckResponseDetails(caa_record_present=False))
         return expected_response_body.model_dump_json()
 
-    def create_successful_remote_caa_check_response_after_n_failures_closure(self, n: int):
-        try_count = 0
-
-        def res_function(perspective: RemotePerspective, check_type: CheckType, check_request_serialized: str):
-            nonlocal try_count, n
-            if try_count < n:
-                expected_response_body = CaaCheckResponse(perspective=perspective.to_rir_code(), check_passed=False,
-                                                          details=CaaCheckResponseDetails(caa_record_present=True))
-                try_count += 1
-            else:
-                expected_response_body = CaaCheckResponse(perspective=perspective.to_rir_code(), check_passed=True,
-                                                          details=CaaCheckResponseDetails(caa_record_present=False))
-                try_count += 1
-            return expected_response_body.model_dump_json()
-        return res_function
-
+    # noinspection PyUnusedLocal
     def create_failing_remote_caa_check_response(self, perspective: RemotePerspective, check_type: CheckType,
                                                  check_request_serialized: str):
         expected_response_body = CaaCheckResponse(perspective=perspective.to_rir_code(), check_passed=False,
                                                   details=CaaCheckResponseDetails(caa_record_present=True))
         return json.dumps(expected_response_body.model_dump())
-    
+
+    # noinspection PyUnusedLocal
     def create_failing_remote_response_with_exception(self, perspective: RemotePerspective, check_type: CheckType,
                                                       check_request_serialized: str):
         raise Exception("Something went wrong.")
