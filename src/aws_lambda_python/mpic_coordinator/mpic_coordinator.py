@@ -38,6 +38,8 @@ class MpicCoordinatorConfiguration:
 
 
 class MpicCoordinator:
+
+    # call_remote_perspective_funtion: a "dumb" transport for serialized data to a remote perspective and a serialized response from the remote perspective. MPIC Coordinator is tasked with ensuring the data from this function is sane and handling the serialization/deserialization of the data. This function may raise an exception if something goes wrong.
     def __init__(self, call_remote_perspective_funtion, mpic_coordinator_configuration: MpicCoordinatorConfiguration):
         self.known_perspectives = mpic_coordinator_configuration.known_perspectives
 
@@ -186,46 +188,42 @@ class MpicCoordinator:
                 print(
                     f"Unpacking future result for {perspective.to_rir_code()} at time {str(datetime.now())}: {now - exec_begin:.2f} \
                     seconds from beginning")
+                if check_type not in perspective_responses_per_check_type:
+                    perspective_responses_per_check_type[check_type] = []
                 try:
                     data = future.result()
-                except Exception as e:
-                    stacktrace = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
-                    print(f'{perspective.to_rir_code()} generated an exception: {stacktrace}')
-                else:
-                    if check_type not in perspective_responses_per_check_type:
-                        perspective_responses_per_check_type[check_type] = []
-                    try:
-                        perspective_response = json.loads(data['Payload'].read().decode('utf-8'))
-                        print(perspective_response)
-                        perspective_response_body = json.loads(perspective_response['body'])
-                        # deserialize perspective body to have a nested object in the output rather than a string
-                        check_response = self.check_response_adapter.validate_python(perspective_response_body)
-                        validity_per_perspective_per_check_type[check_type][perspective.to_rir_code()] |= check_response.check_passed
-                        # TODO make sure responses per perspective match API spec...
-                        perspective_responses_per_check_type[check_type].append(check_response)
-                    except Exception:  # TODO what exceptions are we expecting here?
-                        print(traceback.format_exc())
-                        match check_type:
-                            case CheckType.CAA:
-                                check_error_response = CaaCheckResponse(
-                                    perspective=perspective.to_rir_code(),
-                                    check_passed=False,
-                                    errors=[ValidationError(error_type=ErrorMessages.COORDINATOR_COMMUNICATION_ERROR.key,
-                                                            error_message=ErrorMessages.COORDINATOR_COMMUNICATION_ERROR.message)],
-                                    details=CaaCheckResponseDetails(caa_record_present=False),  # TODO Possibly should None to indicate the lookup failed.
-                                    timestamp_ns=time.time_ns()
-                                )
-                            case CheckType.DCV:
-                                check_error_response = DcvCheckResponse(
-                                    perspective=perspective.to_rir_code(),
-                                    check_passed=False,
-                                    errors=[ValidationError(error_type=ErrorMessages.COORDINATOR_COMMUNICATION_ERROR.key,
-                                                            error_message=ErrorMessages.COORDINATOR_COMMUNICATION_ERROR.message)],
-                                    details=DcvCheckResponseDetails(),  # TODO what should go here in this case?
-                                    timestamp_ns=time.time_ns()
-                                )
-                        validity_per_perspective_per_check_type[check_type][perspective.to_rir_code()] |= check_error_response.check_passed
-                        perspective_responses_per_check_type[check_type].append(check_error_response)
+                    #perspective_response = json.loads(data['Payload'].read().decode('utf-8'))
+                    #print(data)
+                    perspective_response_body = json.loads(data)
+                    #perspective_response_body = json.loads(perspective_response['body'])
+                    # deserialize perspective body to have a nested object in the output rather than a string
+                    check_response = self.check_response_adapter.validate_python(perspective_response_body)
+                    validity_per_perspective_per_check_type[check_type][perspective.to_rir_code()] |= check_response.check_passed
+                    # TODO make sure responses per perspective match API spec...
+                    perspective_responses_per_check_type[check_type].append(check_response)
+                except Exception:  # TODO what exceptions are we expecting here?
+                    print(traceback.format_exc())
+                    match check_type:
+                        case CheckType.CAA:
+                            check_error_response = CaaCheckResponse(
+                                perspective=perspective.to_rir_code(),
+                                check_passed=False,
+                                errors=[ValidationError(error_type=ErrorMessages.COORDINATOR_COMMUNICATION_ERROR.key,
+                                                        error_message=ErrorMessages.COORDINATOR_COMMUNICATION_ERROR.message)],
+                                details=CaaCheckResponseDetails(caa_record_present=False),  # TODO Possibly should None to indicate the lookup failed.
+                                timestamp_ns=time.time_ns()
+                            )
+                        case CheckType.DCV:
+                            check_error_response = DcvCheckResponse(
+                                perspective=perspective.to_rir_code(),
+                                check_passed=False,
+                                errors=[ValidationError(error_type=ErrorMessages.COORDINATOR_COMMUNICATION_ERROR.key,
+                                                        error_message=ErrorMessages.COORDINATOR_COMMUNICATION_ERROR.message)],
+                                details=DcvCheckResponseDetails(),  # TODO what should go here in this case?
+                                timestamp_ns=time.time_ns()
+                            )
+                    validity_per_perspective_per_check_type[check_type][perspective.to_rir_code()] |= check_error_response.check_passed
+                    perspective_responses_per_check_type[check_type].append(check_error_response)
         return perspective_responses_per_check_type, validity_per_perspective_per_check_type
 
     @staticmethod
@@ -251,7 +249,7 @@ class MpicCoordinator:
         # TODO get better coverage for this function
         #client = boto3.client('lambda', call_config.perspective.code)
         tic = time.perf_counter()
-        response = call_remote_perspective_funtion(call_config)
+        response = call_remote_perspective_funtion(call_config.perspective, call_config.check_type, json.dumps(call_config.check_request.model_dump()))
         #response = client.invoke(  # AWS Lambda-specific structure
         #    FunctionName=call_config.lambda_arn,
         #    InvocationType='RequestResponse',

@@ -221,21 +221,22 @@ class TestMpicCoordinator:
         assert mpic_response.is_valid is True
 
 
-    @pytest.mark.skip(reason='need to mock differently')
     def coordinate_mpic__should_retry_corroboration_max_attempts_times_if_corroboration_fails(self, set_env_variables, mocker):
         request = ValidRequestCreator.create_valid_caa_mpic_request()
         # there are 3 rirs of 2 perspectives each in the test setup; expect 3 cohorts of 2 perspectives each
         request.orchestration_parameters = MpicRequestOrchestrationParameters(quorum_count=1, perspective_count=2, max_attempts=3)
         event = {'path': RequestPath.MPIC, 'body': json.dumps(request.model_dump())}
         # create mocks that will fail the first two attempts and succeed for the third
-        mocker.patch('aws_lambda_python.mpic_coordinator.mpic_coordinator.MpicCoordinator.thread_call',
-                     side_effect=TestMpicCoordinator.SideEffectForMockedPayloads(
-                         self.create_failing_lambda_response, self.create_failing_lambda_response,
-                         self.create_error_lambda_response, self.create_error_lambda_response,
-                         self.create_successful_lambda_response
-                     ))
-        mpic_coordinator = MpicCoordinator()
-        result = mpic_coordinator.coordinate_mpic(event)
+        #mocker.patch('aws_lambda_python.mpic_coordinator.mpic_coordinator.MpicCoordinator.thread_call',
+        #             side_effect=TestMpicCoordinator.SideEffectForMockedPayloads(
+        #                 self.create_failing_lambda_response, self.create_failing_lambda_response,
+        #                 self.create_error_lambda_response, self.create_error_lambda_response,
+        #                 self.create_successful_lambda_response
+        #             ))
+        mpic_coordinator_config = self.create_mpic_coordinator_configuration()
+        mpic_coordinator = MpicCoordinator(self.create_successful_lambda_response_after_n_failures_closure(4), mpic_coordinator_config)
+        result = mpic_coordinator.coordinate_mpic(event['body'])
+        
         assert result['statusCode'] == 200
         mpic_response: MpicCaaResponse = self.mpic_response_adapter.validate_json(result['body'])
         assert mpic_response.is_valid is True
@@ -255,7 +256,6 @@ class TestMpicCoordinator:
         assert mpic_response.is_valid is False
         assert mpic_response.actual_orchestration_parameters.attempt_count == 3
 
-    @pytest.mark.skip(reason='Need to think of new mocking.')
     def coordinate_mpic__should_cycle_through_perspective_cohorts_if_attempts_exceeds_cohort_number(self, set_env_variables, mocker):
         mpic_coordinator_config = self.create_mpic_coordinator_configuration()
         mpic_coordinator = MpicCoordinator(self.create_successful_lambda_response, mpic_coordinator_config)
@@ -266,24 +266,27 @@ class TestMpicCoordinator:
         first_event = {'path': RequestPath.MPIC, 'body': json.dumps(first_request.model_dump())}
         # This mocking should probably be not lambda.
         # create mocks that will fail the first attempt and succeed for the second (1-2)
-        mocker.patch('aws_lambda_python.mpic_coordinator.mpic_coordinator.MpicCoordinator.thread_call',
-                     side_effect=TestMpicCoordinator.SideEffectForMockedPayloads(
-                         self.create_failing_lambda_response, self.create_failing_lambda_response,
-                         self.create_successful_lambda_response
-                     ))
+        #mocker.patch('aws_lambda_python.mpic_coordinator.mpic_coordinator.MpicCoordinator.thread_call',
+        #             side_effect=TestMpicCoordinator.SideEffectForMockedPayloads(
+        #                 self.create_failing_lambda_response, self.create_failing_lambda_response,
+        #                 self.create_successful_lambda_response
+        #             ))
+        mpic_coordinator_config = self.create_mpic_coordinator_configuration()
+        mpic_coordinator = MpicCoordinator(self.create_successful_lambda_response_after_n_failures_closure(2), mpic_coordinator_config)
         first_result = mpic_coordinator.coordinate_mpic(first_event['body'])
         second_request = ValidRequestCreator.create_valid_caa_mpic_request()
         second_request.orchestration_parameters = MpicRequestOrchestrationParameters(quorum_count=1, perspective_count=2, max_attempts=5)
         second_event = {'path': RequestPath.MPIC, 'body': json.dumps(second_request.model_dump())}
         # create mocks that will fail the first four attempts and succeed for the fifth (loop back, 1-2-3-1-2)
-        mocker.patch('aws_lambda_python.mpic_coordinator.mpic_coordinator.MpicCoordinator.thread_call',
-                     side_effect=TestMpicCoordinator.SideEffectForMockedPayloads(
-                         self.create_failing_lambda_response, self.create_failing_lambda_response,
-                         self.create_failing_lambda_response, self.create_failing_lambda_response,
-                         self.create_failing_lambda_response, self.create_failing_lambda_response,
-                         self.create_failing_lambda_response, self.create_failing_lambda_response,
-                         self.create_successful_lambda_response
-                     ))
+        #mocker.patch('aws_la#mbda_python.mpic_coordinator.mpic_coordinator.MpicCoordinator.thread_call',
+        #             side_effect=TestMpicCoordinator.SideEffectForMockedPayloads(
+        #                 self.create_failing_lambda_response, self.create_failing_lambda_response,
+        #                 self.create_failing_lambda_response, self.create_failing_lambda_response,
+        #                 self.create_failing_lambda_response, self.create_failing_lambda_response,
+        #                 self.create_failing_lambda_response, self.create_failing_lambda_response,
+        #                 self.create_successful_lambda_response
+        #             ))
+        mpic_coordinator = MpicCoordinator(self.create_successful_lambda_response_after_n_failures_closure(8), mpic_coordinator_config)
         second_result = mpic_coordinator.coordinate_mpic(second_event['body'])
         first_cohort = self.mpic_response_adapter.validate_json(first_result['body']).perspectives
         second_cohort = self.mpic_response_adapter.validate_json(second_result['body']).perspectives
@@ -315,7 +318,6 @@ class TestMpicCoordinator:
         mpic_coordinator = MpicCoordinator(self.create_successful_lambda_response, mpic_coordinator_configuration)
         assert mpic_coordinator.global_max_attempts is None
 
-    @pytest.mark.skip(reason='This test needs to be redone to test for a call to the call function.')
     @pytest.mark.parametrize('check_type', [CheckType.CAA, CheckType.DCV, CheckType.DCV_WITH_CAA])
     def coordinate_mpic__should_return_check_failure_message_given_remote_perspective_failure(self, set_env_variables, check_type, mocker):
         request = None
@@ -327,10 +329,10 @@ class TestMpicCoordinator:
             case CheckType.DCV_WITH_CAA:
                 request = ValidRequestCreator.create_valid_dcv_with_caa_mpic_request()
         event = {'path': RequestPath.MPIC, 'body': json.dumps(request.model_dump())}
-        mocker.patch('aws_lambda_python.mpic_coordinator.mpic_coordinator.MpicCoordinator.thread_call',
-                     side_effect=self.create_error_lambda_response)
-        mpic_coordinator = MpicCoordinator()
-        result = mpic_coordinator.coordinate_mpic(event)
+        mpic_coordinator_config = self.create_mpic_coordinator_configuration()
+        mpic_coordinator = MpicCoordinator(self.create_failing_lambda_response_that_thows_exception, mpic_coordinator_config)
+        
+        result = mpic_coordinator.coordinate_mpic(event['body'])
         assert result['statusCode'] == 200
         mpic_response = self.mpic_response_adapter.validate_json(result['body'])
         assert mpic_response.is_valid is False
@@ -342,10 +344,11 @@ class TestMpicCoordinator:
             assert perspective.check_passed is False
             assert perspective.errors[0].error_type == ErrorMessages.COORDINATOR_COMMUNICATION_ERROR.key
 
-    @pytest.mark.skip(reason='This test needs to be redone to test for a call to the call function.')
+    @pytest.mark.skip(reason='This test should be moved to test the lambda function file since that now defines the reference to boto3.')
     def thread_call__should_call_lambda_function_with_correct_parameters(self, set_env_variables, mocker):
         mocker.patch('botocore.client.BaseClient._make_api_call', side_effect=self.create_successful_boto3_api_call_response)
-        mpic_coordinator_config = create_mpic_coordinator_configuration()
+        mpic_coordinator_configuration = self.create_mpic_coordinator_configuration()
+        mpic_coordinator = MpicCoordinator(self.create_successful_lambda_response, mpic_coordinator_configuration)
         mpic_coordinator = MpicCoordinator()
         mpic_request = ValidRequestCreator.create_valid_dcv_mpic_request()
         check_request = DcvCheckRequest(domain_or_ip_target='using.for.test',
@@ -376,23 +379,34 @@ class TestMpicCoordinator:
         return mpic_coordinator_configuration
 
     # This also can be used for call_remote_perspective
-    def create_successful_lambda_response(self, call_config: RemoteCheckCallConfiguration):
-        expected_response_body = CaaCheckResponse(perspective=call_config.perspective.to_rir_code(), check_passed=True,
+    def create_successful_lambda_response(self, perspective: RemotePerspective, check_type: CheckType, check_request_serialized: str):
+        expected_response_body = CaaCheckResponse(perspective=perspective.to_rir_code(), check_passed=True,
                                                   details=CaaCheckResponseDetails(caa_record_present=False))
-        expected_response = {'statusCode': 200, 'body': json.dumps(expected_response_body.model_dump())}
-        json_bytes = json.dumps(expected_response).encode('utf-8')
-        file_like_response = io.BytesIO(json_bytes)
-        streaming_body_response = StreamingBody(file_like_response, len(json_bytes))
-        return {'Payload': streaming_body_response}
+        return json.dumps(expected_response_body.model_dump())
 
-    def create_failing_lambda_response(self, call_config: RemoteCheckCallConfiguration):
-        expected_response_body = CaaCheckResponse(perspective=call_config.perspective.to_rir_code(), check_passed=False,
+    def create_successful_lambda_response_after_n_failures_closure(self, n: int):
+        try_count = 0
+        def res_function(perspective: RemotePerspective, check_type: CheckType, check_request_serialized: str):
+            nonlocal try_count, n
+            expected_response_body = None
+            if try_count < n:
+                expected_response_body = CaaCheckResponse(perspective=perspective.to_rir_code(), check_passed=False,
                                                   details=CaaCheckResponseDetails(caa_record_present=True))
-        expected_response = {'statusCode': 200, 'body': json.dumps(expected_response_body.model_dump())}
-        json_bytes = json.dumps(expected_response).encode('utf-8')
-        file_like_response = io.BytesIO(json_bytes)
-        streaming_body_response = StreamingBody(file_like_response, len(json_bytes))
-        return {'Payload': streaming_body_response}
+                try_count += 1
+            else:
+                expected_response_body = CaaCheckResponse(perspective=perspective.to_rir_code(), check_passed=True,
+                                                  details=CaaCheckResponseDetails(caa_record_present=False))
+                try_count += 1
+            return json.dumps(expected_response_body.model_dump())
+        return res_function
+
+    def create_failing_lambda_response(self, perspective: RemotePerspective, check_type: CheckType, check_request_serialized: str):
+        expected_response_body = CaaCheckResponse(perspective=perspective.to_rir_code(), check_passed=False,
+                                                  details=CaaCheckResponseDetails(caa_record_present=True))
+        return json.dumps(expected_response_body.model_dump())
+    
+    def create_failing_lambda_response_that_thows_exception(self, perspective: RemotePerspective, check_type: CheckType, check_request_serialized: str):
+        raise Exception("Something went wrong.")
 
     # noinspection PyUnusedLocal
     def create_error_lambda_response(self, call_config):

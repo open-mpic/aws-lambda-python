@@ -3,6 +3,8 @@ from aws_lambda_python.mpic_coordinator.messages.mpic_request_validation_message
 from aws_lambda_python.mpic_coordinator.domain.remote_check_call_configuration import RemoteCheckCallConfiguration
 from aws_lambda_python.common_domain.enum.check_type import CheckType
 from aws_lambda_python.mpic_coordinator.domain.enum.request_path import RequestPath
+from aws_lambda_python.mpic_coordinator.domain.remote_perspective import RemotePerspective
+
 import boto3
 import os
 import json
@@ -27,17 +29,19 @@ mpic_coordinator_configuration = MpicCoordinatorConfiguration(
         enforce_distinct_rir_regions, 
         global_max_attempts, 
         hash_secret)
-
-def call_remote_perspective(call_config: RemoteCheckCallConfiguration):
+# This function is a "dumb" transport for serialized data to a remote perspective and a serialized response from the remote perspective. MPIC Coordinator is tasked with ensuring the data from this function is sane. This function may raise an exception if something goes wrong.
+def call_remote_perspective(perspective: RemotePerspective, check_type: CheckType, check_request_serialized: str):
     # Uses dcv_arn_list, caa_arn_list
-    client = boto3.client('lambda', call_config.perspective.code)
-    function_name = arns_per_perspective_per_check_type[call_config.check_type][call_config.perspective.to_rir_code()]
+    client = boto3.client('lambda', perspective.code)
+    function_name = arns_per_perspective_per_check_type[check_type][perspective.to_rir_code()]
     response = client.invoke(  # AWS Lambda-specific structure
             FunctionName=function_name,
             InvocationType='RequestResponse',
-            Payload=json.dumps(call_config.check_request.model_dump())
+            Payload=check_request_serialized
         )
-    return response
+    response_payload = json.loads(response['Payload'].read().decode('utf-8'))
+
+    return response_payload['body']
 
 coordinator = MpicCoordinator(call_remote_perspective, mpic_coordinator_configuration)
 
