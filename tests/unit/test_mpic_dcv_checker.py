@@ -2,7 +2,8 @@ import json
 
 import dns
 import pytest
-from aws_lambda_python.common_domain.check_parameters import DcvCheckParameters, DcvValidationDetails
+from aws_lambda_python.common_domain.check_parameters import DcvCheckParameters, \
+    DcvHttpGenericValidationDetails, DcvDnsGenericValidationDetails
 from aws_lambda_python.common_domain.check_request import DcvCheckRequest
 from aws_lambda_python.common_domain.check_response import DcvCheckResponse, DcvCheckResponseDetails
 from aws_lambda_python.common_domain.enum.dcv_validation_method import DcvValidationMethod
@@ -36,8 +37,7 @@ class TestMpicDcvChecker:
     def create_http_check_request():
         return DcvCheckRequest(domain_or_ip_target='example.com',
                                dcv_check_parameters=DcvCheckParameters(
-                                   validation_method=DcvValidationMethod.HTTP_GENERIC,
-                                   validation_details=DcvValidationDetails(
+                                   validation_details=DcvHttpGenericValidationDetails(
                                        http_token_path='/.well-known/pki_validation/token111_ca1.txt',
                                        challenge_value='challenge_111')
                                ))
@@ -46,8 +46,7 @@ class TestMpicDcvChecker:
     def create_dns_check_request(record_type=DnsRecordType.TXT):
         return DcvCheckRequest(domain_or_ip_target='example.com',
                                dcv_check_parameters=DcvCheckParameters(
-                                   validation_method=DcvValidationMethod.DNS_GENERIC,
-                                   validation_details=DcvValidationDetails(
+                                   validation_details=DcvDnsGenericValidationDetails(
                                        dns_name_prefix='_dnsauth',
                                        dns_record_type=record_type,
                                        challenge_value=f"{record_type}_challenge_111.ca1.com.")

@@ -100,7 +100,7 @@ class TestMpicResponseBuilder:
                                                       valid_by_check_type)
         response_body = MpicDcvResponse.model_validate(json.loads(response['body']))
         assert response_body.dcv_check_parameters.validation_details.challenge_value == request.dcv_check_parameters.validation_details.challenge_value
-        assert response_body.dcv_check_parameters.validation_method == request.dcv_check_parameters.validation_method
+        assert response_body.dcv_check_parameters.validation_details.validation_method == request.dcv_check_parameters.validation_details.validation_method
 
     def build_response__should_set_is_valid_to_false_when_either_check_type_is_invalid(self):
         request = ValidRequestCreator.create_valid_dcv_with_caa_mpic_request()
