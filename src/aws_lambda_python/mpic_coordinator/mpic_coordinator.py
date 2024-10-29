@@ -20,7 +20,7 @@ from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicCaaReques
 from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvRequest, MpicDcvWithCaaRequest
 from aws_lambda_python.mpic_coordinator.domain.remote_check_call_configuration import RemoteCheckCallConfiguration
 from aws_lambda_python.mpic_coordinator.domain.enum.request_path import RequestPath
-from aws_lambda_python.mpic_coordinator.domain.remote_perspective import RemotePerspective
+from aws_lambda_python.common_domain.remote_perspective import RemotePerspective
 from aws_lambda_python.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
 from aws_lambda_python.mpic_coordinator.mpic_request_validator import MpicRequestValidator
 from aws_lambda_python.mpic_coordinator.mpic_response_builder import MpicResponseBuilder
@@ -166,7 +166,7 @@ class MpicCoordinator:
         return async_calls_to_issue
 
     # Issues the async calls to the lambda functions and collects the responses.
-    def issue_async_calls_and_collect_responses(self, perspectives_to_use, async_calls_to_issue) -> (dict, dict):
+    def issue_async_calls_and_collect_responses(self, perspectives_to_use, async_calls_to_issue) -> tuple[dict, dict]:
         perspective_responses_per_check_type = {}
         validity_per_perspective_per_check_type = {
             CheckType.CAA: {perspective.to_rir_code(): False for perspective in perspectives_to_use},

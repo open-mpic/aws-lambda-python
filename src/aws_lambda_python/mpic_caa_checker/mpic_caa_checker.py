@@ -6,6 +6,7 @@ import dns.resolver
 from dns.name import Name
 from dns.rrset import RRset
 
+from aws_lambda_python.common_domain.remote_perspective import RemotePerspective
 from aws_lambda_python.common_domain.check_request import CaaCheckRequest
 from aws_lambda_python.common_domain.check_response import CaaCheckResponse, CaaCheckResponseDetails
 from aws_lambda_python.common_domain.validation_error import ValidationError
@@ -19,12 +20,15 @@ ISSUEWILD_TAG: Final[str] = 'issuewild'
 class MpicCaaLookupException(Exception):  # This is a python exception type used for rase statements.
     pass
 
+class MpicCaaCheckerConfiguration:
+    def __init__(self, default_caa_domain_list: list[str], perspective_identity: RemotePerspective):
+        self.default_caa_domain_list = default_caa_domain_list
+        self.perspective_identity = perspective_identity
 
 class MpicCaaChecker:
-    def __init__(self):
-        self.default_caa_domain_list = os.environ['default_caa_domains'].split("|")
-        self.rir_region: Final[str] = os.environ['rir_region']
-        self.AWS_REGION: Final[str] = os.environ['AWS_REGION']
+    def __init__(self, mpic_caa_checker_configuration: MpicCaaCheckerConfiguration):
+        self.default_caa_domain_list = mpic_caa_checker_configuration.default_caa_domain_list
+        self.perspective_identity = mpic_caa_checker_configuration.perspective_identity
 
     @staticmethod
     def does_value_list_permit_issuance(value_list: list, caa_domains):
@@ -40,7 +44,7 @@ class MpicCaaChecker:
         return False
 
     @staticmethod
-    def find_caa_record_and_domain(caa_request) -> (RRset, Name):
+    def find_caa_record_and_domain(caa_request) -> tuple[RRset, Name]:
         rrset = None
         domain = dns.name.from_text(caa_request.domain_or_ip_target)
 
@@ -88,8 +92,8 @@ class MpicCaaChecker:
                 valid_for_issuance = True
         return valid_for_issuance
 
-    def check_caa(self, event):
-        caa_request = CaaCheckRequest.model_validate(event)
+    def check_caa(self, serialized_caa_check_request):
+        caa_request = CaaCheckRequest.model_validate(json.loads(serialized_caa_check_request))
 
         # Assume the default system configured validation targets and override if sent in the API call.
         caa_domains = self.default_caa_domain_list
@@ -118,23 +122,24 @@ class MpicCaaChecker:
         except MpicCaaLookupException:
             caa_lookup_error = True
 
-        perspective_name = self.rir_region + "." + self.AWS_REGION
+
+        #perspective_name = self.rir_region + "." + self.perspective_code
 
         if caa_lookup_error:
             # TODO would be best to have error types and messages in a separate file to avoid hardcoding strings
-            response = CaaCheckResponse(perspective=perspective_name, check_passed=False,
+            response = CaaCheckResponse(perspective=self.perspective_identity.to_rir_code(), check_passed=False,
                                         errors=[ValidationError(error_type=ErrorMessages.CAA_LOOKUP_ERROR.key, error_message=ErrorMessages.CAA_LOOKUP_ERROR.message)],
                                         details=CaaCheckResponseDetails(caa_record_present=False),  # Possibly should change to present=None to indicate the lookup failed.
                                         timestamp_ns=time.time_ns())
             result['body'] = json.dumps(response.model_dump())
         elif not caa_found:  # if domain has no CAA records: valid for issuance
-            response = CaaCheckResponse(perspective=perspective_name, check_passed=True,
+            response = CaaCheckResponse(perspective=self.perspective_identity.to_rir_code(), check_passed=True,
                                         details=CaaCheckResponseDetails(caa_record_present=False),
                                         timestamp_ns=time.time_ns())
             result['body'] = json.dumps(response.model_dump())
         else:
             valid_for_issuance = MpicCaaChecker.is_valid_for_issuance(caa_domains, is_wc_domain, rrset)
-            response = CaaCheckResponse(perspective=perspective_name, check_passed=valid_for_issuance,
+            response = CaaCheckResponse(perspective=self.perspective_identity.to_rir_code(), check_passed=valid_for_issuance,
                                         details=CaaCheckResponseDetails(caa_record_present=True,
                                                                         found_at=domain.to_text(omit_final_dot=True),
                                                                         response=rrset.to_text()),

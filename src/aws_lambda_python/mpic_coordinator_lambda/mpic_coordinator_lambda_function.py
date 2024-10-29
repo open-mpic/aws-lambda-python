@@ -3,7 +3,7 @@ from aws_lambda_python.mpic_coordinator.messages.mpic_request_validation_message
 from aws_lambda_python.mpic_coordinator.domain.remote_check_call_configuration import RemoteCheckCallConfiguration
 from aws_lambda_python.common_domain.enum.check_type import CheckType
 from aws_lambda_python.mpic_coordinator.domain.enum.request_path import RequestPath
-from aws_lambda_python.mpic_coordinator.domain.remote_perspective import RemotePerspective
+from aws_lambda_python.common_domain.remote_perspective import RemotePerspective
 
 import boto3
 import os

@@ -8,7 +8,7 @@ import yaml
 from pydantic import TypeAdapter
 
 from aws_lambda_python.mpic_coordinator.cohort_creator import CohortCreator
-from aws_lambda_python.mpic_coordinator.domain.remote_perspective import RemotePerspective
+from aws_lambda_python.common_domain.remote_perspective import RemotePerspective
 
 
 # noinspection PyMethodMayBeStatic
