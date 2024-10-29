@@ -3,7 +3,7 @@ from aws_lambda_python.mpic_caa_checker.mpic_caa_checker import MpicCaaChecker, 
 import os
 import json
 
-# Todo fix
+# FIXME extract into a class for testing
 perspective_identity = RemotePerspective.from_rir_code(os.environ['rir_region'] + "." + os.environ['AWS_REGION'])
 default_caa_domain_list = os.environ['default_caa_domains'].split("|")
 

@@ -75,6 +75,5 @@ class TestMpicCoordinatorLambda:
         return {'Payload': streaming_body_response}
 
 
-
 if __name__ == '__main__':
     pytest.main()
