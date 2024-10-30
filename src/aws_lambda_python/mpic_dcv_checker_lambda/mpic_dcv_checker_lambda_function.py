@@ -1,14 +1,13 @@
 from aws_lambda_python.common_domain.remote_perspective import RemotePerspective
-from aws_lambda_python.mpic_dcv_checker.mpic_dcv_checker import MpicDcvChecker, MpicDcvCheckerConfiguration
+from aws_lambda_python.mpic_dcv_checker.mpic_dcv_checker import MpicDcvChecker
 import os
 import json
 
 
 class MpicDcvCheckerLambdaHandler:
     def __init__(self):
-        self.perspective_identity = RemotePerspective.from_rir_code(os.environ['rir_region'] + "." + os.environ['AWS_REGION'])
-        self.dcv_checker_configuration = MpicDcvCheckerConfiguration(self.perspective_identity)
-        self.dcv_checker = MpicDcvChecker(self.dcv_checker_configuration)
+        self.perspective = RemotePerspective.from_rir_code(os.environ['rir_region'] + "." + os.environ['AWS_REGION'])
+        self.dcv_checker = MpicDcvChecker(self.perspective)
 
     def process_invocation(self, event):
         # Lambda seems to allow object transports. To make the code more generic for additional channels we only assume the transport is a string.

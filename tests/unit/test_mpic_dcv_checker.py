@@ -7,7 +7,7 @@ from aws_lambda_python.common_domain.check_response import DcvCheckResponse, Dcv
 from aws_lambda_python.common_domain.enum.dcv_validation_method import DcvValidationMethod
 from aws_lambda_python.common_domain.enum.dns_record_type import DnsRecordType
 from aws_lambda_python.common_domain.remote_perspective import RemotePerspective
-from aws_lambda_python.mpic_dcv_checker.mpic_dcv_checker import MpicDcvChecker, MpicDcvCheckerConfiguration
+from aws_lambda_python.mpic_dcv_checker.mpic_dcv_checker import MpicDcvChecker
 
 from mock_dns_object_creator import MockDnsObjectCreator
 from valid_check_creator import ValidCheckCreator
@@ -28,8 +28,9 @@ class TestMpicDcvChecker:
                 class_scoped_monkeypatch.setenv(k, v)
             yield class_scoped_monkeypatch  # restore the environment afterward
 
-    def create_dcv_checker_configuration(self):
-        return MpicDcvCheckerConfiguration(RemotePerspective.from_rir_code("arin.us-east-4"))
+    @staticmethod
+    def create_configured_dcv_checker():
+        return MpicDcvChecker(RemotePerspective.from_rir_code("arin.us-east-4"))
 
     # integration test of a sort -- only mocking dns methods rather than remaining class methods
     @pytest.mark.parametrize('validation_method, record_type', [(DcvValidationMethod.HTTP_GENERIC, None),
@@ -44,9 +45,7 @@ class TestMpicDcvChecker:
             case DcvValidationMethod.DNS_GENERIC:
                 dcv_request = ValidCheckCreator.create_valid_dns_check_request(record_type)
                 self.mock_dns_related_calls(dcv_request, mocker)
-        dcv_checker_config = self.create_dcv_checker_configuration()
-        
-        dcv_checker = MpicDcvChecker(dcv_checker_config)
+        dcv_checker = TestMpicDcvChecker.create_configured_dcv_checker()
         result = dcv_checker.check_dcv(json.dumps(dcv_request.model_dump()))
         assert result['statusCode'] == 200
         result_body = json.loads(result['body'])
@@ -58,7 +57,7 @@ class TestMpicDcvChecker:
     def perform_http_validation__should_return_check_passed_true_with_details_given_request_token_file_found(self, set_env_variables, mocker):
         dcv_request = ValidCheckCreator.create_valid_http_check_request()
         self.mock_http_related_calls(dcv_request, mocker)
-        dcv_checker = MpicDcvChecker(self.create_dcv_checker_configuration())
+        dcv_checker = TestMpicDcvChecker.create_configured_dcv_checker()
         response = dcv_checker.perform_http_validation(dcv_request)
         assert response['statusCode'] == 200
         dcv_check_response = DcvCheckResponse.model_validate(json.loads(response['body']))
@@ -69,7 +68,7 @@ class TestMpicDcvChecker:
     def perform_http_validation__should_return_check_passed_false_with_details_given_request_token_file_not_found(self, set_env_variables, mocker):
         dcv_request = ValidCheckCreator.create_valid_http_check_request()
         mocker.patch('requests.get', return_value=type('Response', (object,), {'status_code': 404, 'reason': 'Not Found'})())
-        dcv_checker = MpicDcvChecker(self.create_dcv_checker_configuration())
+        dcv_checker = TestMpicDcvChecker.create_configured_dcv_checker()
         response = dcv_checker.perform_http_validation(dcv_request)
         assert response['statusCode'] == 404
         dcv_check_response = DcvCheckResponse.model_validate(json.loads(response['body']))
@@ -82,7 +81,7 @@ class TestMpicDcvChecker:
     def perform_dns_validation__should_return_check_passed_true_with_details_given_expected_dns_record_found(self, set_env_variables, record_type, mocker):
         dcv_request = ValidCheckCreator.create_valid_dns_check_request(record_type)
         self.mock_dns_related_calls(dcv_request, mocker)
-        dcv_checker = MpicDcvChecker(self.create_dcv_checker_configuration())
+        dcv_checker = TestMpicDcvChecker.create_configured_dcv_checker()
         response = dcv_checker.perform_dns_validation(dcv_request)
         assert response['statusCode'] == 200
         dcv_check_response = DcvCheckResponse.model_validate(json.loads(response['body']))
@@ -93,7 +92,7 @@ class TestMpicDcvChecker:
     def perform_dns_validation__should_return_check_passed_false_with_details_given_expected_dns_record_not_found(self, set_env_variables, mocker):
         dcv_request = ValidCheckCreator.create_valid_dns_check_request()
         mocker.patch('dns.resolver.resolve', side_effect=lambda domain_name, rdtype: self.raise_(dns.resolver.NoAnswer))
-        dcv_checker = MpicDcvChecker(self.create_dcv_checker_configuration())
+        dcv_checker = TestMpicDcvChecker.create_configured_dcv_checker()
         response = dcv_checker.perform_dns_validation(dcv_request)
         assert response['statusCode'] == 500
         dcv_check_response = DcvCheckResponse.model_validate(json.loads(response['body']))

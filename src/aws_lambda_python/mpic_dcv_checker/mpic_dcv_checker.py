@@ -12,16 +12,10 @@ from aws_lambda_python.common_domain.remote_perspective import RemotePerspective
 from aws_lambda_python.common_domain.validation_error import ValidationError
 
 
-# TODO remove configuration.. just need the perspective passed to the MpicDcvChecker constructor
-class MpicDcvCheckerConfiguration:
-    def __init__(self, perspective_identity: RemotePerspective) -> None:
-        self.perspective_identity = perspective_identity
-
-
 # noinspection PyUnusedLocal
 class MpicDcvChecker:
-    def __init__(self, mpic_dcv_checker_configuration: MpicDcvCheckerConfiguration):
-        self.perspective_identity = mpic_dcv_checker_configuration.perspective_identity
+    def __init__(self, perspective: RemotePerspective):
+        self.perspective = perspective
 
     # TODO replace serialized 'event' with a DcvCheckRequest object
     def check_dcv(self, event):
@@ -51,14 +45,14 @@ class MpicDcvChecker:
         if response.status_code == requests.codes.OK:
             result = response.text.strip()
             dcv_check_response = DcvCheckResponse(
-                perspective=self.perspective_identity.to_rir_code(),
+                perspective=self.perspective.to_rir_code(),
                 check_passed=(result == expected_response_content),
                 timestamp_ns=time.time_ns(),
                 details=DcvCheckResponseDetails()  # FIXME get details
             )
         else:
             dcv_check_response = DcvCheckResponse(
-                perspective=self.perspective_identity.to_rir_code(),
+                perspective=self.perspective.to_rir_code(),
                 check_passed=False,
                 timestamp_ns=time.time_ns(),
                 errors=[ValidationError(error_type=str(response.status_code), error_message=response.reason)],
@@ -99,7 +93,7 @@ class MpicDcvChecker:
                             records_as_strings.append(record_data_as_string)
 
             dcv_check_response = DcvCheckResponse(
-                perspective=self.perspective_identity.to_rir_code(),
+                perspective=self.perspective.to_rir_code(),
                 check_passed=expected_dns_record_content in records_as_strings,
                 timestamp_ns=time.time_ns(),
                 details=DcvCheckResponseDetails()  # FIXME get details (or don't bother with this)
@@ -111,7 +105,7 @@ class MpicDcvChecker:
             }
         except dns.exception.DNSException as e:
             dcv_check_response = DcvCheckResponse(
-                perspective=self.perspective_identity.to_rir_code(),
+                perspective=self.perspective.to_rir_code(),
                 check_passed=False,
                 timestamp_ns=time.time_ns(),
                 errors=[ValidationError(error_type=e.__class__.__name__, error_message=e.msg)],
