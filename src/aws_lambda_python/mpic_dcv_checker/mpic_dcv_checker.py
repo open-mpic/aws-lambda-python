@@ -12,15 +12,18 @@ from aws_lambda_python.common_domain.remote_perspective import RemotePerspective
 from aws_lambda_python.common_domain.validation_error import ValidationError
 
 
+# TODO remove configuration.. just need the perspective passed to the MpicDcvChecker constructor
 class MpicDcvCheckerConfiguration:
     def __init__(self, perspective_identity: RemotePerspective) -> None:
         self.perspective_identity = perspective_identity
+
 
 # noinspection PyUnusedLocal
 class MpicDcvChecker:
     def __init__(self, mpic_dcv_checker_configuration: MpicDcvCheckerConfiguration):
         self.perspective_identity = mpic_dcv_checker_configuration.perspective_identity
 
+    # TODO replace serialized 'event' with a DcvCheckRequest object
     def check_dcv(self, event):
         dcv_request = DcvCheckRequest.model_validate(json.loads(event))
 

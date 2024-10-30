@@ -3,11 +3,34 @@ from aws_lambda_python.mpic_dcv_checker.mpic_dcv_checker import MpicDcvChecker, 
 import os
 import json
 
-# FIXME extract into a class for testing
-dcv_checker_configuration = MpicDcvCheckerConfiguration(RemotePerspective.from_rir_code(os.environ['rir_region'] + "." + os.environ['AWS_REGION']))
-dcv_checker = MpicDcvChecker()
+
+class MpicDcvCheckerLambdaHandler:
+    def __init__(self):
+        self.perspective_identity = RemotePerspective.from_rir_code(os.environ['rir_region'] + "." + os.environ['AWS_REGION'])
+        self.dcv_checker_configuration = MpicDcvCheckerConfiguration(self.perspective_identity)
+        self.dcv_checker = MpicDcvChecker(self.dcv_checker_configuration)
+
+    def process_invocation(self, event):
+        # Lambda seems to allow object transports. To make the code more generic for additional channels we only assume the transport is a string.
+        # TODO reconsider this decision, potentially go back to passing an object to the caa_checker.check_caa method...
+        return self.dcv_checker.check_dcv(json.dumps(event))
+
+
+# Global instance for Lambda runtime
+_handler = None
+
+
+def get_handler() -> MpicDcvCheckerLambdaHandler:
+    """
+    Singleton pattern to avoid recreating the handler on every Lambda invocation
+    """
+    global _handler
+    if _handler is None:
+        _handler = MpicDcvCheckerLambdaHandler()
+    return _handler
 
 
 # noinspection PyUnusedLocal
-def lambda_handler(event, context):
-    return dcv_checker.check_dcv(json.dumps(event))
+# for now, we are not using context, but it is required by the lambda handler signature
+def lambda_handler(event, context):  # AWS Lambda entry point
+    return get_handler().process_invocation(event)
