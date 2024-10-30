@@ -4,7 +4,7 @@
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 cd $SCRIPT_DIR
 
-FUNCTIONS_DIR="src/aws_lambda_python"
+FUNCTIONS_DIR="src/aws_lambda_mpic"
 
 cd "${FUNCTIONS_DIR}"/mpic_coordinator_lambda
 zip -r mpic_coordinator_lambda.zip mpic_coordinator_lambda_function.py

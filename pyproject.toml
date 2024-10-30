@@ -50,9 +50,9 @@ Source = "https://github.com/open-mpic/aws-lambda-python"
 #virtual = ".hatch"
 
 [tool.hatch]
-version.path = "src/aws_lambda_python/__about__.py"
+version.path = "src/aws_lambda_mpic/__about__.py"
 build.sources = ["src", "resources"]
-build.targets.wheel.packages = ["src/aws_lambda_python"]
+build.targets.wheel.packages = ["src/aws_lambda_mpic", "src/open_mpic_core"]
 
 [tool.hatch.envs.default]
 skip-install = false
@@ -69,7 +69,7 @@ features = [
 unit = "pytest"
 unit-html = "pytest --html=testreports/index.html" # generate html report (warning: uses an aging plugin, 11-2023)
 integration = "pytest tests/integration"
-coverage = "pytest --cov=src/aws_lambda_python --cov=src/open_mpic_core --cov-report=term-missing --cov-report=html"
+coverage = "pytest --cov=src/aws_lambda_mpic --cov=src/open_mpic_core --cov-report=term-missing --cov-report=html"
 
 [tool.hatch.envs.hatch-test]
 features = [
@@ -102,7 +102,7 @@ spec_test_format = "{result} {docstring_summary}"  # defaults to {name} if docst
 
 [tool.coverage.run]
 source = [
-    "src/aws_lambda_python",
+    "src/aws_lambda_mpic",
     "src/open_mpic_core"
 ]
 
@@ -111,10 +111,3 @@ include_namespace_packages = true
 omit = [
     "*/src/*/__about__.py",
 ]
-
-#run.branch = true
-#run.parallel = true
-#run.omit = [
-#    "src/aws_lambda_python/__about__.py",
-#]
-
