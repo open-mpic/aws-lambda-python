@@ -69,7 +69,7 @@ features = [
 unit = "pytest"
 unit-html = "pytest --html=testreports/index.html" # generate html report (warning: uses an aging plugin, 11-2023)
 integration = "pytest tests/integration"
-coverage = "pytest --cov=src/aws_lambda_python --cov-report=term-missing --cov-report=html"
+coverage = "pytest --cov=src/aws_lambda_python --cov=src/open_mpic_core --cov-report=term-missing --cov-report=html"
 
 [tool.hatch.envs.hatch-test]
 features = [
@@ -102,14 +102,14 @@ spec_test_format = "{result} {docstring_summary}"  # defaults to {name} if docst
 
 [tool.coverage.run]
 source = [
-    "src/aws_lambda_python"
+    "src/aws_lambda_python",
+    "src/open_mpic_core"
 ]
 
 [tool.coverage.report]
 include_namespace_packages = true
 omit = [
-    "*/src/aws_lambda_python/__about__.py",
-    "src/aws_lambda_python/mpic_coordinator/domain/*",
+    "*/src/*/__about__.py",
 ]
 
 #run.branch = true
