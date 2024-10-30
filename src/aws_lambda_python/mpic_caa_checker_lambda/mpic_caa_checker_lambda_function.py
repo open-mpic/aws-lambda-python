@@ -1,7 +1,7 @@
+from aws_lambda_python.common_domain.check_request import CaaCheckRequest
 from aws_lambda_python.common_domain.remote_perspective import RemotePerspective
 from aws_lambda_python.mpic_caa_checker.mpic_caa_checker import MpicCaaChecker
 import os
-import json
 
 
 class MpicCaaCheckerLambdaHandler:
@@ -10,10 +10,8 @@ class MpicCaaCheckerLambdaHandler:
         self.default_caa_domain_list = os.environ['default_caa_domains'].split("|")
         self.caa_checker = MpicCaaChecker(self.default_caa_domain_list, self.perspective)
 
-    def process_invocation(self, event):
-        # Lambda seems to allow object transports. To make the code more generic for additional channels we only assume the transport is a string.
-        # TODO reconsider this decision, potentially go back to passing an object to the caa_checker.check_caa method...
-        return self.caa_checker.check_caa(json.dumps(event))
+    def process_invocation(self, caa_request: CaaCheckRequest):
+        return self.caa_checker.check_caa(caa_request)
 
 
 # Global instance for Lambda runtime

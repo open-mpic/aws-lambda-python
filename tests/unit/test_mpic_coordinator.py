@@ -101,8 +101,7 @@ class TestMpicCoordinator:
         mpic_coordinator_config = self.create_mpic_coordinator_configuration()
         perspectives = mpic_coordinator_config.known_perspectives
         perspectives_to_use = [RemotePerspective.from_rir_code(perspective) for perspective in perspectives]
-        mpic_coordinator = MpicCoordinator(self.create_successful_remote_caa_check_response, mpic_coordinator_config)
-        call_list = mpic_coordinator.collect_async_calls_to_issue(request, perspectives_to_use)
+        call_list = MpicCoordinator.collect_async_calls_to_issue(request, perspectives_to_use)
         assert len(call_list) == 6
         assert set(map(lambda call_result: call_result.check_type, call_list)) == {CheckType.CAA}  # ensure each call is of type 'caa'
 
@@ -112,8 +111,7 @@ class TestMpicCoordinator:
         mpic_coordinator_config = self.create_mpic_coordinator_configuration()
         perspectives = mpic_coordinator_config.known_perspectives
         perspectives_to_use = [RemotePerspective.from_rir_code(perspective) for perspective in perspectives]
-        mpic_coordinator = MpicCoordinator(self.create_successful_remote_caa_check_response, mpic_coordinator_config)
-        call_list = mpic_coordinator.collect_async_calls_to_issue(request, perspectives_to_use)
+        call_list = MpicCoordinator.collect_async_calls_to_issue(request, perspectives_to_use)
         assert all(call.check_request.caa_check_parameters.caa_domains == ['example.com'] for call in call_list)
 
     def collect_async_calls_to_issue__should_have_only_dcv_calls_and_include_validation_input_args_given_dcv_check_type(self):
@@ -121,8 +119,7 @@ class TestMpicCoordinator:
         mpic_coordinator_config = self.create_mpic_coordinator_configuration()
         perspectives = mpic_coordinator_config.known_perspectives
         perspectives_to_use = [RemotePerspective.from_rir_code(perspective) for perspective in perspectives]
-        mpic_coordinator = MpicCoordinator(self.create_successful_remote_caa_check_response, mpic_coordinator_config)
-        call_list = mpic_coordinator.collect_async_calls_to_issue(request, perspectives_to_use)
+        call_list = MpicCoordinator.collect_async_calls_to_issue(request, perspectives_to_use)
         assert len(call_list) == 6
         assert set(map(lambda call_result: call_result.check_type, call_list)) == {CheckType.DCV}  # ensure each call is of type 'dcv'
         assert all(call.check_request.dcv_check_parameters.validation_details.validation_method == DcvValidationMethod.DNS_GENERIC for call in call_list)
@@ -133,14 +130,12 @@ class TestMpicCoordinator:
         mpic_coordinator_config = self.create_mpic_coordinator_configuration()
         perspectives = mpic_coordinator_config.known_perspectives
         perspectives_to_use = [RemotePerspective.from_rir_code(perspective) for perspective in perspectives]
-        mpic_coordinator = MpicCoordinator(self.create_successful_remote_caa_check_response, mpic_coordinator_config)
-        call_list = mpic_coordinator.collect_async_calls_to_issue(request, perspectives_to_use)
+        call_list = MpicCoordinator.collect_async_calls_to_issue(request, perspectives_to_use)
         assert len(call_list) == 12
         # ensure the list contains both 'caa' and 'dcv' calls
         assert set(map(lambda call_result: call_result.check_type, call_list)) == {CheckType.CAA, CheckType.DCV}
 
-    # TODO rename "thread_call" to something better like "call_remote_perspective"
-    def thread_call__should_call_remote_perspective_call_function_with_correct_parameters(self):
+    def coordinate_mpic__should_call_remote_perspective_call_function_with_correct_parameters(self):
         request = ValidMpicRequestCreator.create_valid_caa_mpic_request()
         request.orchestration_parameters = MpicRequestOrchestrationParameters(quorum_count=2, perspective_count=2,
                                                                               max_attempts=2)
@@ -159,7 +154,7 @@ class TestMpicCoordinator:
             remote_perspective: RemotePerspective = call_args[0]
             assert remote_perspective.to_rir_code() in mpic_coordinator_config.known_perspectives
             assert call_args[1] == request.check_type
-            check_request = CaaCheckRequest.model_validate_json(call_args[2])
+            check_request = call_args[2]  # was previously a serialized string; now the actual CheckRequest object
             assert check_request.domain_or_ip_target == request.domain_or_ip_target
 
     def coordinate_mpic__should_return_200_and_results_given_successful_caa_corroboration(self):

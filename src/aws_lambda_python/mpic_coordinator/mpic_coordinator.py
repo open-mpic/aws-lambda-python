@@ -94,7 +94,7 @@ class MpicCoordinator:
             perspectives_to_use = next(cohort_cycle)
 
             # Collect async calls to invoke for each perspective.
-            async_calls_to_issue = self.collect_async_calls_to_issue(mpic_request, perspectives_to_use)
+            async_calls_to_issue = MpicCoordinator.collect_async_calls_to_issue(mpic_request, perspectives_to_use)
 
             perspective_responses_per_check_type, validity_per_perspective_per_check_type = (
                 self.issue_async_calls_and_collect_responses(perspectives_to_use, async_calls_to_issue))
@@ -133,7 +133,8 @@ class MpicCoordinator:
         return required_quorum_count
 
     # Configures the async lambda function calls to issue for the check request.
-    def collect_async_calls_to_issue(self, mpic_request, perspectives_to_use: list[RemotePerspective]) -> list[RemoteCheckCallConfiguration]:
+    @staticmethod
+    def collect_async_calls_to_issue(mpic_request, perspectives_to_use: list[RemotePerspective]) -> list[RemoteCheckCallConfiguration]:
         domain_or_ip_target = mpic_request.domain_or_ip_target
         async_calls_to_issue = []
 
@@ -167,7 +168,7 @@ class MpicCoordinator:
         # example code: https://docs.python.org/3/library/concurrent.futures.html
         with concurrent.futures.ThreadPoolExecutor(max_workers=perspective_count) as executor:
             exec_begin = time.perf_counter()
-            futures_to_call_configs = {executor.submit(self.thread_call, self.call_remote_perspective_function, call_config): call_config
+            futures_to_call_configs = {executor.submit(self.call_remote_perspective, self.call_remote_perspective_function, call_config): call_config
                                        for call_config in async_calls_to_issue}
             for future in concurrent.futures.as_completed(futures_to_call_configs):
                 call_configuration = futures_to_call_configs[future]
@@ -219,7 +220,7 @@ class MpicCoordinator:
         }
 
     @staticmethod
-    def thread_call(call_remote_perspective_function, call_config: RemoteCheckCallConfiguration):
+    def call_remote_perspective(call_remote_perspective_function, call_config: RemoteCheckCallConfiguration):
         """
         Issues a call to a remote perspective in a separate thread. This is a blocking call.
         :param call_remote_perspective_function: function to call with arguments in call_config
@@ -228,8 +229,7 @@ class MpicCoordinator:
         """
         print(f"Started remote perspective call for perspective {call_config.perspective} at {str(datetime.now())}")
         tic = time.perf_counter()
-        # TODO replace json dumps stuff with actual object
-        response = call_remote_perspective_function(call_config.perspective, call_config.check_type, json.dumps(call_config.check_request.model_dump()))
+        response = call_remote_perspective_function(call_config.perspective, call_config.check_type, call_config.check_request)
         toc = time.perf_counter()
 
         print(f"Response in region {call_config.perspective.to_rir_code()} took {toc - tic:0.4f} seconds to get response; \

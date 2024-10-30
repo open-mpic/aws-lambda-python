@@ -88,10 +88,7 @@ class MpicCaaChecker:
                 valid_for_issuance = True
         return valid_for_issuance
 
-    # TODO go back to using an object rather than a serialized string
-    def check_caa(self, serialized_caa_check_request) -> dict:
-        caa_request = CaaCheckRequest.model_validate(json.loads(serialized_caa_check_request))
-
+    def check_caa(self, caa_request: CaaCheckRequest) -> dict:
         # Assume the default system configured validation targets and override if sent in the API call.
         caa_domains = self.default_caa_domain_list
         is_wc_domain = False

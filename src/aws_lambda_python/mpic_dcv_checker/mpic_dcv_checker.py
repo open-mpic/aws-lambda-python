@@ -17,10 +17,7 @@ class MpicDcvChecker:
     def __init__(self, perspective: RemotePerspective):
         self.perspective = perspective
 
-    # TODO replace serialized 'event' with a DcvCheckRequest object
-    def check_dcv(self, event):
-        dcv_request = DcvCheckRequest.model_validate(json.loads(event))
-
+    def check_dcv(self, dcv_request: DcvCheckRequest):
         match dcv_request.dcv_check_parameters.validation_details.validation_method:
             case DcvValidationMethod.HTTP_GENERIC:
                 return self.perform_http_validation(dcv_request)
@@ -41,7 +38,6 @@ class MpicDcvChecker:
 
         response = requests.get(token_url)
 
-        
         if response.status_code == requests.codes.OK:
             result = response.text.strip()
             dcv_check_response = DcvCheckResponse(

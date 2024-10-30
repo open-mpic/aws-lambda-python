@@ -1,7 +1,7 @@
+from aws_lambda_python.common_domain.check_request import DcvCheckRequest
 from aws_lambda_python.common_domain.remote_perspective import RemotePerspective
 from aws_lambda_python.mpic_dcv_checker.mpic_dcv_checker import MpicDcvChecker
 import os
-import json
 
 
 class MpicDcvCheckerLambdaHandler:
@@ -9,10 +9,8 @@ class MpicDcvCheckerLambdaHandler:
         self.perspective = RemotePerspective.from_rir_code(os.environ['rir_region'] + "." + os.environ['AWS_REGION'])
         self.dcv_checker = MpicDcvChecker(self.perspective)
 
-    def process_invocation(self, event):
-        # Lambda seems to allow object transports. To make the code more generic for additional channels we only assume the transport is a string.
-        # TODO reconsider this decision, potentially go back to passing an object to the caa_checker.check_caa method...
-        return self.dcv_checker.check_dcv(json.dumps(event))
+    def process_invocation(self, dcv_request: DcvCheckRequest):
+        return self.dcv_checker.check_dcv(dcv_request)
 
 
 # Global instance for Lambda runtime

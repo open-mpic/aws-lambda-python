@@ -46,7 +46,7 @@ class TestMpicDcvChecker:
                 dcv_request = ValidCheckCreator.create_valid_dns_check_request(record_type)
                 self.mock_dns_related_calls(dcv_request, mocker)
         dcv_checker = TestMpicDcvChecker.create_configured_dcv_checker()
-        result = dcv_checker.check_dcv(json.dumps(dcv_request.model_dump()))
+        result = dcv_checker.check_dcv(dcv_request)
         assert result['statusCode'] == 200
         result_body = json.loads(result['body'])
         response_object = DcvCheckResponse.model_validate(result_body)
