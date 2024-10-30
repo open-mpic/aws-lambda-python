@@ -50,18 +50,9 @@ class MpicCoordinator:
         self.mpic_request_adapter: TypeAdapter[MpicRequest] = TypeAdapter(AnnotatedMpicRequest)
         self.check_response_adapter: TypeAdapter[CheckResponse] = TypeAdapter(AnnotatedCheckResponse)
 
-    def coordinate_mpic(self, body):
-        # Path validation should be done by whatever is calling lib-open-mpic.
-
-        # TODO clean this up
-        # request_path = event['path']
-        # if request_path not in iter(RequestPath):
-        #    return MpicCoordinator.build_400_response(MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key,
-        #                                              [MpicRequestValidationMessages.UNSUPPORTED_REQUEST_PATH.key])
-
-        # parse event body into mpic_request
+    def coordinate_mpic(self, mpic_request_as_json):
         try:
-            mpic_request = self.mpic_request_adapter.validate_json(body)
+            mpic_request = self.mpic_request_adapter.validate_json(mpic_request_as_json)
         except pydantic.ValidationError as validation_error:
             return MpicCoordinator.build_400_response(MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key,
                                                       validation_error.errors())

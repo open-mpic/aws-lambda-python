@@ -17,13 +17,16 @@ ISSUE_TAG: Final[str] = 'issue'
 ISSUEWILD_TAG: Final[str] = 'issuewild'
 
 
-class MpicCaaLookupException(Exception):  # This is a python exception type used for rase statements.
+class MpicCaaLookupException(Exception):  # This is a python exception type used for raise statements.
     pass
 
+
+# TODO don't need this.. extra layer of indirection without enough value; just use params in MpicCaaChecker constructor
 class MpicCaaCheckerConfiguration:
     def __init__(self, default_caa_domain_list: list[str], perspective_identity: RemotePerspective):
         self.default_caa_domain_list = default_caa_domain_list
         self.perspective_identity = perspective_identity
+
 
 class MpicCaaChecker:
     def __init__(self, mpic_caa_checker_configuration: MpicCaaCheckerConfiguration):
@@ -92,7 +95,8 @@ class MpicCaaChecker:
                 valid_for_issuance = True
         return valid_for_issuance
 
-    def check_caa(self, serialized_caa_check_request):
+    # TODO go back to using an object rather than a serialized string
+    def check_caa(self, serialized_caa_check_request) -> dict:
         caa_request = CaaCheckRequest.model_validate(json.loads(serialized_caa_check_request))
 
         # Assume the default system configured validation targets and override if sent in the API call.
@@ -122,11 +126,7 @@ class MpicCaaChecker:
         except MpicCaaLookupException:
             caa_lookup_error = True
 
-
-        #perspective_name = self.rir_region + "." + self.perspective_code
-
         if caa_lookup_error:
-            # TODO would be best to have error types and messages in a separate file to avoid hardcoding strings
             response = CaaCheckResponse(perspective=self.perspective_identity.to_rir_code(), check_passed=False,
                                         errors=[ValidationError(error_type=ErrorMessages.CAA_LOOKUP_ERROR.key, error_message=ErrorMessages.CAA_LOOKUP_ERROR.message)],
                                         details=CaaCheckResponseDetails(caa_record_present=False),  # Possibly should change to present=None to indicate the lookup failed.

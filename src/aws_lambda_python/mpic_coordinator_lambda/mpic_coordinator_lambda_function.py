@@ -11,9 +11,6 @@ import json
 
 class MpicCoordinatorLambdaHandler:
     def __init__(self):
-        self._initialize_handler()
-
-    def _initialize_handler(self):
         # load environment variables
         self.known_perspectives = os.environ['perspective_names'].split("|")
         self.dcv_arn_list = os.environ['validator_arns'].split("|")  # TODO rename to dcv_arns

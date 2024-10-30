@@ -7,10 +7,15 @@ from aws_lambda_python.common_domain.check_request import DcvCheckRequest
 from aws_lambda_python.common_domain.check_response import DcvCheckResponse, DcvCheckResponseDetails
 from aws_lambda_python.common_domain.enum.check_type import CheckType
 from aws_lambda_python.common_domain.remote_perspective import RemotePerspective
+from aws_lambda_python.mpic_coordinator.domain.enum.request_path import RequestPath
+from aws_lambda_python.mpic_coordinator.domain.mpic_orchestration_parameters import MpicEffectiveOrchestrationParameters
+from aws_lambda_python.mpic_coordinator.domain.mpic_response import MpicCaaResponse
 from aws_lambda_python.mpic_coordinator_lambda.mpic_coordinator_lambda_function import MpicCoordinatorLambdaHandler
 from botocore.response import StreamingBody
+import aws_lambda_python.mpic_coordinator_lambda.mpic_coordinator_lambda_function as mpic_coordinator_lambda_function
 
 from unit.valid_check_creator import ValidCheckCreator
+from unit.valid_mpic_request_creator import ValidMpicRequestCreator
 
 
 class TestMpicCoordinatorLambda:
@@ -23,8 +28,7 @@ class TestMpicCoordinatorLambda:
             'caa_arns': 'arn:aws:acm-pca:us-east-1:123456789012:caa/arin.us-east-1|arn:aws:acm-pca:us-west-1:123456789012:caa/arin.us-west-1|arn:aws:acm-pca:eu-west-2:123456789012:caa/ripe.eu-west-2|arn:aws:acm-pca:eu-central-2:123456789012:caa/ripe.eu-central-2|arn:aws:acm-pca:ap-northeast-1:123456789012:caa/apnic.ap-northeast-1|arn:aws:acm-pca:ap-south-2:123456789012:caa/apnic.ap-south-2',
             'default_perspective_count': '3',
             'enforce_distinct_rir_regions': '1',  # TODO may not need this...
-            'hash_secret': 'test_secret',
-            'caa_domains': 'example.com|example.net|example.org'
+            'hash_secret': 'test_secret'
         }
         with pytest.MonkeyPatch.context() as class_scoped_monkeypatch:
             for k, v in envvars.items():
@@ -52,6 +56,28 @@ class TestMpicCoordinatorLambda:
                                                                                    dcv_check_request.model_dump_json())
         assert response_as_json == 'Something went wrong'
 
+    # noinspection PyMethodMayBeStatic
+    def process_invocation__should_return_400_response_given_invalid_request_path(self, set_env_variables):
+        event = {'path': 'invalid_path'}
+        mpic_coordinator_lambda_handler = MpicCoordinatorLambdaHandler()
+        response = mpic_coordinator_lambda_handler.process_invocation(event)
+        assert response['statusCode'] == 400
+
+    # noinspection PyMethodMayBeStatic
+    def lambda_handler__should_coordinate_mpic_using_configured_mpic_coordinator(self, set_env_variables, mocker):
+        mock_return_value = {
+            'statusCode': 200,  # note: must be snakeCase
+            'headers': {'Content-Type': 'application/json'},
+            'body': TestMpicCoordinatorLambda.create_caa_mpic_response().model_dump_json()
+        }
+
+        mocker.patch('aws_lambda_python.mpic_coordinator.mpic_coordinator.MpicCoordinator.coordinate_mpic',
+                     return_value=mock_return_value)
+        mpic_request = ValidMpicRequestCreator.create_valid_mpic_request(CheckType.CAA)
+        event = {'path': RequestPath.MPIC, 'body': mpic_request.model_dump_json()}
+        result = mpic_coordinator_lambda_function.lambda_handler(event, None)
+        assert result == mock_return_value
+
     # noinspection PyUnusedLocal, PyMethodMayBeStatic
     def create_successful_boto3_api_call_response_for_dcv_check(self, lambda_method, lambda_configuration):
         check_request = DcvCheckRequest.model_validate_json(lambda_configuration['Payload'])
@@ -73,6 +99,19 @@ class TestMpicCoordinatorLambda:
         file_like_response = io.BytesIO(json_bytes)
         streaming_body_response = StreamingBody(file_like_response, len(json_bytes))
         return {'Payload': streaming_body_response}
+
+    @staticmethod
+    def create_caa_mpic_response():
+        caa_request = ValidMpicRequestCreator.create_valid_caa_mpic_request()
+        return MpicCaaResponse(
+            request_orchestration_parameters=caa_request.orchestration_parameters,
+            actual_orchestration_parameters=MpicEffectiveOrchestrationParameters(
+                perspective_count=3, quorum_count=2, attempt_count=1
+            ),
+            is_valid=True,
+            perspectives=[],
+            caa_check_parameters=caa_request.caa_check_parameters
+        )
 
 
 if __name__ == '__main__':

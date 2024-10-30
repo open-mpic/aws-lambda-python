@@ -1,23 +1,46 @@
+import time
+
 import pytest
 
+import aws_lambda_python.mpic_caa_checker_lambda.mpic_caa_checker_lambda_function as mpic_caa_checker_lambda_function
+from aws_lambda_python.common_domain.check_response import CaaCheckResponse, CaaCheckResponseDetails
+from unit.valid_check_creator import ValidCheckCreator
 
-class TestMpicCoordinatorLambda:
+
+class TestCaaCheckerLambda:
     @staticmethod
     @pytest.fixture(scope='class')
     def set_env_variables():
         envvars = {
-            'perspective_names': 'arin.us-east-1|arin.us-west-1|ripe.eu-west-2|ripe.eu-central-2|apnic.ap-northeast-1|apnic.ap-south-2',
-            'validator_arns': 'arn:aws:acm-pca:us-east-1:123456789012:validator/arin.us-east-1|arn:aws:acm-pca:us-west-1:123456789012:validator/arin.us-west-1|arn:aws:acm-pca:eu-west-2:123456789012:validator/ripe.eu-west-2|arn:aws:acm-pca:eu-central-2:123456789012:validator/ripe.eu-central-2|arn:aws:acm-pca:ap-northeast-1:123456789012:validator/apnic.ap-northeast-1|arn:aws:acm-pca:ap-south-2:123456789012:validator/apnic.ap-south-2',
-            'caa_arns': 'arn:aws:acm-pca:us-east-1:123456789012:caa/arin.us-east-1|arn:aws:acm-pca:us-west-1:123456789012:caa/arin.us-west-1|arn:aws:acm-pca:eu-west-2:123456789012:caa/ripe.eu-west-2|arn:aws:acm-pca:eu-central-2:123456789012:caa/ripe.eu-central-2|arn:aws:acm-pca:ap-northeast-1:123456789012:caa/apnic.ap-northeast-1|arn:aws:acm-pca:ap-south-2:123456789012:caa/apnic.ap-south-2',
-            'default_perspective_count': '3',
-            'enforce_distinct_rir_regions': '1',  # TODO may not need this...
-            'hash_secret': 'test_secret',
-            'caa_domains': 'example.com|example.net|example.org'
+            'rir_region': 'arin',
+            'AWS_REGION': 'us-east-1',
+            'default_caa_domains': 'ca1.com|ca2.org|ca3.net'
         }
         with pytest.MonkeyPatch.context() as class_scoped_monkeypatch:
             for k, v in envvars.items():
                 class_scoped_monkeypatch.setenv(k, v)
             yield class_scoped_monkeypatch  # restore the environment afterward
+
+    # noinspection PyMethodMayBeStatic
+    def lambda_handler__should_do_caa_check_using_configured_caa_checker(self, set_env_variables, mocker):
+        mock_return_value = {
+            'statusCode': 200,  # note: must be snakeCase
+            'headers': {'Content-Type': 'application/json'},
+            'body': TestCaaCheckerLambda.create_caa_check_response().model_dump_json()
+        }
+        mocker.patch('aws_lambda_python.mpic_caa_checker.mpic_caa_checker.MpicCaaChecker.check_caa', return_value=mock_return_value)
+        caa_check_request = ValidCheckCreator.create_valid_caa_check_request()
+        event = caa_check_request.model_dump_json() # TODO go back to using an object rather than a serialized string
+        result = mpic_caa_checker_lambda_function.lambda_handler(event, None)
+        assert result == mock_return_value
+
+    @staticmethod
+    def create_caa_check_response():
+        return CaaCheckResponse(perspective='arin.us-east-1', check_passed=True,
+                                details=CaaCheckResponseDetails(caa_record_present=True,
+                                                                found_at='example.com',
+                                                                response='dummy_response'),
+                                timestamp_ns=time.time_ns())
 
 
 if __name__ == '__main__':
