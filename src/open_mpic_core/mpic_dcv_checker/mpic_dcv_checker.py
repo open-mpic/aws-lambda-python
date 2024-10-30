@@ -1,15 +1,13 @@
 import time
-from typing import Final
 import dns.resolver
 import json
-import os
 import requests
 
-from aws_lambda_python.common_domain.check_request import DcvCheckRequest
-from aws_lambda_python.common_domain.check_response import DcvCheckResponse, DcvCheckResponseDetails
-from aws_lambda_python.common_domain.enum.dcv_validation_method import DcvValidationMethod
-from aws_lambda_python.common_domain.remote_perspective import RemotePerspective
-from aws_lambda_python.common_domain.validation_error import ValidationError
+from open_mpic_core.common_domain.check_request import DcvCheckRequest
+from open_mpic_core.common_domain.check_response import DcvCheckResponse, DcvCheckResponseDetails
+from open_mpic_core.common_domain.enum.dcv_validation_method import DcvValidationMethod
+from open_mpic_core.common_domain.remote_perspective import RemotePerspective
+from open_mpic_core.common_domain.validation_error import ValidationError
 
 
 # noinspection PyUnusedLocal

@@ -2,14 +2,14 @@ import json
 
 import dns
 import pytest
-from aws_lambda_python.common_domain.check_parameters import CaaCheckParameters
-from aws_lambda_python.common_domain.check_request import CaaCheckRequest
-from aws_lambda_python.common_domain.check_response import CaaCheckResponse, CaaCheckResponseDetails
-from aws_lambda_python.common_domain.enum.certificate_type import CertificateType
-from aws_lambda_python.common_domain.remote_perspective import RemotePerspective
-from aws_lambda_python.common_domain.validation_error import ValidationError
-from aws_lambda_python.common_domain.messages.ErrorMessages import ErrorMessages
-from aws_lambda_python.mpic_caa_checker.mpic_caa_checker import MpicCaaChecker
+from open_mpic_core.common_domain.check_parameters import CaaCheckParameters
+from open_mpic_core.common_domain.check_request import CaaCheckRequest
+from open_mpic_core.common_domain.check_response import CaaCheckResponse, CaaCheckResponseDetails
+from open_mpic_core.common_domain.enum.certificate_type import CertificateType
+from open_mpic_core.common_domain.remote_perspective import RemotePerspective
+from open_mpic_core.common_domain.validation_error import ValidationError
+from open_mpic_core.common_domain.messages.ErrorMessages import ErrorMessages
+from open_mpic_core.mpic_caa_checker.mpic_caa_checker import MpicCaaChecker
 from dns.rrset import RRset
 
 from mock_dns_object_creator import MockDnsObjectCreator

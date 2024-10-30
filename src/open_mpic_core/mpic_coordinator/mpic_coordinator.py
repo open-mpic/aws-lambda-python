@@ -8,20 +8,20 @@ from datetime import datetime
 import hashlib
 import pydantic
 
-from aws_lambda_python.common_domain.check_response import CheckResponse, AnnotatedCheckResponse, CaaCheckResponse, \
+from open_mpic_core.common_domain.check_response import CheckResponse, AnnotatedCheckResponse, CaaCheckResponse, \
     CaaCheckResponseDetails, DcvCheckResponse, DcvCheckResponseDetails
-from aws_lambda_python.common_domain.check_request import CaaCheckRequest, DcvCheckRequest
-from aws_lambda_python.common_domain.validation_error import ValidationError
-from aws_lambda_python.common_domain.enum.check_type import CheckType
-from aws_lambda_python.common_domain.messages.ErrorMessages import ErrorMessages
-from aws_lambda_python.mpic_coordinator.cohort_creator import CohortCreator
-from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicCaaRequest, MpicRequest, AnnotatedMpicRequest
-from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvRequest, MpicDcvWithCaaRequest
-from aws_lambda_python.mpic_coordinator.domain.remote_check_call_configuration import RemoteCheckCallConfiguration
-from aws_lambda_python.common_domain.remote_perspective import RemotePerspective
-from aws_lambda_python.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
-from aws_lambda_python.mpic_coordinator.mpic_request_validator import MpicRequestValidator
-from aws_lambda_python.mpic_coordinator.mpic_response_builder import MpicResponseBuilder
+from open_mpic_core.common_domain.check_request import CaaCheckRequest, DcvCheckRequest
+from open_mpic_core.common_domain.validation_error import ValidationError
+from open_mpic_core.common_domain.enum.check_type import CheckType
+from open_mpic_core.common_domain.messages.ErrorMessages import ErrorMessages
+from open_mpic_core.mpic_coordinator.cohort_creator import CohortCreator
+from open_mpic_core.mpic_coordinator.domain.mpic_request import MpicCaaRequest, MpicRequest, AnnotatedMpicRequest
+from open_mpic_core.mpic_coordinator.domain.mpic_request import MpicDcvRequest, MpicDcvWithCaaRequest
+from open_mpic_core.mpic_coordinator.domain.remote_check_call_configuration import RemoteCheckCallConfiguration
+from open_mpic_core.common_domain.remote_perspective import RemotePerspective
+from open_mpic_core.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
+from open_mpic_core.mpic_coordinator.mpic_request_validator import MpicRequestValidator
+from open_mpic_core.mpic_coordinator.mpic_response_builder import MpicResponseBuilder
 from pydantic import TypeAdapter
 
 

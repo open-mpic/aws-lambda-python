@@ -1,11 +1,11 @@
 import json
 
-from aws_lambda_python.common_domain.enum.check_type import CheckType
-from aws_lambda_python.mpic_coordinator.domain.mpic_orchestration_parameters import MpicEffectiveOrchestrationParameters
-from aws_lambda_python.mpic_coordinator.domain.mpic_request import BaseMpicRequest
-from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvRequest
-from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvWithCaaRequest
-from aws_lambda_python.mpic_coordinator.domain.mpic_response import MpicCaaResponse, MpicDcvResponse, MpicDcvWithCaaResponse
+from open_mpic_core.common_domain.enum.check_type import CheckType
+from open_mpic_core.mpic_coordinator.domain.mpic_orchestration_parameters import MpicEffectiveOrchestrationParameters
+from open_mpic_core.mpic_coordinator.domain.mpic_request import BaseMpicRequest
+from open_mpic_core.mpic_coordinator.domain.mpic_request import MpicDcvRequest
+from open_mpic_core.mpic_coordinator.domain.mpic_request import MpicDcvWithCaaRequest
+from open_mpic_core.mpic_coordinator.domain.mpic_response import MpicCaaResponse, MpicDcvResponse, MpicDcvWithCaaResponse
 
 
 class MpicResponseBuilder:

@@ -3,13 +3,13 @@ import json
 
 import pytest
 
-from aws_lambda_python.common_domain.check_request import DcvCheckRequest
-from aws_lambda_python.common_domain.check_response import DcvCheckResponse, DcvCheckResponseDetails
-from aws_lambda_python.common_domain.enum.check_type import CheckType
-from aws_lambda_python.common_domain.remote_perspective import RemotePerspective
-from aws_lambda_python.mpic_coordinator.domain.enum.request_path import RequestPath
-from aws_lambda_python.mpic_coordinator.domain.mpic_orchestration_parameters import MpicEffectiveOrchestrationParameters
-from aws_lambda_python.mpic_coordinator.domain.mpic_response import MpicCaaResponse
+from open_mpic_core.common_domain.check_request import DcvCheckRequest
+from open_mpic_core.common_domain.check_response import DcvCheckResponse, DcvCheckResponseDetails
+from open_mpic_core.common_domain.enum.check_type import CheckType
+from open_mpic_core.common_domain.remote_perspective import RemotePerspective
+from open_mpic_core.mpic_coordinator.domain.enum.request_path import RequestPath
+from open_mpic_core.mpic_coordinator.domain.mpic_orchestration_parameters import MpicEffectiveOrchestrationParameters
+from open_mpic_core.mpic_coordinator.domain.mpic_response import MpicCaaResponse
 from aws_lambda_python.mpic_coordinator_lambda.mpic_coordinator_lambda_function import MpicCoordinatorLambdaHandler
 from botocore.response import StreamingBody
 import aws_lambda_python.mpic_coordinator_lambda.mpic_coordinator_lambda_function as mpic_coordinator_lambda_function
@@ -71,7 +71,7 @@ class TestMpicCoordinatorLambda:
             'body': TestMpicCoordinatorLambda.create_caa_mpic_response().model_dump_json()
         }
 
-        mocker.patch('aws_lambda_python.mpic_coordinator.mpic_coordinator.MpicCoordinator.coordinate_mpic',
+        mocker.patch('open_mpic_core.mpic_coordinator.mpic_coordinator.MpicCoordinator.coordinate_mpic',
                      return_value=mock_return_value)
         mpic_request = ValidMpicRequestCreator.create_valid_mpic_request(CheckType.CAA)
         event = {'path': RequestPath.MPIC, 'body': mpic_request.model_dump_json()}

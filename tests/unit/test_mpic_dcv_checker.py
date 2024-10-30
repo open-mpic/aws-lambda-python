@@ -2,12 +2,12 @@ import json
 
 import dns
 import pytest
-from aws_lambda_python.common_domain.check_request import DcvCheckRequest
-from aws_lambda_python.common_domain.check_response import DcvCheckResponse, DcvCheckResponseDetails
-from aws_lambda_python.common_domain.enum.dcv_validation_method import DcvValidationMethod
-from aws_lambda_python.common_domain.enum.dns_record_type import DnsRecordType
-from aws_lambda_python.common_domain.remote_perspective import RemotePerspective
-from aws_lambda_python.mpic_dcv_checker.mpic_dcv_checker import MpicDcvChecker
+from open_mpic_core.common_domain.check_request import DcvCheckRequest
+from open_mpic_core.common_domain.check_response import DcvCheckResponse, DcvCheckResponseDetails
+from open_mpic_core.common_domain.enum.dcv_validation_method import DcvValidationMethod
+from open_mpic_core.common_domain.enum.dns_record_type import DnsRecordType
+from open_mpic_core.common_domain.remote_perspective import RemotePerspective
+from open_mpic_core.mpic_dcv_checker.mpic_dcv_checker import MpicDcvChecker
 
 from mock_dns_object_creator import MockDnsObjectCreator
 from valid_check_creator import ValidCheckCreator

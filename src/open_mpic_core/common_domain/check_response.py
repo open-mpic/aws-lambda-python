@@ -1,7 +1,7 @@
 from typing import Union, Literal
 
-from aws_lambda_python.common_domain.validation_error import ValidationError
-from aws_lambda_python.common_domain.enum.check_type import CheckType
+from open_mpic_core.common_domain.validation_error import ValidationError
+from open_mpic_core.common_domain.enum.check_type import CheckType
 from pydantic import BaseModel, Field
 from typing_extensions import Annotated
 

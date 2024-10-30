@@ -1,14 +1,14 @@
-from aws_lambda_python.common_domain.check_parameters import CaaCheckParameters, DcvCheckParameters, \
+from open_mpic_core.common_domain.check_parameters import CaaCheckParameters, DcvCheckParameters, \
     DcvDnsGenericValidationDetails, DcvHttpGenericValidationDetails
-from aws_lambda_python.common_domain.enum.certificate_type import CertificateType
-from aws_lambda_python.common_domain.enum.dcv_validation_method import DcvValidationMethod
-from aws_lambda_python.common_domain.enum.dns_record_type import DnsRecordType
-from aws_lambda_python.mpic_coordinator.domain.mpic_request import BaseMpicRequest
-from aws_lambda_python.common_domain.enum.check_type import CheckType
-from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicCaaRequest
-from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvRequest
-from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvWithCaaRequest
-from aws_lambda_python.mpic_coordinator.domain.mpic_orchestration_parameters import MpicRequestOrchestrationParameters
+from open_mpic_core.common_domain.enum.certificate_type import CertificateType
+from open_mpic_core.common_domain.enum.dcv_validation_method import DcvValidationMethod
+from open_mpic_core.common_domain.enum.dns_record_type import DnsRecordType
+from open_mpic_core.mpic_coordinator.domain.mpic_request import BaseMpicRequest
+from open_mpic_core.common_domain.enum.check_type import CheckType
+from open_mpic_core.mpic_coordinator.domain.mpic_request import MpicCaaRequest
+from open_mpic_core.mpic_coordinator.domain.mpic_request import MpicDcvRequest
+from open_mpic_core.mpic_coordinator.domain.mpic_request import MpicDcvWithCaaRequest
+from open_mpic_core.mpic_coordinator.domain.mpic_orchestration_parameters import MpicRequestOrchestrationParameters
 
 
 class ValidMpicRequestCreator:

@@ -3,9 +3,9 @@ from typing import Literal, Union
 
 from pydantic import BaseModel
 
-from aws_lambda_python.common_domain.enum.certificate_type import CertificateType
-from aws_lambda_python.common_domain.enum.dcv_validation_method import DcvValidationMethod
-from aws_lambda_python.common_domain.enum.dns_record_type import DnsRecordType
+from open_mpic_core.common_domain.enum.certificate_type import CertificateType
+from open_mpic_core.common_domain.enum.dcv_validation_method import DcvValidationMethod
+from open_mpic_core.common_domain.enum.dns_record_type import DnsRecordType
 
 
 class CaaCheckParameters(BaseModel):

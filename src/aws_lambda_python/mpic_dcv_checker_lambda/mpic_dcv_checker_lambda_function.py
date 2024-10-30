@@ -1,6 +1,6 @@
-from aws_lambda_python.common_domain.check_request import DcvCheckRequest
-from aws_lambda_python.common_domain.remote_perspective import RemotePerspective
-from aws_lambda_python.mpic_dcv_checker.mpic_dcv_checker import MpicDcvChecker
+from open_mpic_core.common_domain.check_request import DcvCheckRequest
+from open_mpic_core.common_domain.remote_perspective import RemotePerspective
+from open_mpic_core.mpic_dcv_checker.mpic_dcv_checker import MpicDcvChecker
 import os
 
 

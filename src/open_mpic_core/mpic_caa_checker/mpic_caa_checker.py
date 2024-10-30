@@ -1,17 +1,16 @@
 import json
-import os
 import time
 from typing import Final
 import dns.resolver
 from dns.name import Name
 from dns.rrset import RRset
 
-from aws_lambda_python.common_domain.remote_perspective import RemotePerspective
-from aws_lambda_python.common_domain.check_request import CaaCheckRequest
-from aws_lambda_python.common_domain.check_response import CaaCheckResponse, CaaCheckResponseDetails
-from aws_lambda_python.common_domain.validation_error import ValidationError
-from aws_lambda_python.common_domain.enum.certificate_type import CertificateType
-from aws_lambda_python.common_domain.messages.ErrorMessages import ErrorMessages
+from open_mpic_core.common_domain.remote_perspective import RemotePerspective
+from open_mpic_core.common_domain.check_request import CaaCheckRequest
+from open_mpic_core.common_domain.check_response import CaaCheckResponse, CaaCheckResponseDetails
+from open_mpic_core.common_domain.validation_error import ValidationError
+from open_mpic_core.common_domain.enum.certificate_type import CertificateType
+from open_mpic_core.common_domain.messages.ErrorMessages import ErrorMessages
 
 ISSUE_TAG: Final[str] = 'issue'
 ISSUEWILD_TAG: Final[str] = 'issuewild'

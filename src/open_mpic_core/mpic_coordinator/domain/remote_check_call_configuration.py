@@ -1,6 +1,6 @@
-from aws_lambda_python.common_domain.check_request import BaseCheckRequest
-from aws_lambda_python.common_domain.enum.check_type import CheckType
-from aws_lambda_python.common_domain.remote_perspective import RemotePerspective
+from open_mpic_core.common_domain.check_request import BaseCheckRequest
+from open_mpic_core.common_domain.enum.check_type import CheckType
+from open_mpic_core.common_domain.remote_perspective import RemotePerspective
 
 
 class RemoteCheckCallConfiguration:

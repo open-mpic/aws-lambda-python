@@ -4,7 +4,7 @@ import random
 import yaml
 from pydantic import TypeAdapter
 
-from aws_lambda_python.common_domain.remote_perspective import RemotePerspective
+from open_mpic_core.common_domain.remote_perspective import RemotePerspective
 
 
 class CohortCreator:

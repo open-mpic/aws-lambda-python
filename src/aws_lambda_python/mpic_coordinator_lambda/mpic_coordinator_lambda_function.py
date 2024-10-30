@@ -1,8 +1,8 @@
-from aws_lambda_python.mpic_coordinator.mpic_coordinator import MpicCoordinator, MpicCoordinatorConfiguration
-from aws_lambda_python.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
-from aws_lambda_python.common_domain.enum.check_type import CheckType
-from aws_lambda_python.mpic_coordinator.domain.enum.request_path import RequestPath
-from aws_lambda_python.common_domain.remote_perspective import RemotePerspective
+from open_mpic_core.mpic_coordinator.mpic_coordinator import MpicCoordinator, MpicCoordinatorConfiguration
+from open_mpic_core.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
+from open_mpic_core.common_domain.enum.check_type import CheckType
+from open_mpic_core.mpic_coordinator.domain.enum.request_path import RequestPath
+from open_mpic_core.common_domain.remote_perspective import RemotePerspective
 
 import boto3
 import os

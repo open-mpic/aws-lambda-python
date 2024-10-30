@@ -1,13 +1,13 @@
 from abc import ABC
 from typing import Union, Literal
 
-from aws_lambda_python.common_domain.enum.check_type import CheckType
+from open_mpic_core.common_domain.enum.check_type import CheckType
 from pydantic import BaseModel, Field
 
-from aws_lambda_python.common_domain.check_response import CaaCheckResponse, DcvCheckResponse
-from aws_lambda_python.mpic_coordinator.domain.mpic_orchestration_parameters import MpicEffectiveOrchestrationParameters
-from aws_lambda_python.mpic_coordinator.domain.mpic_orchestration_parameters import MpicRequestOrchestrationParameters
-from aws_lambda_python.common_domain.check_parameters import CaaCheckParameters, DcvCheckParameters
+from open_mpic_core.common_domain.check_response import CaaCheckResponse, DcvCheckResponse
+from open_mpic_core.mpic_coordinator.domain.mpic_orchestration_parameters import MpicEffectiveOrchestrationParameters
+from open_mpic_core.mpic_coordinator.domain.mpic_orchestration_parameters import MpicRequestOrchestrationParameters
+from open_mpic_core.common_domain.check_parameters import CaaCheckParameters, DcvCheckParameters
 from typing_extensions import Annotated
 
 

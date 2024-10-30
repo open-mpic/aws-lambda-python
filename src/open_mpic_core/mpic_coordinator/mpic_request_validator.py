@@ -1,5 +1,5 @@
-from aws_lambda_python.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
-from aws_lambda_python.mpic_coordinator.mpic_request_validation_issue import MpicRequestValidationIssue
+from open_mpic_core.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
+from open_mpic_core.mpic_coordinator.mpic_request_validation_issue import MpicRequestValidationIssue
 
 
 # TODO rename to reflect that it's validating values rather than structure?

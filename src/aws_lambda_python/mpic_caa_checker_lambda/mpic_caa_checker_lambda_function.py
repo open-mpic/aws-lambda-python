@@ -1,6 +1,6 @@
-from aws_lambda_python.common_domain.check_request import CaaCheckRequest
-from aws_lambda_python.common_domain.remote_perspective import RemotePerspective
-from aws_lambda_python.mpic_caa_checker.mpic_caa_checker import MpicCaaChecker
+from open_mpic_core.common_domain.check_request import CaaCheckRequest
+from open_mpic_core.common_domain.remote_perspective import RemotePerspective
+from open_mpic_core.mpic_caa_checker.mpic_caa_checker import MpicCaaChecker
 import os
 
 

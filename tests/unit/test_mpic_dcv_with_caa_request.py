@@ -1,8 +1,8 @@
 import json
 import pydantic
 import pytest
-from aws_lambda_python.common_domain.enum.check_type import CheckType
-from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvWithCaaRequest
+from open_mpic_core.common_domain.enum.check_type import CheckType
+from open_mpic_core.mpic_coordinator.domain.mpic_request import MpicDcvWithCaaRequest
 
 from valid_mpic_request_creator import ValidMpicRequestCreator
 

@@ -1,8 +1,8 @@
-from aws_lambda_python.common_domain.check_parameters import DcvCheckParameters, DcvHttpGenericValidationDetails, \
+from open_mpic_core.common_domain.check_parameters import DcvCheckParameters, DcvHttpGenericValidationDetails, \
     DcvDnsGenericValidationDetails, CaaCheckParameters
-from aws_lambda_python.common_domain.check_request import DcvCheckRequest, CaaCheckRequest
-from aws_lambda_python.common_domain.enum.certificate_type import CertificateType
-from aws_lambda_python.common_domain.enum.dns_record_type import DnsRecordType
+from open_mpic_core.common_domain.check_request import DcvCheckRequest, CaaCheckRequest
+from open_mpic_core.common_domain.enum.certificate_type import CertificateType
+from open_mpic_core.common_domain.enum.dns_record_type import DnsRecordType
 
 
 class ValidCheckCreator:

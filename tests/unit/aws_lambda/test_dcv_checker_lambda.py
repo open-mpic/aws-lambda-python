@@ -3,7 +3,7 @@ import time
 import pytest
 
 import aws_lambda_python.mpic_dcv_checker_lambda.mpic_dcv_checker_lambda_function as mpic_dcv_checker_lambda_function
-from aws_lambda_python.common_domain.check_response import DcvCheckResponse, DcvCheckResponseDetails
+from open_mpic_core.common_domain.check_response import DcvCheckResponse, DcvCheckResponseDetails
 from unit.valid_check_creator import ValidCheckCreator
 
 
@@ -28,7 +28,7 @@ class TestDcvCheckerLambda:
             'headers': {'Content-Type': 'application/json'},
             'body': TestDcvCheckerLambda.create_dcv_check_response().model_dump_json()
         }
-        mocker.patch('aws_lambda_python.mpic_dcv_checker.mpic_dcv_checker.MpicDcvChecker.check_dcv', return_value=mock_return_value)
+        mocker.patch('open_mpic_core.mpic_dcv_checker.mpic_dcv_checker.MpicDcvChecker.check_dcv', return_value=mock_return_value)
         dcv_check_request = ValidCheckCreator.create_valid_http_check_request()
         event = dcv_check_request.model_dump_json()  # TODO go back to using an object rather than a serialized string
         result = mpic_dcv_checker_lambda_function.lambda_handler(event, None)

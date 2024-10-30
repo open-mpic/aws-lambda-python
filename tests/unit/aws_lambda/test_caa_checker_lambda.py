@@ -3,7 +3,7 @@ import time
 import pytest
 
 import aws_lambda_python.mpic_caa_checker_lambda.mpic_caa_checker_lambda_function as mpic_caa_checker_lambda_function
-from aws_lambda_python.common_domain.check_response import CaaCheckResponse, CaaCheckResponseDetails
+from open_mpic_core.common_domain.check_response import CaaCheckResponse, CaaCheckResponseDetails
 from unit.valid_check_creator import ValidCheckCreator
 
 
@@ -28,7 +28,7 @@ class TestCaaCheckerLambda:
             'headers': {'Content-Type': 'application/json'},
             'body': TestCaaCheckerLambda.create_caa_check_response().model_dump_json()
         }
-        mocker.patch('aws_lambda_python.mpic_caa_checker.mpic_caa_checker.MpicCaaChecker.check_caa', return_value=mock_return_value)
+        mocker.patch('open_mpic_core.mpic_caa_checker.mpic_caa_checker.MpicCaaChecker.check_caa', return_value=mock_return_value)
         caa_check_request = ValidCheckCreator.create_valid_caa_check_request()
         event = caa_check_request.model_dump_json()  # TODO go back to using an object rather than a serialized string
         result = mpic_caa_checker_lambda_function.lambda_handler(event, None)

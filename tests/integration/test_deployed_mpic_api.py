@@ -3,18 +3,18 @@ import sys
 import pytest
 from pydantic import TypeAdapter
 
-from aws_lambda_python.common_domain.check_parameters import CaaCheckParameters, DcvHttpGenericValidationDetails
-from aws_lambda_python.common_domain.check_parameters import DcvCheckParameters
-from aws_lambda_python.common_domain.enum.certificate_type import CertificateType
-from aws_lambda_python.common_domain.enum.check_type import CheckType
-from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicCaaRequest
-from aws_lambda_python.mpic_coordinator.domain.mpic_request import MpicDcvRequest
-from aws_lambda_python.mpic_coordinator.domain.mpic_orchestration_parameters import MpicRequestOrchestrationParameters
-from aws_lambda_python.mpic_coordinator.domain.enum.request_path import RequestPath
+from open_mpic_core.common_domain.check_parameters import CaaCheckParameters, DcvHttpGenericValidationDetails
+from open_mpic_core.common_domain.check_parameters import DcvCheckParameters
+from open_mpic_core.common_domain.enum.certificate_type import CertificateType
+from open_mpic_core.common_domain.enum.check_type import CheckType
+from open_mpic_core.mpic_coordinator.domain.mpic_request import MpicCaaRequest
+from open_mpic_core.mpic_coordinator.domain.mpic_request import MpicDcvRequest
+from open_mpic_core.mpic_coordinator.domain.mpic_orchestration_parameters import MpicRequestOrchestrationParameters
+from open_mpic_core.mpic_coordinator.domain.enum.request_path import RequestPath
 
 import testing_api_client
-from aws_lambda_python.mpic_coordinator.domain.mpic_response import MpicResponse, AnnotatedMpicResponse
-from aws_lambda_python.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
+from open_mpic_core.mpic_coordinator.domain.mpic_response import MpicResponse, AnnotatedMpicResponse
+from open_mpic_core.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
 
 
 # noinspection PyMethodMayBeStatic

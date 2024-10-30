@@ -1,10 +1,10 @@
 import json
 import pytest
-from aws_lambda_python.common_domain.check_response import CaaCheckResponse, DcvCheckResponse, CaaCheckResponseDetails, DcvCheckResponseDetails
-from aws_lambda_python.common_domain.enum.check_type import CheckType
-from aws_lambda_python.mpic_coordinator.domain.mpic_response import BaseMpicResponse, AnnotatedMpicResponse, \
+from open_mpic_core.common_domain.check_response import CaaCheckResponse, DcvCheckResponse, CaaCheckResponseDetails, DcvCheckResponseDetails
+from open_mpic_core.common_domain.enum.check_type import CheckType
+from open_mpic_core.mpic_coordinator.domain.mpic_response import BaseMpicResponse, AnnotatedMpicResponse, \
     MpicDcvResponse
-from aws_lambda_python.mpic_coordinator.mpic_response_builder import MpicResponseBuilder
+from open_mpic_core.mpic_coordinator.mpic_response_builder import MpicResponseBuilder
 from pydantic import TypeAdapter
 
 from valid_mpic_request_creator import ValidMpicRequestCreator
