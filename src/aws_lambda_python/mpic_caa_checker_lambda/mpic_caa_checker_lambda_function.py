@@ -1,16 +1,14 @@
 from aws_lambda_python.common_domain.remote_perspective import RemotePerspective
-from aws_lambda_python.mpic_caa_checker.mpic_caa_checker import MpicCaaChecker, MpicCaaCheckerConfiguration
+from aws_lambda_python.mpic_caa_checker.mpic_caa_checker import MpicCaaChecker
 import os
 import json
 
 
 class MpicCaaCheckerLambdaHandler:
     def __init__(self):
-        self.perspective_identity = RemotePerspective.from_rir_code(os.environ['rir_region'] + "." + os.environ['AWS_REGION'])
+        self.perspective = RemotePerspective.from_rir_code(os.environ['rir_region'] + "." + os.environ['AWS_REGION'])
         self.default_caa_domain_list = os.environ['default_caa_domains'].split("|")
-        self.caa_checker_configuration = MpicCaaCheckerConfiguration(self.default_caa_domain_list, self.perspective_identity)
-        # TODO don't use a configuration object... just pass the parameters directly to the constructor
-        self.caa_checker = MpicCaaChecker(self.caa_checker_configuration)
+        self.caa_checker = MpicCaaChecker(self.default_caa_domain_list, self.perspective)
 
     def process_invocation(self, event):
         # Lambda seems to allow object transports. To make the code more generic for additional channels we only assume the transport is a string.

@@ -30,7 +30,7 @@ class TestDcvCheckerLambda:
         }
         mocker.patch('aws_lambda_python.mpic_dcv_checker.mpic_dcv_checker.MpicDcvChecker.check_dcv', return_value=mock_return_value)
         dcv_check_request = ValidCheckCreator.create_valid_http_check_request()
-        event = dcv_check_request.model_dump_json() # TODO go back to using an object rather than a serialized string
+        event = dcv_check_request.model_dump_json()  # TODO go back to using an object rather than a serialized string
         result = mpic_dcv_checker_lambda_function.lambda_handler(event, None)
         assert result == mock_return_value
 
@@ -39,6 +39,7 @@ class TestDcvCheckerLambda:
         return DcvCheckResponse(perspective='arin.us-east-1', check_passed=True,
                                 details=DcvCheckResponseDetails(),
                                 timestamp_ns=time.time_ns())
+
 
 if __name__ == '__main__':
     pytest.main()

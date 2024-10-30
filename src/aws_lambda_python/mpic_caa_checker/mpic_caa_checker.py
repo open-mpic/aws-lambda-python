@@ -21,17 +21,10 @@ class MpicCaaLookupException(Exception):  # This is a python exception type used
     pass
 
 
-# TODO don't need this.. extra layer of indirection without enough value; just use params in MpicCaaChecker constructor
-class MpicCaaCheckerConfiguration:
-    def __init__(self, default_caa_domain_list: list[str], perspective_identity: RemotePerspective):
-        self.default_caa_domain_list = default_caa_domain_list
-        self.perspective_identity = perspective_identity
-
-
 class MpicCaaChecker:
-    def __init__(self, mpic_caa_checker_configuration: MpicCaaCheckerConfiguration):
-        self.default_caa_domain_list = mpic_caa_checker_configuration.default_caa_domain_list
-        self.perspective_identity = mpic_caa_checker_configuration.perspective_identity
+    def __init__(self, default_caa_domain_list: list[str], perspective: RemotePerspective):
+        self.default_caa_domain_list = default_caa_domain_list
+        self.perspective = perspective
 
     @staticmethod
     def does_value_list_permit_issuance(value_list: list, caa_domains):
@@ -127,19 +120,19 @@ class MpicCaaChecker:
             caa_lookup_error = True
 
         if caa_lookup_error:
-            response = CaaCheckResponse(perspective=self.perspective_identity.to_rir_code(), check_passed=False,
+            response = CaaCheckResponse(perspective=self.perspective.to_rir_code(), check_passed=False,
                                         errors=[ValidationError(error_type=ErrorMessages.CAA_LOOKUP_ERROR.key, error_message=ErrorMessages.CAA_LOOKUP_ERROR.message)],
                                         details=CaaCheckResponseDetails(caa_record_present=False),  # Possibly should change to present=None to indicate the lookup failed.
                                         timestamp_ns=time.time_ns())
             result['body'] = json.dumps(response.model_dump())
         elif not caa_found:  # if domain has no CAA records: valid for issuance
-            response = CaaCheckResponse(perspective=self.perspective_identity.to_rir_code(), check_passed=True,
+            response = CaaCheckResponse(perspective=self.perspective.to_rir_code(), check_passed=True,
                                         details=CaaCheckResponseDetails(caa_record_present=False),
                                         timestamp_ns=time.time_ns())
             result['body'] = json.dumps(response.model_dump())
         else:
             valid_for_issuance = MpicCaaChecker.is_valid_for_issuance(caa_domains, is_wc_domain, rrset)
-            response = CaaCheckResponse(perspective=self.perspective_identity.to_rir_code(), check_passed=valid_for_issuance,
+            response = CaaCheckResponse(perspective=self.perspective.to_rir_code(), check_passed=valid_for_issuance,
                                         details=CaaCheckResponseDetails(caa_record_present=True,
                                                                         found_at=domain.to_text(omit_final_dot=True),
                                                                         response=rrset.to_text()),

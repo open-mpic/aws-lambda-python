@@ -30,7 +30,7 @@ class TestCaaCheckerLambda:
         }
         mocker.patch('aws_lambda_python.mpic_caa_checker.mpic_caa_checker.MpicCaaChecker.check_caa', return_value=mock_return_value)
         caa_check_request = ValidCheckCreator.create_valid_caa_check_request()
-        event = caa_check_request.model_dump_json() # TODO go back to using an object rather than a serialized string
+        event = caa_check_request.model_dump_json()  # TODO go back to using an object rather than a serialized string
         result = mpic_caa_checker_lambda_function.lambda_handler(event, None)
         assert result == mock_return_value
 

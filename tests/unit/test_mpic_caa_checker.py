@@ -9,7 +9,7 @@ from aws_lambda_python.common_domain.enum.certificate_type import CertificateTyp
 from aws_lambda_python.common_domain.remote_perspective import RemotePerspective
 from aws_lambda_python.common_domain.validation_error import ValidationError
 from aws_lambda_python.common_domain.messages.ErrorMessages import ErrorMessages
-from aws_lambda_python.mpic_caa_checker.mpic_caa_checker import MpicCaaChecker, MpicCaaCheckerConfiguration
+from aws_lambda_python.mpic_caa_checker.mpic_caa_checker import MpicCaaChecker
 from dns.rrset import RRset
 
 from mock_dns_object_creator import MockDnsObjectCreator
@@ -30,15 +30,16 @@ class TestMpicCaaChecker:
                 class_scoped_monkeypatch.setenv(k, v)
             yield class_scoped_monkeypatch  # restore the environment afterward
 
-    def create_caa_checker_configuration(self):
-        return MpicCaaCheckerConfiguration(["ca1.com", "ca2.net", "ca3.org"], RemotePerspective.from_rir_code("arin.us-east-4"))
+    @staticmethod
+    def create_configured_caa_checker():
+        return MpicCaaChecker(["ca1.com", "ca2.net", "ca3.org"], RemotePerspective.from_rir_code("arin.us-east-4"))
 
     # integration test of a sort -- only mocking dns methods rather than remaining class methods
     def check_caa__should_return_200_and_allow_issuance_given_no_caa_records_found(self, set_env_variables, mocker):
         mocker.patch('dns.resolver.resolve', side_effect=lambda domain_name, rdtype: exec('raise(dns.resolver.NoAnswer)'))
         caa_request = CaaCheckRequest(domain_or_ip_target='example.com',
                                       caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['ca111.com']))
-        caa_checker = MpicCaaChecker(self.create_caa_checker_configuration())
+        caa_checker = TestMpicCaaChecker.create_configured_caa_checker()
         result = caa_checker.check_caa(json.dumps(caa_request.model_dump()))
         assert result['statusCode'] == 200
         check_response_details = CaaCheckResponseDetails(caa_record_present=False)
@@ -54,7 +55,7 @@ class TestMpicCaaChecker:
                                       caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER,
                                                                               caa_domains=['ca111.com']))
 
-        caa_checker = MpicCaaChecker(self.create_caa_checker_configuration())
+        caa_checker = TestMpicCaaChecker.create_configured_caa_checker()
         result = caa_checker.check_caa(json.dumps(caa_request.model_dump()))
         assert result['statusCode'] == 200
         check_response_details = CaaCheckResponseDetails(caa_record_present=True, found_at='example.com', response=test_dns_query_answer.rrset.to_text())
@@ -70,7 +71,7 @@ class TestMpicCaaChecker:
                                       caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER,
                                                                               caa_domains=['ca111.com']))
 
-        caa_checker = MpicCaaChecker(self.create_caa_checker_configuration())
+        caa_checker = TestMpicCaaChecker.create_configured_caa_checker()
         result = caa_checker.check_caa(json.dumps(caa_request.model_dump()))
         assert result['statusCode'] == 200
         check_response_details = CaaCheckResponseDetails(caa_record_present=True, found_at='example.com', response=test_dns_query_answer.rrset.to_text())
@@ -86,7 +87,7 @@ class TestMpicCaaChecker:
                                       caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER,
                                                                               caa_domains=['ca111.com']))
 
-        caa_checker = MpicCaaChecker(self.create_caa_checker_configuration())
+        caa_checker = TestMpicCaaChecker.create_configured_caa_checker()
         result = caa_checker.check_caa(json.dumps(caa_request.model_dump()))
         assert result['statusCode'] == 200
         check_response_details = CaaCheckResponseDetails(caa_record_present=True, found_at='example.com',
@@ -100,7 +101,7 @@ class TestMpicCaaChecker:
             (_ for _ in ()).throw(dns.resolver.NoAnswer)
         ))
         caa_request = CaaCheckRequest(domain_or_ip_target='example.com')
-        caa_checker = MpicCaaChecker(self.create_caa_checker_configuration())
+        caa_checker = TestMpicCaaChecker.create_configured_caa_checker()
         result = caa_checker.check_caa(json.dumps(caa_request.model_dump()))
         assert result['statusCode'] == 200
         check_response_details = CaaCheckResponseDetails(caa_record_present=True, found_at='example.com', response=test_dns_query_answer.rrset.to_text())
@@ -110,7 +111,7 @@ class TestMpicCaaChecker:
         mocker.patch('dns.resolver.resolve', side_effect=lambda domain_name, rdtype: self.raise_(dns.resolver.NoAnswer))
         caa_request = CaaCheckRequest(domain_or_ip_target='example.com', caa_check_parameters=CaaCheckParameters(
                                           certificate_type=CertificateType.TLS_SERVER, caa_domains=['ca111.com']))
-        caa_checker = MpicCaaChecker(self.create_caa_checker_configuration())
+        caa_checker = TestMpicCaaChecker.create_configured_caa_checker()
         result = caa_checker.check_caa(json.dumps(caa_request.model_dump()))
         assert result['statusCode'] == 200
         result_body = json.loads(result['body'])
@@ -121,7 +122,7 @@ class TestMpicCaaChecker:
         mocker.patch('dns.resolver.resolve', side_effect=lambda domain_name, rdtype: self.raise_(dns.resolver.NoNameservers))
         caa_request = CaaCheckRequest(domain_or_ip_target='example.com', caa_check_parameters=CaaCheckParameters(
                                           certificate_type=CertificateType.TLS_SERVER, caa_domains=['ca111.com']))
-        caa_checker = MpicCaaChecker(self.create_caa_checker_configuration())
+        caa_checker = TestMpicCaaChecker.create_configured_caa_checker()
         result = caa_checker.check_caa(json.dumps(caa_request.model_dump()))
         assert result['statusCode'] == 200
         check_response_details = CaaCheckResponseDetails(caa_record_present=False)
@@ -135,7 +136,7 @@ class TestMpicCaaChecker:
             test_dns_query_answer if domain_name.to_text() == 'example.com.' else self.raise_(dns.resolver.NoAnswer)
         ))
         caa_request = CaaCheckRequest(domain_or_ip_target='example.com', certificate_type=None, caa_domains=None)
-        caa_checker = MpicCaaChecker(self.create_caa_checker_configuration())
+        caa_checker = TestMpicCaaChecker.create_configured_caa_checker()
         answer_rrset, domain = caa_checker.find_caa_record_and_domain(caa_request)
         assert isinstance(answer_rrset, RRset)
         assert isinstance(domain, dns.name.Name) and domain.to_text() == 'example.com.'
@@ -146,7 +147,7 @@ class TestMpicCaaChecker:
             test_dns_query_answer if domain_name.to_text() == 'example.com.' else self.raise_(dns.resolver.NoAnswer)
         ))
         caa_request = CaaCheckRequest(domain_or_ip_target='www.example.com', certificate_type=None, caa_domains=None)
-        caa_checker = MpicCaaChecker(self.create_caa_checker_configuration())
+        caa_checker = TestMpicCaaChecker.create_configured_caa_checker()
         answer_rrset, domain = caa_checker.find_caa_record_and_domain(caa_request)
         assert isinstance(answer_rrset, RRset)
         assert isinstance(domain, dns.name.Name) and domain.to_text() == 'example.com.'
@@ -157,7 +158,7 @@ class TestMpicCaaChecker:
             test_dns_query_answer if domain_name.to_text() == 'example.org.' else self.raise_(dns.resolver.NoAnswer)
         ))
         caa_request = CaaCheckRequest(domain_or_ip_target='example.com', certificate_type=None, caa_domains=None)
-        caa_checker = MpicCaaChecker(self.create_caa_checker_configuration())
+        caa_checker = TestMpicCaaChecker.create_configured_caa_checker()
         answer_rrset, domain = caa_checker.find_caa_record_and_domain(caa_request)
         assert answer_rrset is None
         assert isinstance(domain, dns.name.Name) and domain.to_text() == '.'  # try everything up to root domain
