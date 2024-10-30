@@ -10,7 +10,7 @@ from aws_lambda_python.common_domain.remote_perspective import RemotePerspective
 from aws_lambda_python.mpic_coordinator_lambda.mpic_coordinator_lambda_function import MpicCoordinatorLambdaHandler
 from botocore.response import StreamingBody
 
-from valid_check_creator import ValidCheckCreator
+from unit.valid_check_creator import ValidCheckCreator
 
 
 class TestMpicCoordinatorLambda:

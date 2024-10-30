@@ -81,7 +81,7 @@ randomize = true
 
 [tool.pytest.ini_options]
 pythonpath = [
-    "src","."  # need root directory because it has some python utility files we are importing for integration tests
+    "src", "tests", "." # need root directory because it has some python utility files we are importing for integration tests
 ]
 testpaths = [
     "tests/unit"
