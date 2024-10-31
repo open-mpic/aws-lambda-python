@@ -5,7 +5,7 @@ from open_mpic_core.common_domain.check_response import DcvCheckResponse, DcvChe
 from open_mpic_core.common_domain.enum.dcv_validation_method import DcvValidationMethod
 from open_mpic_core.common_domain.enum.dns_record_type import DnsRecordType
 from open_mpic_core.common_domain.remote_perspective import RemotePerspective
-from open_mpic_core.common_domain.validation_error import ValidationError
+from open_mpic_core.common_domain.validation_error import MpicValidationError
 from open_mpic_core.mpic_dcv_checker.mpic_dcv_checker import MpicDcvChecker
 
 from unit.test_util.mock_dns_object_creator import MockDnsObjectCreator
@@ -62,7 +62,7 @@ class TestMpicDcvChecker:
         dcv_checker = TestMpicDcvChecker.create_configured_dcv_checker()
         dcv_response = dcv_checker.perform_http_validation(dcv_request)
         assert dcv_response.timestamp_ns is not None
-        errors = [ValidationError(error_type='404', error_message='Not Found')]
+        errors = [MpicValidationError(error_type='404', error_message='Not Found')]
         assert self.is_result_as_expected(dcv_response, False, DcvCheckResponseDetails(), errors)
 
     @pytest.mark.parametrize('record_type', [DnsRecordType.TXT, DnsRecordType.CNAME])
@@ -80,7 +80,7 @@ class TestMpicDcvChecker:
         mocker.patch('dns.resolver.resolve', side_effect=lambda domain_name, rdtype: self.raise_(no_answer_error))
         dcv_checker = TestMpicDcvChecker.create_configured_dcv_checker()
         dcv_response = dcv_checker.perform_dns_validation(dcv_request)
-        errors = [ValidationError(error_type=no_answer_error.__class__.__name__, error_message=no_answer_error.msg)]
+        errors = [MpicValidationError(error_type=no_answer_error.__class__.__name__, error_message=no_answer_error.msg)]
         assert self.is_result_as_expected(dcv_response, False, DcvCheckResponseDetails(), errors)
 
     def raise_(self, ex):

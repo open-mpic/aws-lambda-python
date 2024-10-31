@@ -8,7 +8,7 @@ from dns.rrset import RRset
 from open_mpic_core.common_domain.remote_perspective import RemotePerspective
 from open_mpic_core.common_domain.check_request import CaaCheckRequest
 from open_mpic_core.common_domain.check_response import CaaCheckResponse, CaaCheckResponseDetails
-from open_mpic_core.common_domain.validation_error import ValidationError
+from open_mpic_core.common_domain.validation_error import MpicValidationError
 from open_mpic_core.common_domain.enum.certificate_type import CertificateType
 from open_mpic_core.common_domain.messages.ErrorMessages import ErrorMessages
 
@@ -112,7 +112,7 @@ class MpicCaaChecker:
 
         if caa_lookup_error:
             response = CaaCheckResponse(perspective=self.perspective.to_rir_code(), check_passed=False,
-                                        errors=[ValidationError(error_type=ErrorMessages.CAA_LOOKUP_ERROR.key, error_message=ErrorMessages.CAA_LOOKUP_ERROR.message)],
+                                        errors=[MpicValidationError(error_type=ErrorMessages.CAA_LOOKUP_ERROR.key, error_message=ErrorMessages.CAA_LOOKUP_ERROR.message)],
                                         details=CaaCheckResponseDetails(caa_record_present=False),  # Possibly should change to present=None to indicate the lookup failed.
                                         timestamp_ns=time.time_ns())
         elif not caa_found:  # if domain has no CAA records: valid for issuance

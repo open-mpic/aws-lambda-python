@@ -37,5 +37,4 @@ class MpicDcvWithCaaRequest(MpicDcvRequest):  # inherits from MpicDcvRequest rat
     caa_check_parameters: CaaCheckParameters | None = None
 
 
-MpicRequest = Union[MpicCaaRequest, MpicDcvRequest, MpicDcvWithCaaRequest]
-AnnotatedMpicRequest = Annotated[MpicRequest, Field(discriminator='check_type')]
+MpicRequest = Annotated[Union[MpicCaaRequest, MpicDcvRequest, MpicDcvWithCaaRequest], Field(discriminator='check_type')]

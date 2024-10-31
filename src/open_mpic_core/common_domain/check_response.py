@@ -1,6 +1,6 @@
 from typing import Union, Literal
 
-from open_mpic_core.common_domain.validation_error import ValidationError
+from open_mpic_core.common_domain.validation_error import MpicValidationError
 from open_mpic_core.common_domain.enum.check_type import CheckType
 from pydantic import BaseModel, Field
 from typing_extensions import Annotated
@@ -9,7 +9,7 @@ from typing_extensions import Annotated
 class BaseCheckResponse(BaseModel):
     perspective: str  # TODO should probably rename this to perspective_identifier or something (API change)
     check_passed: bool = False
-    errors: list[ValidationError] | None = None
+    errors: list[MpicValidationError] | None = None
     timestamp_ns: int | None = None  # TODO what do we name this field?
 
 
@@ -35,5 +35,4 @@ class DcvCheckResponse(BaseCheckResponse):
     details: DcvCheckResponseDetails
 
 
-CheckResponse = Union[CaaCheckResponse, DcvCheckResponse]
-AnnotatedCheckResponse = Annotated[CheckResponse, Field(discriminator='check_type')]
+CheckResponse = Annotated[Union[CaaCheckResponse, DcvCheckResponse], Field(discriminator='check_type')]

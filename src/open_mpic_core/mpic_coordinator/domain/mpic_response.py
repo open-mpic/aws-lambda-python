@@ -39,5 +39,4 @@ class MpicDcvWithCaaResponse(BaseMpicResponse):
     is_valid_caa: bool | None = False
 
 
-MpicResponse = Union[MpicCaaResponse, MpicDcvResponse, MpicDcvWithCaaResponse]
-AnnotatedMpicResponse = Annotated[MpicResponse, Field(discriminator='check_type')]
+MpicResponse = Annotated[Union[MpicCaaResponse, MpicDcvResponse, MpicDcvWithCaaResponse], Field(discriminator='check_type')]

@@ -3,7 +3,7 @@ import pytest
 
 import aws_lambda_mpic.mpic_dcv_checker_lambda.mpic_dcv_checker_lambda_function as mpic_dcv_checker_lambda_function
 from open_mpic_core.common_domain.check_response import DcvCheckResponse, DcvCheckResponseDetails
-from open_mpic_core.common_domain.validation_error import ValidationError
+from open_mpic_core.common_domain.validation_error import MpicValidationError
 from unit.test_util.valid_check_creator import ValidCheckCreator
 
 
@@ -42,7 +42,7 @@ class TestDcvCheckerLambda:
             self, error_type: str, error_message: str, expected_status_code: int, set_env_variables, mocker):
         mock_dcv_response = TestDcvCheckerLambda.create_dcv_check_response()
         mock_dcv_response.check_passed = False
-        mock_dcv_response.errors = [(ValidationError(error_type=error_type, error_message=error_message))]
+        mock_dcv_response.errors = [(MpicValidationError(error_type=error_type, error_message=error_message))]
         mock_return_value = {
             'statusCode': expected_status_code,
             'headers': {'Content-Type': 'application/json'},

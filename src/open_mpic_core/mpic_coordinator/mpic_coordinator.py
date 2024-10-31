@@ -6,23 +6,22 @@ import time
 import concurrent.futures
 from datetime import datetime
 import hashlib
-import pydantic
 
-from open_mpic_core.common_domain.check_response import CheckResponse, AnnotatedCheckResponse, CaaCheckResponse, \
+from open_mpic_core.common_domain.check_response import CaaCheckResponse, \
     CaaCheckResponseDetails, DcvCheckResponse, DcvCheckResponseDetails
 from open_mpic_core.common_domain.check_request import CaaCheckRequest, DcvCheckRequest
-from open_mpic_core.common_domain.validation_error import ValidationError
+from open_mpic_core.common_domain.validation_error import MpicValidationError
 from open_mpic_core.common_domain.enum.check_type import CheckType
 from open_mpic_core.common_domain.messages.ErrorMessages import ErrorMessages
 from open_mpic_core.mpic_coordinator.cohort_creator import CohortCreator
-from open_mpic_core.mpic_coordinator.domain.mpic_request import MpicCaaRequest, MpicRequest, AnnotatedMpicRequest
+from open_mpic_core.mpic_coordinator.domain.mpic_request import MpicCaaRequest, MpicRequest
 from open_mpic_core.mpic_coordinator.domain.mpic_request import MpicDcvRequest, MpicDcvWithCaaRequest
+from open_mpic_core.mpic_coordinator.domain.mpic_request_validation_error import MpicRequestValidationError
 from open_mpic_core.mpic_coordinator.domain.remote_check_call_configuration import RemoteCheckCallConfiguration
 from open_mpic_core.common_domain.remote_perspective import RemotePerspective
 from open_mpic_core.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
 from open_mpic_core.mpic_coordinator.mpic_request_validator import MpicRequestValidator
 from open_mpic_core.mpic_coordinator.mpic_response_builder import MpicResponseBuilder
-from pydantic import TypeAdapter
 
 
 class MpicCoordinatorConfiguration:
@@ -46,15 +45,14 @@ class MpicCoordinator:
         # TODO fix config.yaml to use snake_case for keys
         self.call_remote_perspective_function = call_remote_perspective_function
         
-        
-    def coordinate_mpic(self, mpic_request: TypeAdapter[MpicRequest]):
-
-
+    def coordinate_mpic(self, mpic_request: MpicRequest):
         is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(mpic_request, self.known_perspectives)
 
         if not is_request_valid:
-            return MpicCoordinator.build_400_response(MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key,
-                                                      [vars(issue) for issue in validation_issues])
+            error = MpicRequestValidationError(MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key)
+            validation_issues_as_string = json.dumps([vars(issue) for issue in validation_issues])
+            error.add_note(validation_issues_as_string)
+            raise error
 
         orchestration_parameters = mpic_request.orchestration_parameters
 
@@ -174,7 +172,7 @@ class MpicCoordinator:
                 if check_type not in perspective_responses_per_check_type:
                     perspective_responses_per_check_type[check_type] = []
                 try:
-                    check_response = future.result() # expecting a CheckResponse object
+                    check_response = future.result()  # expecting a CheckResponse object
                     validity_per_perspective_per_check_type[check_type][perspective.to_rir_code()] |= check_response.check_passed
                     # TODO make sure responses per perspective match API spec...
                     perspective_responses_per_check_type[check_type].append(check_response)
@@ -185,8 +183,8 @@ class MpicCoordinator:
                             check_error_response = CaaCheckResponse(
                                 perspective=perspective.to_rir_code(),
                                 check_passed=False,
-                                errors=[ValidationError(error_type=ErrorMessages.COORDINATOR_COMMUNICATION_ERROR.key,
-                                                        error_message=ErrorMessages.COORDINATOR_COMMUNICATION_ERROR.message)],
+                                errors=[MpicValidationError(error_type=ErrorMessages.COORDINATOR_COMMUNICATION_ERROR.key,
+                                                            error_message=ErrorMessages.COORDINATOR_COMMUNICATION_ERROR.message)],
                                 details=CaaCheckResponseDetails(caa_record_present=False),  # TODO Possibly should None to indicate the lookup failed.
                                 timestamp_ns=time.time_ns()
                             )
@@ -194,8 +192,8 @@ class MpicCoordinator:
                             check_error_response = DcvCheckResponse(
                                 perspective=perspective.to_rir_code(),
                                 check_passed=False,
-                                errors=[ValidationError(error_type=ErrorMessages.COORDINATOR_COMMUNICATION_ERROR.key,
-                                                        error_message=ErrorMessages.COORDINATOR_COMMUNICATION_ERROR.message)],
+                                errors=[MpicValidationError(error_type=ErrorMessages.COORDINATOR_COMMUNICATION_ERROR.key,
+                                                            error_message=ErrorMessages.COORDINATOR_COMMUNICATION_ERROR.message)],
                                 details=DcvCheckResponseDetails(),  # TODO what should go here in this case?
                                 timestamp_ns=time.time_ns()
                             )
@@ -205,6 +203,7 @@ class MpicCoordinator:
 
     @staticmethod
     def build_400_response(error_name, issues_list):
+        # FIXME don't wrap it here, do that in the lambda
         return {
             'statusCode': 400,
             'headers': {'Content-Type': 'application/json'},

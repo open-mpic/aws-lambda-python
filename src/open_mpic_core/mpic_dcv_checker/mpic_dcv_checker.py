@@ -6,7 +6,7 @@ from open_mpic_core.common_domain.check_request import DcvCheckRequest
 from open_mpic_core.common_domain.check_response import DcvCheckResponse, DcvCheckResponseDetails
 from open_mpic_core.common_domain.enum.dcv_validation_method import DcvValidationMethod
 from open_mpic_core.common_domain.remote_perspective import RemotePerspective
-from open_mpic_core.common_domain.validation_error import ValidationError
+from open_mpic_core.common_domain.validation_error import MpicValidationError
 
 
 # noinspection PyUnusedLocal
@@ -42,7 +42,7 @@ class MpicDcvChecker:
                 perspective=self.perspective.to_rir_code(),
                 check_passed=False,
                 timestamp_ns=time.time_ns(),
-                errors=[ValidationError(error_type=str(response.status_code), error_message=response.reason)],
+                errors=[MpicValidationError(error_type=str(response.status_code), error_message=response.reason)],
                 details=DcvCheckResponseDetails()
             )
 
@@ -86,7 +86,7 @@ class MpicDcvChecker:
                 perspective=self.perspective.to_rir_code(),
                 check_passed=False,
                 timestamp_ns=time.time_ns(),
-                errors=[ValidationError(error_type=e.__class__.__name__, error_message=e.msg)],
+                errors=[MpicValidationError(error_type=e.__class__.__name__, error_message=e.msg)],
                 details=DcvCheckResponseDetails()
             )
             return dcv_check_response

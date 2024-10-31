@@ -13,7 +13,7 @@ from open_mpic_core.mpic_coordinator.domain.mpic_orchestration_parameters import
 from open_mpic_core.mpic_coordinator.domain.enum.request_path import RequestPath
 
 import testing_api_client
-from open_mpic_core.mpic_coordinator.domain.mpic_response import MpicResponse, AnnotatedMpicResponse
+from open_mpic_core.mpic_coordinator.domain.mpic_response import MpicResponse
 from open_mpic_core.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
 
 
@@ -22,7 +22,7 @@ from open_mpic_core.mpic_coordinator.messages.mpic_request_validation_messages i
 class TestDeployedMpicApi:
     @classmethod
     def setup_class(cls):
-        cls.mpic_response_adapter: TypeAdapter[MpicResponse] = TypeAdapter(AnnotatedMpicResponse)
+        cls.mpic_response_adapter = TypeAdapter(MpicResponse)
 
     @pytest.fixture(scope='class')
     def api_client(self):

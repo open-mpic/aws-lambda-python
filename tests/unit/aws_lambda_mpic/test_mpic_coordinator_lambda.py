@@ -1,12 +1,19 @@
 import io
 import json
+from datetime import datetime
 
 import pytest
+from aws_lambda_powertools.utilities.parser.envelopes import ApiGatewayEnvelope
+from aws_lambda_powertools.utilities.parser.models import APIGatewayProxyEventModel, APIGatewayEventRequestContext, \
+    APIGatewayEventIdentity
+from boto3 import resource
+from pydantic import ValidationError
 
 from open_mpic_core.common_domain.check_request import DcvCheckRequest
 from open_mpic_core.common_domain.check_response import DcvCheckResponse, DcvCheckResponseDetails
 from open_mpic_core.common_domain.enum.check_type import CheckType
 from open_mpic_core.common_domain.remote_perspective import RemotePerspective
+from open_mpic_core.common_domain.validation_error import MpicValidationError
 from open_mpic_core.mpic_coordinator.domain.enum.request_path import RequestPath
 from open_mpic_core.mpic_coordinator.domain.mpic_orchestration_parameters import MpicEffectiveOrchestrationParameters
 from open_mpic_core.mpic_coordinator.domain.mpic_response import MpicCaaResponse
@@ -35,48 +42,64 @@ class TestMpicCoordinatorLambda:
                 class_scoped_monkeypatch.setenv(k, v)
             yield class_scoped_monkeypatch  # restore the environment afterward
 
-    def call_remote_perspective__should_make_aws_lambda_call_with_provided_arguments_and_return_check_response_as_json(self, set_env_variables, mocker):
+    def call_remote_perspective__should_make_aws_lambda_call_with_provided_arguments_and_return_check_response(self, set_env_variables, mocker):
         mocker.patch('botocore.client.BaseClient._make_api_call', side_effect=self.create_successful_boto3_api_call_response_for_dcv_check)
         dcv_check_request = ValidCheckCreator.create_valid_dns_check_request()
         mpic_coordinator_lambda_handler = MpicCoordinatorLambdaHandler()
         check_response = mpic_coordinator_lambda_handler.call_remote_perspective(RemotePerspective(code='us-west-1', rir='arin'),
-                                                                                   CheckType.DCV,
-                                                                                   dcv_check_request)  # TODO fix to be object
+                                                                                 CheckType.DCV,
+                                                                                 dcv_check_request)
         assert check_response.check_passed is True
         # hijacking the value of 'perspective' to verify that the right arguments got passed to the call
         assert check_response.perspective == dcv_check_request.domain_or_ip_target
 
-    def call_remote_perspective__should_return_error_response_as_json(self, set_env_variables, mocker):
-        mocker.patch('botocore.client.BaseClient._make_api_call', side_effect=self.create_error_boto3_api_call_response)
-        dcv_check_request = ValidCheckCreator.create_valid_dns_check_request()
-        mpic_coordinator_lambda_handler = MpicCoordinatorLambdaHandler()
-        with pytest.raises(Exception) as ex:
-            response = mpic_coordinator_lambda_handler.call_remote_perspective(RemotePerspective(code='us-west-1', rir='arin'),
-                                                                                   CheckType.DCV,
-                                                                                   dcv_check_request)
-        
+    # noinspection PyMethodMayBeStatic
+    def lambda_handler__should_return_error_given_invalid_request_body(self):
+        request = ValidMpicRequestCreator.create_valid_dcv_mpic_request()
+        request.domain_or_ip_target = None
+        api_request = TestMpicCoordinatorLambda.create_api_gateway_request()
+        api_request.body = request.model_dump_json()
+        with pytest.raises(ValidationError) as validation_error:
+            mpic_coordinator_lambda_function.lambda_handler(api_request, None)
+            assert validation_error.value.errors() == [{'loc': ('body',), 'msg': 'field required', 'type': 'value_error.missing'}]
 
     # noinspection PyMethodMayBeStatic
-    def process_invocation__should_return_400_response_given_invalid_request_path(self, set_env_variables):
-        event = {'path': 'invalid_path'}
-        mpic_coordinator_lambda_handler = MpicCoordinatorLambdaHandler()
-        response = mpic_coordinator_lambda_handler.process_invocation(event)
-        assert response['statusCode'] == 400
+    def lambda_handler__should_return_error_given_invalid_check_type(self):
+        request = ValidMpicRequestCreator.create_valid_dcv_mpic_request()
+        request.check_type = 'invalid_check_type'
+        api_request = TestMpicCoordinatorLambda.create_api_gateway_request()
+        api_request.body = request.model_dump_json()
+        with pytest.raises(ValidationError) as validation_error:
+            mpic_coordinator_lambda_function.lambda_handler(api_request, None)
+            assert validation_error.value.errors() == [
+                {'loc': ('body', 'check_type'),
+                 'msg': 'value is not a valid enumeration member; permitted: \'DCV\', \'CAA\'', 'type': 'type_error.enum'}
+            ]
+
+    # noinspection PyMethodMayBeStatic
+    def lambda_handler__should_return_500_error_given_logically_invalid_request(self):
+        request = ValidMpicRequestCreator.create_valid_dcv_mpic_request()
+        request.orchestration_parameters.perspective_count = 1
+        api_request = TestMpicCoordinatorLambda.create_api_gateway_request()
+        api_request.body = request.model_dump_json()
+        result = mpic_coordinator_lambda_function.lambda_handler(api_request, None)
+        assert result['statusCode'] == 500
 
     # noinspection PyMethodMayBeStatic
     def lambda_handler__should_coordinate_mpic_using_configured_mpic_coordinator(self, set_env_variables, mocker):
-        mock_return_value = {
-            'statusCode': 200,  # note: must be snakeCase
-            'headers': {'Content-Type': 'application/json'},
-            'body': TestMpicCoordinatorLambda.create_caa_mpic_response().model_dump_json()
-        }
-
+        mpic_request = ValidMpicRequestCreator.create_valid_mpic_request(CheckType.CAA)
+        api_request = TestMpicCoordinatorLambda.create_api_gateway_request()
+        api_request.body = mpic_request.model_dump_json()
+        mock_return_value = TestMpicCoordinatorLambda.create_caa_mpic_response()
         mocker.patch('open_mpic_core.mpic_coordinator.mpic_coordinator.MpicCoordinator.coordinate_mpic',
                      return_value=mock_return_value)
-        mpic_request = ValidMpicRequestCreator.create_valid_mpic_request(CheckType.CAA)
-        event = {'path': RequestPath.MPIC, 'body': mpic_request.model_dump_json()}
-        result = mpic_coordinator_lambda_function.lambda_handler(event, None)
-        assert result == mock_return_value
+        expected_response = {
+            'statusCode': 200,
+            'headers': {'Content-Type': 'application/json'},
+            'body': mock_return_value.model_dump_json()
+        }
+        result = mpic_coordinator_lambda_function.lambda_handler(api_request, None)
+        assert result == expected_response
 
     # noinspection PyUnusedLocal, PyMethodMayBeStatic
     def create_successful_boto3_api_call_response_for_dcv_check(self, lambda_method, lambda_configuration):
@@ -112,6 +135,22 @@ class TestMpicCoordinatorLambda:
             perspectives=[],
             caa_check_parameters=caa_request.caa_check_parameters
         )
+
+    @staticmethod
+    def create_api_gateway_request():
+        request = APIGatewayProxyEventModel(
+            resource='whatever', path='/mpic',
+            httpMethod='POST', headers={'Content-Type': 'application/json'}, multiValueHeaders={},
+            requestContext=APIGatewayEventRequestContext(
+                accountId='whatever', apiId='whatever', stage='whatever', protocol='whatever',
+                identity=APIGatewayEventIdentity(
+                    sourceIp='test-invoke-source-ip'
+                ),
+                requestId='whatever', requestTime='whatever', requestTimeEpoch=datetime.now(),
+                resourcePath='whatever', httpMethod='POST', path='/mpic'
+            ),
+        )
+        return request
 
 
 if __name__ == '__main__':

@@ -5,7 +5,7 @@ from open_mpic_core.common_domain.check_request import CaaCheckRequest
 from open_mpic_core.common_domain.check_response import CaaCheckResponse, CaaCheckResponseDetails
 from open_mpic_core.common_domain.enum.certificate_type import CertificateType
 from open_mpic_core.common_domain.remote_perspective import RemotePerspective
-from open_mpic_core.common_domain.validation_error import ValidationError
+from open_mpic_core.common_domain.validation_error import MpicValidationError
 from open_mpic_core.common_domain.messages.ErrorMessages import ErrorMessages
 from open_mpic_core.mpic_caa_checker.mpic_caa_checker import MpicCaaChecker
 from dns.rrset import RRset
@@ -113,7 +113,7 @@ class TestMpicCaaChecker:
         caa_checker = TestMpicCaaChecker.create_configured_caa_checker()
         caa_response = caa_checker.check_caa(caa_request)
         check_response_details = CaaCheckResponseDetails(caa_record_present=False)
-        errors = [ValidationError(error_type=ErrorMessages.CAA_LOOKUP_ERROR.key, error_message=ErrorMessages.CAA_LOOKUP_ERROR.message)]
+        errors = [MpicValidationError(error_type=ErrorMessages.CAA_LOOKUP_ERROR.key, error_message=ErrorMessages.CAA_LOOKUP_ERROR.message)]
         assert self.is_result_as_expected(caa_response, False, check_response_details, errors) is True
 
     def find_caa_record_and_domain__should_return_rrset_and_domain_given_domain_with_caa_record(self, set_env_variables, mocker):
