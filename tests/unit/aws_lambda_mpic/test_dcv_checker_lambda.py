@@ -1,6 +1,4 @@
 import time
-from unittest import expectedFailure
-
 import pytest
 
 import aws_lambda_mpic.mpic_dcv_checker_lambda.mpic_dcv_checker_lambda_function as mpic_dcv_checker_lambda_function

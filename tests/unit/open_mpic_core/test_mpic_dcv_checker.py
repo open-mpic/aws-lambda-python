@@ -1,5 +1,3 @@
-import json
-
 import dns
 import pytest
 from open_mpic_core.common_domain.check_request import DcvCheckRequest
