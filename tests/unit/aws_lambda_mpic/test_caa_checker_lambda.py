@@ -23,12 +23,13 @@ class TestCaaCheckerLambda:
 
     # noinspection PyMethodMayBeStatic
     def lambda_handler__should_do_caa_check_using_configured_caa_checker(self, set_env_variables, mocker):
+        mock_caa_result = TestCaaCheckerLambda.create_caa_check_response()
         mock_return_value = {
             'statusCode': 200,  # note: must be snakeCase
             'headers': {'Content-Type': 'application/json'},
-            'body': TestCaaCheckerLambda.create_caa_check_response().model_dump_json()
+            'body': mock_caa_result.model_dump_json()
         }
-        mocker.patch('open_mpic_core.mpic_caa_checker.mpic_caa_checker.MpicCaaChecker.check_caa', return_value=mock_return_value)
+        mocker.patch('open_mpic_core.mpic_caa_checker.mpic_caa_checker.MpicCaaChecker.check_caa', return_value=mock_caa_result)
         caa_check_request = ValidCheckCreator.create_valid_caa_check_request()
         result = mpic_caa_checker_lambda_function.lambda_handler(caa_check_request, None)
         assert result == mock_return_value

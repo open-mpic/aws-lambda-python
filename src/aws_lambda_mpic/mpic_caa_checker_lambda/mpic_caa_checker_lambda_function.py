@@ -12,7 +12,13 @@ class MpicCaaCheckerLambdaHandler:
 
     def process_invocation(self, caa_request_dict: dict):
         caa_request = CaaCheckRequest.model_validate(caa_request_dict)
-        return self.caa_checker.check_caa(caa_request)
+        caa_response = self.caa_checker.check_caa(caa_request)
+        result = {
+            'statusCode': 200,  # note: must be snakeCase
+            'headers': {'Content-Type': 'application/json'},
+            'body': caa_response.model_dump_json()
+        }
+        return result
 
 
 # Global instance for Lambda runtime

@@ -87,7 +87,7 @@ class MpicCaaChecker:
                 valid_for_issuance = True
         return valid_for_issuance
 
-    def check_caa(self, caa_request: CaaCheckRequest) -> dict:
+    def check_caa(self, caa_request: CaaCheckRequest) -> CaaCheckResponse:
         # Assume the default system configured validation targets and override if sent in the API call.
         caa_domains = self.default_caa_domain_list
         is_wc_domain = False
@@ -99,11 +99,6 @@ class MpicCaaChecker:
             certificate_type = caa_request.caa_check_parameters.certificate_type
             if certificate_type is not None and certificate_type == CertificateType.TLS_SERVER_WILDCARD:
                 is_wc_domain = True
-
-        result = {
-            'statusCode': 200,  # note: must be snakeCase
-            'headers': {'Content-Type': 'application/json'}
-        }
 
         caa_lookup_error = False
         caa_found = False
@@ -120,12 +115,10 @@ class MpicCaaChecker:
                                         errors=[ValidationError(error_type=ErrorMessages.CAA_LOOKUP_ERROR.key, error_message=ErrorMessages.CAA_LOOKUP_ERROR.message)],
                                         details=CaaCheckResponseDetails(caa_record_present=False),  # Possibly should change to present=None to indicate the lookup failed.
                                         timestamp_ns=time.time_ns())
-            result['body'] = json.dumps(response.model_dump())
         elif not caa_found:  # if domain has no CAA records: valid for issuance
             response = CaaCheckResponse(perspective=self.perspective.to_rir_code(), check_passed=True,
                                         details=CaaCheckResponseDetails(caa_record_present=False),
                                         timestamp_ns=time.time_ns())
-            result['body'] = json.dumps(response.model_dump())
         else:
             valid_for_issuance = MpicCaaChecker.is_valid_for_issuance(caa_domains, is_wc_domain, rrset)
             response = CaaCheckResponse(perspective=self.perspective.to_rir_code(), check_passed=valid_for_issuance,
@@ -133,5 +126,4 @@ class MpicCaaChecker:
                                                                         found_at=domain.to_text(omit_final_dot=True),
                                                                         response=rrset.to_text()),
                                         timestamp_ns=time.time_ns())
-            result['body'] = json.dumps(response.model_dump())
-        return result
+        return response

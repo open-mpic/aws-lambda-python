@@ -48,7 +48,7 @@ class MpicCoordinatorLambdaHandler:
         response = client.invoke(  # AWS Lambda-specific structure
                 FunctionName=function_name,
                 InvocationType='RequestResponse',
-                Payload=json.dumps(check_request.model_dump())
+                Payload=check_request.model_dump_json()  # AWS Lambda functions expect a JSON string for payload
             )
         response_payload = json.loads(response['Payload'].read().decode('utf-8'))
         print(response_payload)
@@ -60,7 +60,6 @@ class MpicCoordinatorLambdaHandler:
         if request_path not in iter(RequestPath):
             return MpicCoordinator.build_400_response(MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key,
                                                       [MpicRequestValidationMessages.UNSUPPORTED_REQUEST_PATH.key])
-
         return self.mpic_coordinator.coordinate_mpic(event['body'])
 
 
