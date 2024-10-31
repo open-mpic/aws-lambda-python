@@ -15,20 +15,14 @@ class MpicDcvChecker:
     def __init__(self, perspective: RemotePerspective):
         self.perspective = perspective
 
-    def check_dcv(self, dcv_request: DcvCheckRequest):
+    def check_dcv(self, dcv_request: DcvCheckRequest) -> DcvCheckResponse:
         match dcv_request.dcv_check_parameters.validation_details.validation_method:
             case DcvValidationMethod.HTTP_GENERIC:
                 return self.perform_http_validation(dcv_request)
             case DcvValidationMethod.DNS_GENERIC:
                 return self.perform_dns_validation(dcv_request)
-            case _:
-                return {
-                    'statusCode': 400,
-                    'headers': {'Content-Type': 'application/json'},
-                    'body': json.dumps({'error': 'Unsupported validation method'})
-                }
 
-    def perform_http_validation(self, request):
+    def perform_http_validation(self, request) -> DcvCheckResponse:
         domain_or_ip_target = request.domain_or_ip_target
         token_path = request.dcv_check_parameters.validation_details.http_token_path
         token_url = f"http://{domain_or_ip_target}/{token_path}"  # noqa E501 (http)
@@ -53,14 +47,9 @@ class MpicDcvChecker:
                 details=DcvCheckResponseDetails()
             )
 
-        return {
-            'statusCode': response.status_code,
-            'headers': {'Content-Type': 'application/json'},
-            'body': json.dumps(dcv_check_response.model_dump())
-        }
+        return dcv_check_response
 
-    def perform_dns_validation(self, request):
-        
+    def perform_dns_validation(self, request) -> DcvCheckResponse:
         domain_or_ip_target = request.domain_or_ip_target  # TODO iterate up through parent domains to base domain?
         dns_name_prefix = request.dcv_check_parameters.validation_details.dns_name_prefix
         dns_record_type = dns.rdatatype.from_text(request.dcv_check_parameters.validation_details.dns_record_type)
@@ -92,11 +81,7 @@ class MpicDcvChecker:
                 timestamp_ns=time.time_ns(),
                 details=DcvCheckResponseDetails()  # FIXME get details (or don't bother with this)
             )
-            return {
-                'statusCode': 200,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps(dcv_check_response.model_dump())
-            }
+            return dcv_check_response
         except dns.exception.DNSException as e:
             dcv_check_response = DcvCheckResponse(
                 perspective=self.perspective.to_rir_code(),
@@ -105,8 +90,4 @@ class MpicDcvChecker:
                 errors=[ValidationError(error_type=e.__class__.__name__, error_message=e.msg)],
                 details=DcvCheckResponseDetails()
             )
-            return {
-                'statusCode': 500,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps(dcv_check_response.model_dump())
-            }
+            return dcv_check_response

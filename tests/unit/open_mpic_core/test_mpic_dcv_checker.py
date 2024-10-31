@@ -7,6 +7,7 @@ from open_mpic_core.common_domain.check_response import DcvCheckResponse, DcvChe
 from open_mpic_core.common_domain.enum.dcv_validation_method import DcvValidationMethod
 from open_mpic_core.common_domain.enum.dns_record_type import DnsRecordType
 from open_mpic_core.common_domain.remote_perspective import RemotePerspective
+from open_mpic_core.common_domain.validation_error import ValidationError
 from open_mpic_core.mpic_dcv_checker.mpic_dcv_checker import MpicDcvChecker
 
 from unit.test_util.mock_dns_object_creator import MockDnsObjectCreator
@@ -46,60 +47,43 @@ class TestMpicDcvChecker:
                 dcv_request = ValidCheckCreator.create_valid_dns_check_request(record_type)
                 self.mock_dns_related_calls(dcv_request, mocker)
         dcv_checker = TestMpicDcvChecker.create_configured_dcv_checker()
-        result = dcv_checker.check_dcv(dcv_request)
-        assert result['statusCode'] == 200
-        result_body = json.loads(result['body'])
-        response_object = DcvCheckResponse.model_validate(result_body)
-        response_object.timestamp_ns = None  # ignore timestamp for comparison
-        expected_response = DcvCheckResponse(perspective='arin.us-east-4', check_passed=True, details=DcvCheckResponseDetails())
-        assert json.dumps(response_object.model_dump()) == json.dumps(expected_response.model_dump())
+        dcv_response = dcv_checker.check_dcv(dcv_request)
+        assert self.is_result_as_expected(dcv_response, True, DcvCheckResponseDetails())
 
     def perform_http_validation__should_return_check_passed_true_with_details_given_request_token_file_found(self, set_env_variables, mocker):
         dcv_request = ValidCheckCreator.create_valid_http_check_request()
         self.mock_http_related_calls(dcv_request, mocker)
         dcv_checker = TestMpicDcvChecker.create_configured_dcv_checker()
-        response = dcv_checker.perform_http_validation(dcv_request)
-        assert response['statusCode'] == 200
-        dcv_check_response = DcvCheckResponse.model_validate(json.loads(response['body']))
-        assert dcv_check_response.check_passed is True
-        assert dcv_check_response.perspective == 'arin.us-east-4'
-        assert dcv_check_response.timestamp_ns is not None
+        dcv_response = dcv_checker.perform_http_validation(dcv_request)
+        assert dcv_response.timestamp_ns is not None
+        assert self.is_result_as_expected(dcv_response, True, DcvCheckResponseDetails())
 
     def perform_http_validation__should_return_check_passed_false_with_details_given_request_token_file_not_found(self, set_env_variables, mocker):
         dcv_request = ValidCheckCreator.create_valid_http_check_request()
         mocker.patch('requests.get', return_value=type('Response', (object,), {'status_code': 404, 'reason': 'Not Found'})())
         dcv_checker = TestMpicDcvChecker.create_configured_dcv_checker()
-        response = dcv_checker.perform_http_validation(dcv_request)
-        assert response['statusCode'] == 404
-        dcv_check_response = DcvCheckResponse.model_validate(json.loads(response['body']))
-        assert dcv_check_response.check_passed is False
-        assert dcv_check_response.errors[0].error_type == '404'
-        assert dcv_check_response.errors[0].error_message == 'Not Found'
-        assert dcv_check_response.timestamp_ns is not None
+        dcv_response = dcv_checker.perform_http_validation(dcv_request)
+        assert dcv_response.timestamp_ns is not None
+        errors = [ValidationError(error_type='404', error_message='Not Found')]
+        assert self.is_result_as_expected(dcv_response, False, DcvCheckResponseDetails(), errors)
 
     @pytest.mark.parametrize('record_type', [DnsRecordType.TXT, DnsRecordType.CNAME])
     def perform_dns_validation__should_return_check_passed_true_with_details_given_expected_dns_record_found(self, set_env_variables, record_type, mocker):
         dcv_request = ValidCheckCreator.create_valid_dns_check_request(record_type)
         self.mock_dns_related_calls(dcv_request, mocker)
         dcv_checker = TestMpicDcvChecker.create_configured_dcv_checker()
-        response = dcv_checker.perform_dns_validation(dcv_request)
-        assert response['statusCode'] == 200
-        dcv_check_response = DcvCheckResponse.model_validate(json.loads(response['body']))
-        assert dcv_check_response.check_passed is True
-        assert dcv_check_response.perspective == 'arin.us-east-4'
-        assert dcv_check_response.timestamp_ns is not None
+        dcv_response = dcv_checker.perform_dns_validation(dcv_request)
+        assert dcv_response.timestamp_ns is not None
+        assert self.is_result_as_expected(dcv_response, True, DcvCheckResponseDetails())
 
     def perform_dns_validation__should_return_check_passed_false_with_details_given_expected_dns_record_not_found(self, set_env_variables, mocker):
         dcv_request = ValidCheckCreator.create_valid_dns_check_request()
-        mocker.patch('dns.resolver.resolve', side_effect=lambda domain_name, rdtype: self.raise_(dns.resolver.NoAnswer))
+        no_answer_error = dns.resolver.NoAnswer()
+        mocker.patch('dns.resolver.resolve', side_effect=lambda domain_name, rdtype: self.raise_(no_answer_error))
         dcv_checker = TestMpicDcvChecker.create_configured_dcv_checker()
-        response = dcv_checker.perform_dns_validation(dcv_request)
-        assert response['statusCode'] == 500
-        dcv_check_response = DcvCheckResponse.model_validate(json.loads(response['body']))
-        assert dcv_check_response.check_passed is False
-        assert dcv_check_response.errors[0].error_type == dns.resolver.NoAnswer.__name__
-        assert 'answer' in dcv_check_response.errors[0].error_message
-        assert dcv_check_response.timestamp_ns is not None
+        dcv_response = dcv_checker.perform_dns_validation(dcv_request)
+        errors = [ValidationError(error_type=no_answer_error.__class__.__name__, error_message=no_answer_error.msg)]
+        assert self.is_result_as_expected(dcv_response, False, DcvCheckResponseDetails(), errors)
 
     def raise_(self, ex):
         # noinspection PyUnusedLocal
@@ -126,6 +110,11 @@ class TestMpicDcvChecker:
         mocker.patch('dns.resolver.resolve', side_effect=lambda domain_name, rdtype: (
             test_dns_query_answer if domain_name == expected_domain else self.raise_(dns.resolver.NoAnswer)
         ))
+
+    def is_result_as_expected(self, result, check_passed, check_response_details, errors=None):
+        result.timestamp_ns = None  # ignore timestamp for comparison
+        expected_result = DcvCheckResponse(perspective='arin.us-east-4', check_passed=check_passed, details=check_response_details, errors=errors)
+        return result == expected_result  # Pydantic allows direct comparison with equality operator
 
 
 if __name__ == '__main__':

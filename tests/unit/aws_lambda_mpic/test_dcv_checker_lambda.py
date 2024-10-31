@@ -1,9 +1,11 @@
 import time
+from unittest import expectedFailure
 
 import pytest
 
 import aws_lambda_mpic.mpic_dcv_checker_lambda.mpic_dcv_checker_lambda_function as mpic_dcv_checker_lambda_function
 from open_mpic_core.common_domain.check_response import DcvCheckResponse, DcvCheckResponseDetails
+from open_mpic_core.common_domain.validation_error import ValidationError
 from unit.test_util.valid_check_creator import ValidCheckCreator
 
 
@@ -23,15 +25,34 @@ class TestDcvCheckerLambda:
 
     # noinspection PyMethodMayBeStatic
     def lambda_handler__should_do_dcv_check_using_configured_dcv_checker(self, set_env_variables, mocker):
+        mock_dcv_response = TestDcvCheckerLambda.create_dcv_check_response()
         mock_return_value = {
             'statusCode': 200,  # note: must be snakeCase
             'headers': {'Content-Type': 'application/json'},
-            'body': TestDcvCheckerLambda.create_dcv_check_response().model_dump_json()
+            'body': mock_dcv_response.model_dump_json()
         }
-        mocker.patch('open_mpic_core.mpic_dcv_checker.mpic_dcv_checker.MpicDcvChecker.check_dcv', return_value=mock_return_value)
+        mocker.patch('open_mpic_core.mpic_dcv_checker.mpic_dcv_checker.MpicDcvChecker.check_dcv', return_value=mock_dcv_response)
         dcv_check_request = ValidCheckCreator.create_valid_http_check_request()
-        event = dcv_check_request.model_dump_json()  # TODO go back to using an object rather than a serialized string
-        result = mpic_dcv_checker_lambda_function.lambda_handler(event, None)
+        result = mpic_dcv_checker_lambda_function.lambda_handler(dcv_check_request, None)
+        assert result == mock_return_value
+
+    @pytest.mark.parametrize('error_type, error_message, expected_status_code', [
+        ('404', 'Not Found', 404),
+        ('No Answer', 'The DNS response does not contain an answer to the question', 500)
+    ])
+    def lambda_handler__should_return_appropriate_status_code_given_errors_in_response(
+            self, error_type: str, error_message: str, expected_status_code: int, set_env_variables, mocker):
+        mock_dcv_response = TestDcvCheckerLambda.create_dcv_check_response()
+        mock_dcv_response.check_passed = False
+        mock_dcv_response.errors = [(ValidationError(error_type=error_type, error_message=error_message))]
+        mock_return_value = {
+            'statusCode': expected_status_code,
+            'headers': {'Content-Type': 'application/json'},
+            'body': mock_dcv_response.model_dump_json()
+        }
+        mocker.patch('open_mpic_core.mpic_dcv_checker.mpic_dcv_checker.MpicDcvChecker.check_dcv', return_value=mock_dcv_response)
+        dcv_check_request = ValidCheckCreator.create_valid_http_check_request()
+        result = mpic_dcv_checker_lambda_function.lambda_handler(dcv_check_request, None)
         assert result == mock_return_value
 
     @staticmethod
