@@ -27,7 +27,7 @@ dependencies = [
     "requests>=2.32.3",
     "dnspython==2.6.1",
     "pydantic==2.8.2",
-]  # consider splitting -- configure.py needs pyyaml, while the aws functions need requests and dnspython
+]  # consider splitting -- configure.py needs pyyaml, while the core code need requests, dnspython, pydantic
 
 [project.optional-dependencies]
 provided = [

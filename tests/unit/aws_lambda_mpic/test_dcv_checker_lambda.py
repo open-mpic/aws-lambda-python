@@ -4,7 +4,7 @@ import pytest
 
 import aws_lambda_mpic.mpic_dcv_checker_lambda.mpic_dcv_checker_lambda_function as mpic_dcv_checker_lambda_function
 from open_mpic_core.common_domain.check_response import DcvCheckResponse, DcvCheckResponseDetails
-from unit.valid_check_creator import ValidCheckCreator
+from unit.test_util.valid_check_creator import ValidCheckCreator
 
 
 class TestDcvCheckerLambda:

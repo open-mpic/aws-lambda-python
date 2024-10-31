@@ -7,7 +7,7 @@ from open_mpic_core.mpic_coordinator.domain.mpic_response import BaseMpicRespons
 from open_mpic_core.mpic_coordinator.mpic_response_builder import MpicResponseBuilder
 from pydantic import TypeAdapter
 
-from valid_mpic_request_creator import ValidMpicRequestCreator
+from unit.test_util.valid_mpic_request_creator import ValidMpicRequestCreator
 
 
 class TestMpicResponseBuilder:

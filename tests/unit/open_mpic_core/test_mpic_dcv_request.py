@@ -5,7 +5,7 @@ from open_mpic_core.common_domain.enum.check_type import CheckType
 from open_mpic_core.common_domain.enum.dcv_validation_method import DcvValidationMethod
 from open_mpic_core.mpic_coordinator.domain.mpic_request import MpicDcvRequest
 
-from valid_mpic_request_creator import ValidMpicRequestCreator
+from unit.test_util.valid_mpic_request_creator import ValidMpicRequestCreator
 
 
 # noinspection PyMethodMayBeStatic

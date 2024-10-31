@@ -16,7 +16,7 @@ from open_mpic_core.common_domain.remote_perspective import RemotePerspective
 from open_mpic_core.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
 from open_mpic_core.mpic_coordinator.mpic_coordinator import MpicCoordinator, MpicCoordinatorConfiguration
 
-from valid_mpic_request_creator import ValidMpicRequestCreator
+from unit.test_util.valid_mpic_request_creator import ValidMpicRequestCreator
 from open_mpic_core.mpic_coordinator.domain.mpic_response import MpicResponse, AnnotatedMpicResponse, MpicCaaResponse
 
 

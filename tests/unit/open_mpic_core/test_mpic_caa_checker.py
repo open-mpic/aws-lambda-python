@@ -12,7 +12,7 @@ from open_mpic_core.common_domain.messages.ErrorMessages import ErrorMessages
 from open_mpic_core.mpic_caa_checker.mpic_caa_checker import MpicCaaChecker
 from dns.rrset import RRset
 
-from mock_dns_object_creator import MockDnsObjectCreator
+from unit.test_util.mock_dns_object_creator import MockDnsObjectCreator
 
 
 # noinspection PyMethodMayBeStatic

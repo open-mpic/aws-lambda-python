@@ -4,7 +4,7 @@ import pytest
 from open_mpic_core.common_domain.enum.dcv_validation_method import DcvValidationMethod
 from open_mpic_core.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
 from open_mpic_core.mpic_coordinator.mpic_request_validator import MpicRequestValidator
-from valid_mpic_request_creator import ValidMpicRequestCreator
+from unit.test_util.valid_mpic_request_creator import ValidMpicRequestCreator
 
 
 # noinspection PyMethodMayBeStatic

@@ -14,8 +14,8 @@ from aws_lambda_mpic.mpic_coordinator_lambda.mpic_coordinator_lambda_function im
 from botocore.response import StreamingBody
 import aws_lambda_mpic.mpic_coordinator_lambda.mpic_coordinator_lambda_function as mpic_coordinator_lambda_function
 
-from unit.valid_check_creator import ValidCheckCreator
-from unit.valid_mpic_request_creator import ValidMpicRequestCreator
+from unit.test_util.valid_check_creator import ValidCheckCreator
+from unit.test_util.valid_mpic_request_creator import ValidMpicRequestCreator
 
 
 class TestMpicCoordinatorLambda:
