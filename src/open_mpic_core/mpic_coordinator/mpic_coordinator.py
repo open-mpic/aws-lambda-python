@@ -46,16 +46,9 @@ class MpicCoordinator:
         # TODO fix config.yaml to use snake_case for keys
         self.call_remote_perspective_function = call_remote_perspective_function
         
-        # for correct deserialization of responses based on discriminator field (check type)
-        self.mpic_request_adapter: TypeAdapter[MpicRequest] = TypeAdapter(AnnotatedMpicRequest)
-        self.check_response_adapter: TypeAdapter[CheckResponse] = TypeAdapter(AnnotatedCheckResponse)
+        
+    def coordinate_mpic(self, mpic_request: TypeAdapter[MpicRequest]):
 
-    def coordinate_mpic(self, mpic_request_as_json):
-        try:
-            mpic_request = self.mpic_request_adapter.validate_json(mpic_request_as_json)
-        except pydantic.ValidationError as validation_error:
-            return MpicCoordinator.build_400_response(MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key,
-                                                      validation_error.errors())
 
         is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(mpic_request, self.known_perspectives)
 
@@ -181,8 +174,7 @@ class MpicCoordinator:
                 if check_type not in perspective_responses_per_check_type:
                     perspective_responses_per_check_type[check_type] = []
                 try:
-                    data = future.result()
-                    check_response = self.check_response_adapter.validate_json(data)  # expecting a CheckResponse object
+                    check_response = future.result() # expecting a CheckResponse object
                     validity_per_perspective_per_check_type[check_type][perspective.to_rir_code()] |= check_response.check_passed
                     # TODO make sure responses per perspective match API spec...
                     perspective_responses_per_check_type[check_type].append(check_response)

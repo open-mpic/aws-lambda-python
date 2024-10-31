@@ -39,10 +39,9 @@ class TestMpicCoordinatorLambda:
         mocker.patch('botocore.client.BaseClient._make_api_call', side_effect=self.create_successful_boto3_api_call_response_for_dcv_check)
         dcv_check_request = ValidCheckCreator.create_valid_dns_check_request()
         mpic_coordinator_lambda_handler = MpicCoordinatorLambdaHandler()
-        response_as_json = mpic_coordinator_lambda_handler.call_remote_perspective(RemotePerspective(code='us-west-1', rir='arin'),
+        check_response = mpic_coordinator_lambda_handler.call_remote_perspective(RemotePerspective(code='us-west-1', rir='arin'),
                                                                                    CheckType.DCV,
                                                                                    dcv_check_request)  # TODO fix to be object
-        check_response = DcvCheckResponse.model_validate_json(response_as_json)
         assert check_response.check_passed is True
         # hijacking the value of 'perspective' to verify that the right arguments got passed to the call
         assert check_response.perspective == dcv_check_request.domain_or_ip_target
@@ -51,10 +50,11 @@ class TestMpicCoordinatorLambda:
         mocker.patch('botocore.client.BaseClient._make_api_call', side_effect=self.create_error_boto3_api_call_response)
         dcv_check_request = ValidCheckCreator.create_valid_dns_check_request()
         mpic_coordinator_lambda_handler = MpicCoordinatorLambdaHandler()
-        response_as_json = mpic_coordinator_lambda_handler.call_remote_perspective(RemotePerspective(code='us-west-1', rir='arin'),
+        with pytest.raises(Exception) as ex:
+            response = mpic_coordinator_lambda_handler.call_remote_perspective(RemotePerspective(code='us-west-1', rir='arin'),
                                                                                    CheckType.DCV,
                                                                                    dcv_check_request)
-        assert response_as_json == 'Something went wrong'
+        
 
     # noinspection PyMethodMayBeStatic
     def process_invocation__should_return_400_response_given_invalid_request_path(self, set_env_variables):

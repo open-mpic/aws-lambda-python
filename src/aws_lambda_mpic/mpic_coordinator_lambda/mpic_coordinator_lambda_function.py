@@ -1,5 +1,6 @@
+from pydantic import ValidationError, TypeAdapter
 from open_mpic_core.common_domain.check_request import BaseCheckRequest
-from open_mpic_core.mpic_coordinator.mpic_coordinator import MpicCoordinator, MpicCoordinatorConfiguration
+from open_mpic_core.mpic_coordinator.mpic_coordinator import AnnotatedCheckResponse, AnnotatedMpicRequest, CheckResponse, MpicCoordinator, MpicCoordinatorConfiguration, MpicRequest
 from open_mpic_core.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
 from open_mpic_core.common_domain.enum.check_type import CheckType
 from open_mpic_core.mpic_coordinator.domain.enum.request_path import RequestPath
@@ -38,9 +39,11 @@ class MpicCoordinatorLambdaHandler:
             self.call_remote_perspective,
             self.mpic_coordinator_configuration
         )
+        # for correct deserialization of responses based on discriminator field (check type)
+        self.mpic_request_adapter: TypeAdapter[MpicRequest] = TypeAdapter(AnnotatedMpicRequest)
+        self.check_response_adapter: TypeAdapter[CheckResponse] = TypeAdapter(AnnotatedCheckResponse)
 
-    # This function is a "dumb" transport for serialized data to a remote perspective and a serialized response from the remote perspective.
-    # MPIC Coordinator is tasked with ensuring the data from this function is sane. This function may raise an exception if something goes wrong.
+    # This function MUST validate its response and return a proper open_mpic_core object type.
     def call_remote_perspective(self, perspective: RemotePerspective, check_type: CheckType, check_request: BaseCheckRequest):
         # Uses dcv_arn_list, caa_arn_list
         client = boto3.client('lambda', perspective.code)
@@ -51,16 +54,24 @@ class MpicCoordinatorLambdaHandler:
                 Payload=check_request.model_dump_json()  # AWS Lambda functions expect a JSON string for payload
             )
         response_payload = json.loads(response['Payload'].read().decode('utf-8'))
-        print(response_payload)
+        #print(response_payload)
         # This seems inconsistent. On the calls we require the call_remote_perspective to serialize. But on the response we require open_mpic_core to deserialize (body is just a string type). Deserialization is slightly more complex due to the type adapter system.
-        return response_payload['body']
+        return self.check_response_adapter.validate_json(response_payload['body'])
 
     def process_invocation(self, event):
         request_path = event['path']
         if request_path not in iter(RequestPath):
             return MpicCoordinator.build_400_response(MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key,
                                                       [MpicRequestValidationMessages.UNSUPPORTED_REQUEST_PATH.key])
-        return self.mpic_coordinator.coordinate_mpic(event['body'])
+        
+        try:
+            mpic_request = self.mpic_request_adapter.validate_json(event['body'])
+        except ValidationError as validation_error:
+            return MpicCoordinator.build_400_response(MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key,
+                                                      validation_error.errors())
+        
+        
+        return self.mpic_coordinator.coordinate_mpic(mpic_request)
 
 
 # Global instance for Lambda runtime
