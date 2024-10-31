@@ -41,7 +41,7 @@ class TestMpicCoordinatorLambda:
         mpic_coordinator_lambda_handler = MpicCoordinatorLambdaHandler()
         response_as_json = mpic_coordinator_lambda_handler.call_remote_perspective(RemotePerspective(code='us-west-1', rir='arin'),
                                                                                    CheckType.DCV,
-                                                                                   dcv_check_request.model_dump_json())  # TODO fix to be object
+                                                                                   dcv_check_request)  # TODO fix to be object
         check_response = DcvCheckResponse.model_validate_json(response_as_json)
         assert check_response.check_passed is True
         # hijacking the value of 'perspective' to verify that the right arguments got passed to the call
@@ -53,7 +53,7 @@ class TestMpicCoordinatorLambda:
         mpic_coordinator_lambda_handler = MpicCoordinatorLambdaHandler()
         response_as_json = mpic_coordinator_lambda_handler.call_remote_perspective(RemotePerspective(code='us-west-1', rir='arin'),
                                                                                    CheckType.DCV,
-                                                                                   dcv_check_request.model_dump_json())
+                                                                                   dcv_check_request)
         assert response_as_json == 'Something went wrong'
 
     # noinspection PyMethodMayBeStatic
