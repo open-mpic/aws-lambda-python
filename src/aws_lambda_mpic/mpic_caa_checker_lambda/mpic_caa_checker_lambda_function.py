@@ -10,7 +10,8 @@ class MpicCaaCheckerLambdaHandler:
         self.default_caa_domain_list = os.environ['default_caa_domains'].split("|")
         self.caa_checker = MpicCaaChecker(self.default_caa_domain_list, self.perspective)
 
-    def process_invocation(self, caa_request: CaaCheckRequest):
+    def process_invocation(self, caa_request_dict: dict):
+        caa_request = CaaCheckRequest.model_validate(caa_request_dict)
         return self.caa_checker.check_caa(caa_request)
 
 

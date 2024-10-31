@@ -1,3 +1,4 @@
+from open_mpic_core.common_domain.check_request import BaseCheckRequest
 from open_mpic_core.mpic_coordinator.mpic_coordinator import MpicCoordinator, MpicCoordinatorConfiguration
 from open_mpic_core.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
 from open_mpic_core.common_domain.enum.check_type import CheckType
@@ -40,16 +41,18 @@ class MpicCoordinatorLambdaHandler:
 
     # This function is a "dumb" transport for serialized data to a remote perspective and a serialized response from the remote perspective.
     # MPIC Coordinator is tasked with ensuring the data from this function is sane. This function may raise an exception if something goes wrong.
-    def call_remote_perspective(self, perspective: RemotePerspective, check_type: CheckType, check_request_serialized: str):
+    def call_remote_perspective(self, perspective: RemotePerspective, check_type: CheckType, check_request: BaseCheckRequest):
         # Uses dcv_arn_list, caa_arn_list
         client = boto3.client('lambda', perspective.code)
         function_name = self.arns_per_perspective_per_check_type[check_type][perspective.to_rir_code()]
         response = client.invoke(  # AWS Lambda-specific structure
                 FunctionName=function_name,
                 InvocationType='RequestResponse',
-                Payload=check_request_serialized
+                Payload=json.dumps(check_request.model_dump())
             )
         response_payload = json.loads(response['Payload'].read().decode('utf-8'))
+        print(response_payload)
+        # This seems inconsistent. On the calls we require the call_remote_perspective to serialize. But on the response we require open_mpic_core to deserialize (body is just a string type). Deserialization is slightly more complex due to the type adapter system.
         return response_payload['body']
 
     def process_invocation(self, event):
