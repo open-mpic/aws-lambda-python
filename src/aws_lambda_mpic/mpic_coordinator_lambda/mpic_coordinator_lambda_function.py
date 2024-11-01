@@ -1,5 +1,5 @@
 from aws_lambda_powertools.utilities.parser import event_parser, envelopes
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, ValidationError
 from open_mpic_core.common_domain.check_request import BaseCheckRequest
 from open_mpic_core.common_domain.check_response import CheckResponse
 from open_mpic_core.common_domain.validation_error import MpicValidationError
@@ -58,7 +58,11 @@ class MpicCoordinatorLambdaHandler:
                 Payload=check_request.model_dump_json()  # AWS Lambda functions expect a JSON string for payload
             )
         response_payload = json.loads(response['Payload'].read().decode('utf-8'))
-        return self.check_response_adapter.validate_json(response_payload['body'])
+        try:
+            return self.check_response_adapter.validate_json(response_payload['body'])
+        except ValidationError as ve:
+            # We might want to handle this differently later.
+            raise ve
 
     def process_invocation(self, mpic_request: MpicRequest) -> dict:
         try:
@@ -89,7 +93,7 @@ def get_handler() -> MpicCoordinatorLambdaHandler:
         _handler = MpicCoordinatorLambdaHandler()
     return _handler
 
-
+# We need to find a way to bring back transparent error messages with this new parsing model. If the parsing to the MPIC request fails, it the system internal server errors instead of returing the pydantic error message.
 # noinspection PyUnusedLocal
 # for now, we are not using context, but it is required by the lambda handler signature
 @event_parser(model=MpicRequest, envelope=envelopes.ApiGatewayEnvelope)  # AWS Lambda Powertools decorator
