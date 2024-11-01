@@ -16,28 +16,35 @@ class TestCohortCreator:
     @classmethod
     def setup_class(cls):
         cls.all_perspectives_per_rir = TestCohortCreator.set_up_perspectives_per_rir_dict_from_file()
+        all_perspectives = list(chain.from_iterable(cls.all_perspectives_per_rir.values()))
+        cls.all_possible_perspectives_by_code = {perspective.code: perspective for perspective in all_perspectives}
 
-    @pytest.mark.parametrize('named_perspectives', [
-        (['arin.us-east-1', 'arin.us-west-1', 'arin.ca-west-1', 'ripe.eu-west-1', 'ripe.eu-central-1', 'apnic.ap-southeast-1',]),
+    @pytest.mark.parametrize("target_perspective_codes", [
+        (['us-east-1', 'us-west-1', 'ca-west-1', 'eu-west-1', 'eu-central-1', 'ap-southeast-1',]),
     ])
-    def build_randomly_shuffled_available_perspectives_per_rir__should_return_dict_of_remote_perspective_lists(self, named_perspectives):
+    def build_randomly_shuffled_available_perspectives_per_rir__should_return_dict_of_remote_perspective_lists(self,
+                                                                                                               target_perspective_codes):
         test_random_seed = hashlib.sha256('test1hash2seed3'.encode('ASCII')).digest()
         shuffled_perspectives_per_rir = CohortCreator.build_randomly_shuffled_available_perspectives_per_rir(
-            named_perspectives, test_random_seed)
+            target_perspective_codes, self.all_possible_perspectives_by_code, test_random_seed)
         # get all rirs from named perspectives
-        all_rirs = set(map(lambda perspective: perspective.split('.')[0], named_perspectives))
-        expected_perspectives_per_rir = {rir: [perspective for perspective in named_perspectives if perspective.startswith(rir)]
-                                         for rir in all_rirs}
-        assert len(shuffled_perspectives_per_rir.keys()) == len(all_rirs)
+        # convert list to set
+        expected_perspectives_per_rir = {
+            'arin': ['us-east-1', 'us-west-1', 'ca-west-1'],
+            'apnic': ['ap-southeast-1'],
+            'ripe': ['eu-west-1', 'eu-central-1']}
         for rir in shuffled_perspectives_per_rir.keys():
             assert len(shuffled_perspectives_per_rir[rir]) == len(expected_perspectives_per_rir[rir])
 
     def build_randomly_shuffled_available_perspectives_per_rir__should_shuffle_perspectives_the_same_given_the_same_random_seed(self):
         all_perspectives = list(chain.from_iterable(self.all_perspectives_per_rir.values()))
-        all_perspectives_as_strings = list(map(lambda perspective: f"{perspective.rir}.{perspective.code}", all_perspectives))
-        shuffled_perspectives_per_rir_1 = CohortCreator.build_randomly_shuffled_available_perspectives_per_rir(all_perspectives_as_strings, b'testSeedX')
-        shuffled_perspectives_per_rir_2 = CohortCreator.build_randomly_shuffled_available_perspectives_per_rir(all_perspectives_as_strings, b'testSeedX')
-        shuffled_perspectives_per_rir_3 = CohortCreator.build_randomly_shuffled_available_perspectives_per_rir(all_perspectives_as_strings, b'testSeedY')
+        all_perspective_codes = [perspective.code for perspective in all_perspectives]
+        shuffled_perspectives_per_rir_1 = CohortCreator.build_randomly_shuffled_available_perspectives_per_rir(
+            all_perspective_codes, self.all_possible_perspectives_by_code, b'testSeedX')
+        shuffled_perspectives_per_rir_2 = CohortCreator.build_randomly_shuffled_available_perspectives_per_rir(
+            all_perspective_codes, self.all_possible_perspectives_by_code, b'testSeedX')
+        shuffled_perspectives_per_rir_3 = CohortCreator.build_randomly_shuffled_available_perspectives_per_rir(
+            all_perspective_codes, self.all_possible_perspectives_by_code, b'testSeedY')
         # expect 1 and 2 to be identically sorted, while 3 should be different
         assert all(shuffled_perspectives_per_rir_1[rir] == shuffled_perspectives_per_rir_2[rir] for rir in shuffled_perspectives_per_rir_1.keys())
         for rir in shuffled_perspectives_per_rir_1.keys():
@@ -46,23 +53,17 @@ class TestCohortCreator:
         assert any(shuffled_perspectives_per_rir_1[rir] != shuffled_perspectives_per_rir_3[rir] for rir in shuffled_perspectives_per_rir_1.keys())
 
     def build_randomly_shuffled_available_perspectives_per_rir__should_return_empty_dict_given_empty_list_of_perspectives(self):
-        shuffled_perspectives_per_rir = CohortCreator.build_randomly_shuffled_available_perspectives_per_rir([], b'testSeed')
+        shuffled_perspectives_per_rir = CohortCreator.build_randomly_shuffled_available_perspectives_per_rir(
+            [], self.all_possible_perspectives_by_code, b'testSeed')
         assert len(shuffled_perspectives_per_rir.keys()) == 0
 
     def build_randomly_shuffled_available_perspectives_per_rir__should_enrich_each_perspective_with_name_and_list_of_too_close_perspectives(self):
-        named_perspectives = ['arin.us-east-1', 'arin.us-west-1', 'arin.ca-west-1', 'ripe.eu-west-1', 'ripe.eu-central-1', 'apnic.ap-southeast-1']
-        shuffled_perspectives_per_rir = CohortCreator.build_randomly_shuffled_available_perspectives_per_rir(named_perspectives, b'testSeed')
+        target_perspective_codes = ['us-east-1', 'us-west-1', 'ca-west-1', 'eu-west-1', 'eu-central-1', 'ap-southeast-1']
+        shuffled_perspectives_per_rir = CohortCreator.build_randomly_shuffled_available_perspectives_per_rir(
+            target_perspective_codes, self.all_possible_perspectives_by_code, b'testSeed')
         shuffled_perspectives_flattened = list(chain.from_iterable(shuffled_perspectives_per_rir.values()))
         assert all(perspective.name is not None for perspective in shuffled_perspectives_flattened)
         assert any(len(perspective.too_close_codes) > 0 for perspective in shuffled_perspectives_flattened)
-
-    def load_aws_region_config__should_return_dict_of_aws_regions_with_proximity_info_by_region_code(self):
-        loaded_aws_regions = CohortCreator.load_aws_region_config()
-        all_perspectives = list(chain.from_iterable(self.all_perspectives_per_rir.values()))
-        assert len(loaded_aws_regions.keys()) == len(all_perspectives)
-        # for example, us-east-1 is too close to us-east-2
-        assert 'us-east-2' in loaded_aws_regions['us-east-1'].too_close_codes
-        assert 'us-east-1' in loaded_aws_regions['us-east-2'].too_close_codes
 
     # @pytest.mark.skip('This test is not yet implemented')
     @pytest.mark.parametrize('perspectives_per_rir, any_perspectives_too_close, cohort_size', [
@@ -192,9 +193,12 @@ class TestCohortCreator:
 
     @staticmethod
     def set_up_perspectives_per_rir_dict_from_file():
-        perspectives_yaml = yaml.safe_load(resources.open_text('resources', 'aws_region_config.yaml'))
-        perspective_type_adapter = TypeAdapter(list[RemotePerspective])
-        perspectives = perspective_type_adapter.validate_python(perspectives_yaml['aws_available_regions'])
-        # get set of unique rirs from perspectives, each of which has a rir attribute
-        all_rirs = set(map(lambda perspective: perspective.rir, perspectives))
-        return {rir: [perspective for perspective in perspectives if perspective.rir == rir] for rir in all_rirs}
+        resource_files = resources.files('tests.resources')
+        perspectives_yaml_file = resource_files.joinpath('test_region_config.yaml')
+        with perspectives_yaml_file.open() as file:
+            perspectives_yaml = yaml.safe_load(file)
+            perspective_type_adapter = TypeAdapter(list[RemotePerspective])
+            perspectives = perspective_type_adapter.validate_python(perspectives_yaml['available_cloud_regions'])
+            # get set of unique rirs from perspectives, each of which has a rir attribute
+            all_rirs = set(map(lambda perspective: perspective.rir, perspectives))
+            return {rir: [perspective for perspective in perspectives if perspective.rir == rir] for rir in all_rirs}

@@ -1,0 +1,151 @@
+available_cloud_regions:
+  -
+    code: "af-south-1"
+    name: "Africa (Cape Town)"
+    rir: "afrinic"
+    too_close_codes: []
+  -
+    code: "ap-east-1"
+    name: "Asia Pacific (Hong Kong)"
+    rir: "apnic"
+    too_close_codes: []
+  -
+    code: "ap-northeast-1"
+    name: "Asia Pacific (Tokyo)"
+    rir: "apnic"
+    too_close_codes: ["ap-northeast-3"]
+  -
+    code: "ap-northeast-2"
+    name: "Asia Pacific (Seoul)"
+    rir: "apnic"
+    too_close_codes: []
+  -
+    code: "ap-northeast-3"
+    name: "Asia Pacific (Osaka)"
+    rir: "apnic"
+    too_close_codes: ["ap-northeast-1"]
+  -
+    code: "ap-south-1"
+    name: "Asia Pacific (Mumbai)"
+    rir: "apnic"
+    too_close_codes: []
+  -
+    code: "ap-south-2"
+    name: "Asia Pacific (Hyderabad)"
+    rir: "apnic"
+    too_close_codes: []
+  -
+    code: "ap-southeast-1"
+    name: "Asia Pacific (Singapore)"
+    rir: "apnic"
+    too_close_codes: []
+  -
+    code: "ap-southeast-2"
+    name: "Asia Pacific (Sydney)"
+    rir: "apnic"
+    too_close_codes: []
+  -
+    code: "ap-southeast-3"
+    name: "Asia Pacific (Jakarta)"
+    rir: "apnic"
+    too_close_codes: []
+  -
+    code: "ap-southeast-4"
+    name: "Asia Pacific (Melbourne)"
+    rir: "apnic"
+    too_close_codes: []
+  -
+    code: "ap-southeast-5"
+    name: "Asia Pacific (Malaysia)"
+    rir: "apnic"
+    too_close_codes: []
+  -
+    code: "ca-central-1"
+    name: "Canada (Central)"
+    rir: "arin"
+    too_close_codes: []
+  -
+    code: "ca-west-1"
+    name: "Canada West (Calgary)"
+    rir: "arin"
+    too_close_codes: []
+  -
+    code: "eu-central-1"
+    name: "Europe (Frankfurt)"
+    rir: "ripe"
+    too_close_codes: ["eu-central-2"]
+  -
+    code: "eu-central-2"
+    name: "Europe (Zurich)"
+    rir: "ripe"
+    too_close_codes: ["eu-central-1", "eu-south-1"]
+  -
+    code: "eu-north-1"
+    name: "Europe (Stockholm)"
+    rir: "ripe"
+    too_close_codes: []
+  -
+    code: "eu-south-1"
+    name: "Europe (Milan)"
+    rir: "ripe"
+    too_close_codes: ["eu-central-2"]
+  -
+    code: "eu-south-2"
+    name: "Europe (Spain)"
+    rir: "ripe"
+    too_close_codes: []
+  -
+    code: "eu-west-1"
+    name: "Europe (Ireland)"
+    rir: "ripe"
+    too_close_codes: []
+  -
+    code: "eu-west-2"
+    name: "Europe (London)"
+    rir: "ripe"
+    too_close_codes: ["eu-west-3"]
+  -
+    code: "eu-west-3"
+    name: "Europe (Paris)"
+    rir: "ripe"
+    too_close_codes: ["eu-west-2"]
+  -
+    code: "il-central-1"
+    name: "Israel (Tel Aviv)"
+    rir: "ripe"
+    too_close_codes: []
+  -
+    code: "me-central-1"
+    name: "Middle East (UAE)"
+    rir: "ripe"
+    too_close_codes: ["me-south-1"]
+  -
+    code: "me-south-1"
+    name: "Middle East (Bahrain)"
+    rir: "ripe"
+    too_close_codes: ["me-central-1"]
+  -
+    code: "sa-east-1"
+    name: "South America (São Paulo)"
+    rir: "lacnic"
+    too_close_codes: []
+  -
+    code: "us-east-1"
+    name: "US East (N. Virginia)"
+    rir: "arin"
+    too_close_codes: ["us-east-2"]
+  -
+    code: "us-east-2"
+    name: "US East (Ohio)"
+    rir: "arin"
+    too_close_codes: ["us-east-1"]
+  -
+    code: "us-west-1"
+    name: "US West (N. California)"
+    rir: "arin"
+    too_close_codes: []
+  -
+    code: "us-west-2"
+    name: "US West (Oregon)"
+    rir: "arin"
+    too_close_codes: []

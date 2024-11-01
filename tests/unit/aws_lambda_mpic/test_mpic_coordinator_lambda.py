@@ -1,20 +1,18 @@
 import io
 import json
 from datetime import datetime
+from importlib import resources
 
 import pytest
-from aws_lambda_powertools.utilities.parser.envelopes import ApiGatewayEnvelope
+import yaml
 from aws_lambda_powertools.utilities.parser.models import APIGatewayProxyEventModel, APIGatewayEventRequestContext, \
     APIGatewayEventIdentity
-from boto3 import resource
-from pydantic import ValidationError
+from pydantic import ValidationError, TypeAdapter
 
 from open_mpic_core.common_domain.check_request import DcvCheckRequest
 from open_mpic_core.common_domain.check_response import DcvCheckResponse, DcvCheckResponseDetails
 from open_mpic_core.common_domain.enum.check_type import CheckType
 from open_mpic_core.common_domain.remote_perspective import RemotePerspective
-from open_mpic_core.common_domain.validation_error import MpicValidationError
-from open_mpic_core.mpic_coordinator.domain.enum.request_path import RequestPath
 from open_mpic_core.mpic_coordinator.domain.mpic_orchestration_parameters import MpicEffectiveOrchestrationParameters
 from open_mpic_core.mpic_coordinator.domain.mpic_response import MpicCaaResponse
 from aws_lambda_mpic.mpic_coordinator_lambda.mpic_coordinator_lambda_function import MpicCoordinatorLambdaHandler
@@ -25,6 +23,7 @@ from unit.test_util.valid_check_creator import ValidCheckCreator
 from unit.test_util.valid_mpic_request_creator import ValidMpicRequestCreator
 
 
+# noinspection PyMethodMayBeStatic
 class TestMpicCoordinatorLambda:
     @staticmethod
     @pytest.fixture(scope='class')
@@ -53,7 +52,6 @@ class TestMpicCoordinatorLambda:
         # hijacking the value of 'perspective' to verify that the right arguments got passed to the call
         assert check_response.perspective == dcv_check_request.domain_or_ip_target
 
-    # noinspection PyMethodMayBeStatic
     def lambda_handler__should_return_error_given_invalid_request_body(self):
         request = ValidMpicRequestCreator.create_valid_dcv_mpic_request()
         request.domain_or_ip_target = None
@@ -63,7 +61,6 @@ class TestMpicCoordinatorLambda:
             mpic_coordinator_lambda_function.lambda_handler(api_request, None)
             assert validation_error.value.errors() == [{'loc': ('body',), 'msg': 'field required', 'type': 'value_error.missing'}]
 
-    # noinspection PyMethodMayBeStatic
     def lambda_handler__should_return_error_given_invalid_check_type(self):
         request = ValidMpicRequestCreator.create_valid_dcv_mpic_request()
         request.check_type = 'invalid_check_type'
@@ -76,7 +73,6 @@ class TestMpicCoordinatorLambda:
                  'msg': 'value is not a valid enumeration member; permitted: \'DCV\', \'CAA\'', 'type': 'type_error.enum'}
             ]
 
-    # noinspection PyMethodMayBeStatic
     def lambda_handler__should_return_500_error_given_logically_invalid_request(self):
         request = ValidMpicRequestCreator.create_valid_dcv_mpic_request()
         request.orchestration_parameters.perspective_count = 1
@@ -85,7 +81,6 @@ class TestMpicCoordinatorLambda:
         result = mpic_coordinator_lambda_function.lambda_handler(api_request, None)
         assert result['statusCode'] == 500
 
-    # noinspection PyMethodMayBeStatic
     def lambda_handler__should_coordinate_mpic_using_configured_mpic_coordinator(self, set_env_variables, mocker):
         mpic_request = ValidMpicRequestCreator.create_valid_mpic_request(CheckType.CAA)
         api_request = TestMpicCoordinatorLambda.create_api_gateway_request()
@@ -101,7 +96,25 @@ class TestMpicCoordinatorLambda:
         result = mpic_coordinator_lambda_function.lambda_handler(api_request, None)
         assert result == expected_response
 
-    # noinspection PyUnusedLocal, PyMethodMayBeStatic
+    def load_aws_region_config__should_return_dict_of_aws_regions_with_proximity_info_by_region_code(self):
+        mpic_coordinator_lambda_handler = MpicCoordinatorLambdaHandler()
+        loaded_aws_regions = mpic_coordinator_lambda_handler.load_aws_region_config()
+        all_possible_perspectives = TestMpicCoordinatorLambda.get_perspectives_by_code_dict_from_file()
+        assert len(loaded_aws_regions.keys()) == len(all_possible_perspectives.keys())
+        # for example, us-east-1 is too close to us-east-2
+        assert 'us-east-2' in loaded_aws_regions['us-east-1'].too_close_codes
+        assert 'us-east-1' in loaded_aws_regions['us-east-2'].too_close_codes
+
+    def constructor__should_load_environment_variables_and_initialize_mpic_coordinator(self, set_env_variables):
+        mpic_coordinator_lambda_handler = MpicCoordinatorLambdaHandler()
+        all_possible_perspectives = TestMpicCoordinatorLambda.get_perspectives_by_code_dict_from_file()
+        # assert all_target_perspectives includes 'arin.us-east-1'
+        mpic_coordinator = mpic_coordinator_lambda_handler.mpic_coordinator
+        assert 'us-east-1' in mpic_coordinator.all_target_perspective_codes
+        assert mpic_coordinator.all_possible_perspectives_by_code == all_possible_perspectives
+        assert mpic_coordinator.hash_secret == 'test_secret'
+
+    # noinspection PyUnusedLocal
     def create_successful_boto3_api_call_response_for_dcv_check(self, lambda_method, lambda_configuration):
         check_request = DcvCheckRequest.model_validate_json(lambda_configuration['Payload'])
         # hijacking the value of 'perspective' to verify that the right arguments got passed to the call
@@ -113,7 +126,7 @@ class TestMpicCoordinatorLambda:
         streaming_body_response = StreamingBody(file_like_response, len(json_bytes))
         return {'Payload': streaming_body_response}
 
-    # noinspection PyUnusedLocal, PyMethodMayBeStatic
+    # noinspection PyUnusedLocal
     def create_error_boto3_api_call_response(self, lambda_method, lambda_configuration):
         # note: all perspective response details will be identical in these tests due to this mocking
         expected_response_body = 'Something went wrong'
@@ -151,6 +164,13 @@ class TestMpicCoordinatorLambda:
             ),
         )
         return request
+
+    @staticmethod
+    def get_perspectives_by_code_dict_from_file() -> dict[str, RemotePerspective]:
+        perspectives_yaml = yaml.safe_load(resources.open_text('resources', 'aws_region_config.yaml'))
+        perspective_type_adapter = TypeAdapter(list[RemotePerspective])
+        perspectives = perspective_type_adapter.validate_python(perspectives_yaml['aws_available_regions'])
+        return {perspective.code: perspective for perspective in perspectives}
 
 
 if __name__ == '__main__':

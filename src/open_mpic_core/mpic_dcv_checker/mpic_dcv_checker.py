@@ -22,7 +22,7 @@ class MpicDcvChecker:
                 return self.perform_dns_validation(dcv_request)
 
     def perform_http_validation(self, request) -> DcvCheckResponse:
-        domain_or_ip_target = request.domain_or_ip_target
+        domain_or_ip_target = request.domain_or_ip_target  # TODO optionally iterate up through the domain hierarchy
         token_path = request.dcv_check_parameters.validation_details.http_token_path
         token_url = f"http://{domain_or_ip_target}/{token_path}"  # noqa E501 (http)
         expected_response_content = request.dcv_check_parameters.validation_details.challenge_value
@@ -49,7 +49,7 @@ class MpicDcvChecker:
         return dcv_check_response
 
     def perform_dns_validation(self, request) -> DcvCheckResponse:
-        domain_or_ip_target = request.domain_or_ip_target  # TODO iterate up through parent domains to base domain?
+        domain_or_ip_target = request.domain_or_ip_target
         dns_name_prefix = request.dcv_check_parameters.validation_details.dns_name_prefix
         dns_record_type = dns.rdatatype.from_text(request.dcv_check_parameters.validation_details.dns_record_type)
         if dns_name_prefix is not None and len(dns_name_prefix) > 0:

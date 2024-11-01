@@ -19,18 +19,22 @@ from unit.test_util.valid_mpic_request_creator import ValidMpicRequestCreator
 class TestMpicCoordinator:
     def create_cohorts_of_randomly_selected_perspectives__should_throw_error_given_requested_count_exceeds_total_perspectives(self):
         mpic_coordinator_config = self.create_mpic_coordinator_configuration()
-        perspectives = mpic_coordinator_config.known_perspectives
-        excessive_count = len(perspectives) + 1
+        perspective_codes = mpic_coordinator_config.all_target_perspective_codes
+        all_possible_perspectives_by_code = mpic_coordinator_config.all_possible_perspectives_by_code
+        excessive_count = len(perspective_codes) + 1
         mpic_coordinator = MpicCoordinator(self.create_successful_remote_caa_check_response, mpic_coordinator_config)
         with pytest.raises(ValueError):
-            mpic_coordinator.create_cohorts_of_randomly_selected_perspectives(perspectives, excessive_count, 'test_target')  # expect error
+            mpic_coordinator.create_cohorts_of_randomly_selected_perspectives(perspective_codes, all_possible_perspectives_by_code,
+                                                                              excessive_count, 'test_target')  # expect error
 
     def create_cohorts_of_randomly_selected_perspectives__should_return_list_of_cohorts_of_requested_size(self):
         mpic_coordinator_config = self.create_mpic_coordinator_configuration()
-        perspectives = mpic_coordinator_config.known_perspectives
-        cohort_size = len(perspectives) // 2
+        perspective_codes = mpic_coordinator_config.all_target_perspective_codes
+        all_perspectives_by_code = mpic_coordinator_config.all_possible_perspectives_by_code
+        cohort_size = len(perspective_codes) // 2
         mpic_coordinator = MpicCoordinator(self.create_successful_remote_caa_check_response, mpic_coordinator_config)
-        cohorts = mpic_coordinator.create_cohorts_of_randomly_selected_perspectives(perspectives, cohort_size, 'test_target')
+        cohorts = mpic_coordinator.create_cohorts_of_randomly_selected_perspectives(perspective_codes, all_perspectives_by_code,
+                                                                                    cohort_size, 'test_target')
         assert len(cohorts) == 2
 
     @pytest.mark.parametrize('requested_perspective_count, expected_quorum_size', [(4, 3), (5, 4), (6, 4)])
@@ -54,8 +58,10 @@ class TestMpicCoordinator:
     def collect_async_calls_to_issue__should_have_only_caa_calls_given_caa_check_type(self):
         request = ValidMpicRequestCreator.create_valid_caa_mpic_request()
         mpic_coordinator_config = self.create_mpic_coordinator_configuration()
-        perspectives = mpic_coordinator_config.known_perspectives
-        perspectives_to_use = [RemotePerspective.from_rir_code(perspective) for perspective in perspectives]
+        perspective_codes = mpic_coordinator_config.all_target_perspective_codes
+        # for each perspective code, get the RemotePerspective object from all_possible_perspectives_by_code
+        perspectives_to_use = [mpic_coordinator_config.all_possible_perspectives_by_code[perspective_code] for
+                               perspective_code in perspective_codes]
         call_list = MpicCoordinator.collect_async_calls_to_issue(request, perspectives_to_use)
         assert len(call_list) == 6
         assert set(map(lambda call_result: call_result.check_type, call_list)) == {CheckType.CAA}  # ensure each call is of type 'caa'
@@ -64,16 +70,20 @@ class TestMpicCoordinator:
         request = ValidMpicRequestCreator.create_valid_caa_mpic_request()
         request.caa_check_parameters.caa_domains = ['example.com']
         mpic_coordinator_config = self.create_mpic_coordinator_configuration()
-        perspectives = mpic_coordinator_config.known_perspectives
-        perspectives_to_use = [RemotePerspective.from_rir_code(perspective) for perspective in perspectives]
+        perspective_codes = mpic_coordinator_config.all_target_perspective_codes
+        # for each perspective code, get the RemotePerspective object from all_possible_perspectives_by_code
+        perspectives_to_use = [mpic_coordinator_config.all_possible_perspectives_by_code[perspective_code] for
+                               perspective_code in perspective_codes]
         call_list = MpicCoordinator.collect_async_calls_to_issue(request, perspectives_to_use)
         assert all(call.check_request.caa_check_parameters.caa_domains == ['example.com'] for call in call_list)
 
     def collect_async_calls_to_issue__should_have_only_dcv_calls_and_include_validation_input_args_given_dcv_check_type(self):
         request = ValidMpicRequestCreator.create_valid_dcv_mpic_request(DcvValidationMethod.DNS_GENERIC)
         mpic_coordinator_config = self.create_mpic_coordinator_configuration()
-        perspectives = mpic_coordinator_config.known_perspectives
-        perspectives_to_use = [RemotePerspective.from_rir_code(perspective) for perspective in perspectives]
+        perspective_codes = mpic_coordinator_config.all_target_perspective_codes
+        # for each perspective code, get the RemotePerspective object from all_possible_perspectives_by_code
+        perspectives_to_use = [mpic_coordinator_config.all_possible_perspectives_by_code[perspective_code] for
+                               perspective_code in perspective_codes]
         call_list = MpicCoordinator.collect_async_calls_to_issue(request, perspectives_to_use)
         assert len(call_list) == 6
         assert set(map(lambda call_result: call_result.check_type, call_list)) == {CheckType.DCV}  # ensure each call is of type 'dcv'
@@ -83,8 +93,10 @@ class TestMpicCoordinator:
     def collect_async_calls_to_issue__should_have_caa_and_dcv_calls_given_dcv_with_caa_check_type(self):
         request = ValidMpicRequestCreator.create_valid_dcv_with_caa_mpic_request()
         mpic_coordinator_config = self.create_mpic_coordinator_configuration()
-        perspectives = mpic_coordinator_config.known_perspectives
-        perspectives_to_use = [RemotePerspective.from_rir_code(perspective) for perspective in perspectives]
+        perspective_codes = mpic_coordinator_config.all_target_perspective_codes
+        # for each perspective code, get the RemotePerspective object from all_possible_perspectives_by_code
+        perspectives_to_use = [mpic_coordinator_config.all_possible_perspectives_by_code[perspective_code] for
+                               perspective_code in perspective_codes]
         call_list = MpicCoordinator.collect_async_calls_to_issue(request, perspectives_to_use)
         assert len(call_list) == 12
         # ensure the list contains both 'caa' and 'dcv' calls
@@ -106,7 +118,7 @@ class TestMpicCoordinator:
         for call in call_args_list:
             call_args = call.args
             remote_perspective: RemotePerspective = call_args[0]
-            assert remote_perspective.to_rir_code() in mpic_coordinator_config.known_perspectives
+            assert remote_perspective.code in mpic_coordinator_config.all_target_perspective_codes
             assert call_args[1] == mpic_request.check_type
             check_request = call_args[2]  # was previously a serialized string; now the actual CheckRequest object
             assert check_request.domain_or_ip_target == mpic_request.domain_or_ip_target
@@ -273,27 +285,42 @@ class TestMpicCoordinator:
 
         mpic_coordinator = MpicCoordinator(call_remote_perspective, mpic_coordinator_configuration)
         assert mpic_coordinator.global_max_attempts == mpic_coordinator_configuration.global_max_attempts
-        assert mpic_coordinator.known_perspectives == mpic_coordinator_configuration.known_perspectives
+        assert mpic_coordinator.all_target_perspective_codes == mpic_coordinator_configuration.all_target_perspective_codes
         assert mpic_coordinator.default_perspective_count == mpic_coordinator_configuration.default_perspective_count
         assert mpic_coordinator.enforce_distinct_rir_regions == mpic_coordinator_configuration.enforce_distinct_rir_regions
         assert mpic_coordinator.hash_secret == mpic_coordinator_configuration.hash_secret
         assert mpic_coordinator.call_remote_perspective_function == call_remote_perspective
 
-    def create_mpic_coordinator_configuration(self):
-        known_perspectives = ['arin.us-east-1', 'arin.us-west-1',
-                              'ripe.eu-west-2', 'ripe.eu-central-2',
-                              'apnic.ap-northeast-1', 'apnic.ap-south-2']
+    @staticmethod
+    def create_mpic_coordinator_configuration() -> MpicCoordinatorConfiguration:
+        target_perspective_codes = ['us-east-1', 'us-west-1',
+                                    'eu-west-2', 'eu-central-2',
+                                    'ap-northeast-1', 'ap-south-2']
+        all_perspectives_by_code = TestMpicCoordinator.create_all_perspectives_by_code()
         default_perspective_count = 3
         enforce_distinct_rir_regions = True  # TODO may not need...
         global_max_attempts = None
         hash_secret = 'test_secret'
         mpic_coordinator_configuration = MpicCoordinatorConfiguration(
-            known_perspectives, 
+            all_perspectives_by_code,
+            target_perspective_codes,
             default_perspective_count, 
             enforce_distinct_rir_regions, 
             global_max_attempts, 
             hash_secret)
         return mpic_coordinator_configuration
+
+    @staticmethod
+    def create_all_perspectives_by_code() -> dict[str, RemotePerspective]:
+        perspectives = [
+            RemotePerspective.from_rir_code('arin.us-east-1'),
+            RemotePerspective.from_rir_code('arin.us-west-1'),
+            RemotePerspective.from_rir_code('ripe.eu-west-2'),
+            RemotePerspective.from_rir_code('ripe.eu-central-2'),
+            RemotePerspective.from_rir_code('apnic.ap-northeast-1'),
+            RemotePerspective.from_rir_code('apnic.ap-south-2')
+        ]
+        return {perspective.code: perspective for perspective in perspectives}
 
     # This also can be used for call_remote_perspective
     # noinspection PyUnusedLocal

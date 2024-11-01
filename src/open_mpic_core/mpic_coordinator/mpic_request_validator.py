@@ -7,7 +7,7 @@ class MpicRequestValidator:
     @staticmethod
     # returns a list of validation issues found in the request; if empty, request is (probably) valid
     # TODO should we create a flag to validate values separately from structure?
-    def is_request_valid(mpic_request, known_perspectives, diagnostic_mode=False) -> (bool, list):
+    def is_request_valid(mpic_request, all_target_perspectives, diagnostic_mode=False) -> (bool, list):
         request_validation_issues = []
 
         # TODO extract into a validate_orchestration_parameters method...
@@ -21,7 +21,7 @@ class MpicRequestValidator:
             if mpic_request.orchestration_parameters.perspectives is not None and diagnostic_mode:
                 requested_perspectives = mpic_request.orchestration_parameters.perspectives
                 requested_perspective_count = len(requested_perspectives)
-                if MpicRequestValidator.are_requested_perspectives_valid(requested_perspectives, known_perspectives):
+                if MpicRequestValidator.are_requested_perspectives_valid(requested_perspectives, all_target_perspectives):
                     should_validate_quorum_count = True
                 else:
                     request_validation_issues.append(MpicRequestValidationIssue(MpicRequestValidationMessages.INVALID_PERSPECTIVE_LIST))
@@ -29,7 +29,7 @@ class MpicRequestValidator:
                 request_validation_issues.append(MpicRequestValidationIssue(MpicRequestValidationMessages.PERSPECTIVES_NOT_IN_DIAGNOSTIC_MODE))
             elif mpic_request.orchestration_parameters.perspective_count is not None:
                 requested_perspective_count = mpic_request.orchestration_parameters.perspective_count
-                if MpicRequestValidator.is_requested_perspective_count_valid(requested_perspective_count, known_perspectives):
+                if MpicRequestValidator.is_requested_perspective_count_valid(requested_perspective_count, all_target_perspectives):
                     should_validate_quorum_count = True
                 else:
                     request_validation_issues.append(MpicRequestValidationIssue(MpicRequestValidationMessages.INVALID_PERSPECTIVE_COUNT, requested_perspective_count))
@@ -41,14 +41,14 @@ class MpicRequestValidator:
         return len(request_validation_issues) == 0, request_validation_issues
 
     @staticmethod
-    def are_requested_perspectives_valid(requested_perspectives, known_perspectives) -> bool:
+    def are_requested_perspectives_valid(requested_perspectives, all_target_perspectives) -> bool:
         # check if requested_perspectives is a subset of known_perspectives
-        return all(perspective in known_perspectives for perspective in requested_perspectives)
+        return all(perspective in all_target_perspectives for perspective in requested_perspectives)
 
     @staticmethod
-    def is_requested_perspective_count_valid(requested_perspective_count, known_perspectives) -> bool:
+    def is_requested_perspective_count_valid(requested_perspective_count, all_target_perspectives) -> bool:
         # check if requested_perspective_count is an integer, at least 2, and at most the number of known_perspectives
-        return isinstance(requested_perspective_count, int) and 2 <= requested_perspective_count <= len(known_perspectives)
+        return isinstance(requested_perspective_count, int) and 2 <= requested_perspective_count <= len(all_target_perspectives)
 
     @staticmethod
     def validate_quorum_count(requested_perspective_count, quorum_count, request_validation_issues) -> None:

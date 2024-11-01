@@ -1,23 +1,19 @@
-from importlib import resources
 from itertools import cycle, chain
 import random
-import yaml
-from pydantic import TypeAdapter
 
 from open_mpic_core.common_domain.remote_perspective import RemotePerspective
 
 
 class CohortCreator:
     @staticmethod
-    def build_randomly_shuffled_available_perspectives_per_rir(available_perspectives: list[str], random_seed: bytes) -> dict[str, list[RemotePerspective]]:
-        # convert available_perspectives to a list of RemotePerspective objects
+    def build_randomly_shuffled_available_perspectives_per_rir(available_perspective_codes: list[str],
+                                                               all_possible_perspectives_by_code,
+                                                               random_seed: bytes) -> dict[str, list[RemotePerspective]]:
+        # convert available_perspectives to a list of FULLY DEFINED RemotePerspective objects
         remote_perspectives = []
-        all_possible_perspectives_by_code = CohortCreator.load_aws_region_config()
+        # TODO delete: all_possible_perspectives_by_code = CohortCreator.load_aws_region_config()
 
-        for perspective in available_perspectives:
-            perspective_rir = perspective.split('.')[0]
-            perspective_code = perspective.split('.')[1]
-
+        for perspective_code in available_perspective_codes:
             if perspective_code not in all_possible_perspectives_by_code.keys():
                 continue  # TODO throw an error? check this case in the validator?
             else:
@@ -34,19 +30,6 @@ class CohortCreator:
             perspectives_per_rir[perspective.rir].append(perspective)
 
         return perspectives_per_rir
-
-    @staticmethod
-    def load_aws_region_config():
-        """
-        Reads in the available AWS regions from a configuration yaml and returns them as a list.
-        :return: list of available AWS regions
-        """
-        with resources.open_text('resources', 'aws_region_config.yaml') as file:
-            aws_region_config_yaml = yaml.safe_load(file)
-            aws_region_type_adapter = TypeAdapter(list[RemotePerspective])
-            aws_regions_list = aws_region_type_adapter.validate_python(aws_region_config_yaml['aws_available_regions'])
-            aws_regions_dict = {region.code: region for region in aws_regions_list}
-            return aws_regions_dict
 
     @staticmethod
     def create_perspective_cohorts(perspectives_per_rir: dict, cohort_size: int):

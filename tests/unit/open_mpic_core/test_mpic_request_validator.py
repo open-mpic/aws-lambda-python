@@ -66,7 +66,6 @@ class TestMpicRequestValidator:
         invalid_perspective_count_issue = next(issue for issue in validation_issues if issue.issue_type == MpicRequestValidationMessages.INVALID_PERSPECTIVE_COUNT.key)
         assert str(perspective_count) in invalid_perspective_count_issue.message
 
-    # TODO discuss enforcement of 500km distance between perspective regions. (And 2+ RIR requirement.)
     def is_request_valid__should_return_false_and_message_given_invalid_perspective_list(self):
         request = ValidMpicRequestCreator.create_valid_caa_mpic_request()
         request.orchestration_parameters.perspective_count = None

@@ -25,8 +25,10 @@ from open_mpic_core.mpic_coordinator.mpic_response_builder import MpicResponseBu
 
 
 class MpicCoordinatorConfiguration:
-    def __init__(self, known_perspectives, default_perspective_count, enforce_distinct_rir_regions, global_max_attempts, hash_secret):
-        self.known_perspectives = known_perspectives
+    def __init__(self, all_possible_perspectives_by_code, all_target_perspective_codes, default_perspective_count,
+                 enforce_distinct_rir_regions, global_max_attempts, hash_secret):
+        self.all_possible_perspectives_by_code = all_possible_perspectives_by_code
+        self.all_target_perspective_codes = all_target_perspective_codes
         self.default_perspective_count = default_perspective_count
         self.enforce_distinct_rir_regions = enforce_distinct_rir_regions
         self.global_max_attempts = global_max_attempts
@@ -36,17 +38,16 @@ class MpicCoordinatorConfiguration:
 class MpicCoordinator:
     # call_remote_perspective_function: a "dumb" transport for serialized data to a remote perspective and a serialized response from the remote perspective. MPIC Coordinator is tasked with ensuring the data from this function is sane and handling the serialization/deserialization of the data. This function may raise an exception if something goes wrong.
     def __init__(self, call_remote_perspective_function, mpic_coordinator_configuration: MpicCoordinatorConfiguration):
-        self.known_perspectives = mpic_coordinator_configuration.known_perspectives
-
+        self.all_possible_perspectives_by_code = mpic_coordinator_configuration.all_possible_perspectives_by_code
+        self.all_target_perspective_codes = mpic_coordinator_configuration.all_target_perspective_codes
         self.default_perspective_count = mpic_coordinator_configuration.default_perspective_count
         self.enforce_distinct_rir_regions = mpic_coordinator_configuration.enforce_distinct_rir_regions
         self.global_max_attempts = mpic_coordinator_configuration.global_max_attempts
         self.hash_secret = mpic_coordinator_configuration.hash_secret
-        # TODO fix config.yaml to use snake_case for keys
         self.call_remote_perspective_function = call_remote_perspective_function
-        
+
     def coordinate_mpic(self, mpic_request: MpicRequest):
-        is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(mpic_request, self.known_perspectives)
+        is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(mpic_request, self.all_target_perspective_codes)
 
         if not is_request_valid:
             error = MpicRequestValidationError(MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key)
@@ -67,7 +68,8 @@ class MpicCoordinator:
                 if orchestration_parameters.perspective_count is not None:
                     perspective_count = orchestration_parameters.perspective_count
 
-        perspective_cohorts = self.create_cohorts_of_randomly_selected_perspectives(self.known_perspectives,
+        perspective_cohorts = self.create_cohorts_of_randomly_selected_perspectives(self.all_target_perspective_codes,
+                                                                                    self.all_possible_perspectives_by_code,
                                                                                     perspective_count,
                                                                                     mpic_request.domain_or_ip_target)
 
@@ -104,13 +106,15 @@ class MpicCoordinator:
 
     # Returns a random subset of perspectives with a goal of maximum RIR diversity to increase diversity.
     # Perspectives must be of the form 'RIR.AWS-region'.
-    def create_cohorts_of_randomly_selected_perspectives(self, available_perspectives_as_strings, count, domain_or_ip_target):
-        if count > len(available_perspectives_as_strings):
+    def create_cohorts_of_randomly_selected_perspectives(self, available_perspective_codes,
+                                                         all_possible_perspectives_by_code, count, domain_or_ip_target):
+        if count > len(available_perspective_codes):
             raise ValueError(
-                f"Count ({count}) must be <= the number of available perspectives ({available_perspectives_as_strings})")
+                f"Count ({count}) must be <= the number of available perspectives ({available_perspective_codes})")
 
         random_seed = hashlib.sha256((self.hash_secret + domain_or_ip_target.lower()).encode('ASCII')).digest()
-        perspectives_per_rir = CohortCreator.build_randomly_shuffled_available_perspectives_per_rir(available_perspectives_as_strings, random_seed)
+        perspectives_per_rir = CohortCreator.build_randomly_shuffled_available_perspectives_per_rir(
+            available_perspective_codes, all_possible_perspectives_by_code, random_seed)
         cohorts = CohortCreator.create_perspective_cohorts(perspectives_per_rir, count)
         return cohorts
 
@@ -200,15 +204,6 @@ class MpicCoordinator:
                     validity_per_perspective_per_check_type[check_type][perspective.to_rir_code()] |= check_error_response.check_passed
                     perspective_responses_per_check_type[check_type].append(check_error_response)
         return perspective_responses_per_check_type, validity_per_perspective_per_check_type
-
-    @staticmethod
-    def build_400_response(error_name, issues_list):
-        # FIXME don't wrap it here, do that in the lambda
-        return {
-            'statusCode': 400,
-            'headers': {'Content-Type': 'application/json'},
-            'body': json.dumps({'error': error_name, 'validation_issues': issues_list})
-        }
 
     @staticmethod
     def call_remote_perspective(call_remote_perspective_function, call_config: RemoteCheckCallConfiguration):
