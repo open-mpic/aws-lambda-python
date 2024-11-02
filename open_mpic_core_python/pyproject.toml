@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "aws-lambda-python"
+name = "open-mpic-core-python"
 dynamic = ["version"]
-description = 'MPIC standard API implementation leveraging AWS Lambda.'
+description = 'MPIC Core library written in python.'
 readme = "README.md"
 requires-python = "==3.11.9"
 license = "MIT"
@@ -27,33 +27,29 @@ dependencies = [
     "requests>=2.32.3",
     "dnspython==2.6.1",
     "pydantic==2.8.2",
-    "aws-lambda-powertools[parser]==3.2.0",
 ]
 
 [project.optional-dependencies]
-provided = [
-    "boto3~=1.34.141",
-]
 test = [
     "pytest==8.2.2",
-    "pytest-cov==5.0.0",
+    "pytest-cov",
     "pytest-mock==3.14.0",
     "pytest-html==4.1.1",
     "pytest-spec==3.2.0",
 ]
 
 [project.urls]
-Documentation = "https://github.com/open-mpic/aws-lambda-python"
-Issues = "https://github.com/open-mpic/aws-lambda-python/issues"
-Source = "https://github.com/open-mpic/aws-lambda-python"
+Documentation = "https://github.com/open-mpic/open-mpic-core-python"
+Issues = "https://github.com/open-mpic/open-mpic-core-python/issues"
+Source = "https://github.com/open-mpic/open-mpic-core-python"
 
 #[dirs.env]
 #virtual = ".hatch"
 
 [tool.hatch]
-version.path = "src/aws_lambda_mpic/__about__.py"
-build.sources = ["src", "resources", "open_mpic_core_python/src"]
-build.targets.wheel.packages = ["src/aws_lambda_mpic", "open_mpic_core_python/src/open_mpic_core"]
+version.path = "src/open_mpic_core/__about__.py"
+build.sources = ["src", "resources"]
+build.targets.wheel.packages = ["src/open_mpic_core"]
 
 [tool.hatch.envs.default]
 skip-install = false
@@ -63,14 +59,13 @@ path="venv"
 [tool.hatch.envs.test]
 features = [
     "test",
-    "provided"
 ]
 
 [tool.hatch.envs.test.scripts]
 unit = "pytest"
 unit-html = "pytest --html=testreports/index.html" # generate html report (warning: uses an aging plugin, 11-2023)
 integration = "pytest tests/integration"
-coverage = "pytest --cov=src/aws_lambda_mpic --cov=src/open_mpic_core --cov-report=term-missing --cov-report=html"
+coverage = "pytest --cov=src/open_mpic_core --cov-report=term-missing --cov-report=html"
 
 [tool.hatch.envs.hatch-test]
 features = [
@@ -82,7 +77,7 @@ randomize = true
 
 [tool.pytest.ini_options]
 pythonpath = [
-    "src", "tests", "open_mpic_core_python/src", "." # need root directory because it has some python utility files we are importing for integration tests
+    "src", "tests", "." # need root directory because it has some python utility files we are importing for integration tests
 ]
 testpaths = [
     "tests/unit"
@@ -103,7 +98,7 @@ spec_test_format = "{result} {docstring_summary}"  # defaults to {name} if docst
 
 [tool.coverage.run]
 source = [
-    "src/aws_lambda_mpic"
+    "src/open_mpic_core"
 ]
 
 [tool.coverage.report]
