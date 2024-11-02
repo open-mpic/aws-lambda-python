@@ -6,23 +6,24 @@ from open_mpic_core.common_domain.remote_perspective import RemotePerspective
 
 class CohortCreator:
     @staticmethod
-    def build_randomly_shuffled_available_perspectives_per_rir(available_perspective_codes: list[str],
-                                                               all_possible_perspectives_by_code,
+    def build_randomly_shuffled_available_perspectives_per_rir(remote_perspectives: list[RemotePerspective],
                                                                random_seed: bytes) -> dict[str, list[RemotePerspective]]:
-        # convert available_perspectives to a list of FULLY DEFINED RemotePerspective objects
-        remote_perspectives = []
-        # TODO delete: all_possible_perspectives_by_code = CohortCreator.load_aws_region_config()
+        # # convert available_perspectives to a list of FULLY DEFINED RemotePerspective objects
+        # remote_perspectives = []
+        # # TODO delete: all_possible_perspectives_by_code = CohortCreator.load_aws_region_config()
+        #
+        # for perspective_code in available_perspective_codes:
+        #     if perspective_code not in all_possible_perspectives_by_code.keys():
+        #         continue  # TODO throw an error? check this case in the validator?
+        #     else:
+        #         fully_defined_perspective = all_possible_perspectives_by_code[perspective_code]
+        #         # TODO discuss: do we even need RIRs specified in the input? code should be unique enough
+        #         remote_perspectives.append(fully_defined_perspective)
 
-        for perspective_code in available_perspective_codes:
-            if perspective_code not in all_possible_perspectives_by_code.keys():
-                continue  # TODO throw an error? check this case in the validator?
-            else:
-                fully_defined_perspective = all_possible_perspectives_by_code[perspective_code]
-                # TODO discuss: do we even need RIRs specified in the input? code should be unique enough
-                remote_perspectives.append(fully_defined_perspective)
-
-        random.seed(random_seed)
-        random.shuffle(remote_perspectives)
+        # first sort all perspectives deterministically
+        remote_perspectives.sort(key=lambda remote_perspective: remote_perspective.code)
+        local_random = random.Random(random_seed)
+        local_random.shuffle(remote_perspectives)
         perspectives_per_rir = {}
         for perspective in remote_perspectives:
             if perspective.rir not in perspectives_per_rir:

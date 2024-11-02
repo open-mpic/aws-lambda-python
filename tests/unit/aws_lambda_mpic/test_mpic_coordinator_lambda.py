@@ -1,5 +1,6 @@
 import io
 import json
+import os
 from datetime import datetime
 from importlib import resources
 
@@ -105,13 +106,14 @@ class TestMpicCoordinatorLambda:
         assert 'us-east-2' in loaded_aws_regions['us-east-1'].too_close_codes
         assert 'us-east-1' in loaded_aws_regions['us-east-2'].too_close_codes
 
-    def constructor__should_load_environment_variables_and_initialize_mpic_coordinator(self, set_env_variables):
+    def constructor__should_initialize_mpic_coordinator_and_set_target_perspectives(self, set_env_variables):
         mpic_coordinator_lambda_handler = MpicCoordinatorLambdaHandler()
         all_possible_perspectives = TestMpicCoordinatorLambda.get_perspectives_by_code_dict_from_file()
-        # assert all_target_perspectives includes 'arin.us-east-1'
+        named_perspectives = os.environ['perspective_names'].split('|')
         mpic_coordinator = mpic_coordinator_lambda_handler.mpic_coordinator
-        assert 'us-east-1' in mpic_coordinator.all_target_perspective_codes
-        assert mpic_coordinator.all_possible_perspectives_by_code == all_possible_perspectives
+        us_east_1_perspective = all_possible_perspectives['us-east-1']
+        assert us_east_1_perspective in mpic_coordinator.target_perspectives
+        assert len(named_perspectives) == len(mpic_coordinator.target_perspectives)
         assert mpic_coordinator.hash_secret == 'test_secret'
 
     # noinspection PyUnusedLocal

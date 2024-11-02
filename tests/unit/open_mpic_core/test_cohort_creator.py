@@ -16,17 +16,16 @@ class TestCohortCreator:
     @classmethod
     def setup_class(cls):
         cls.all_perspectives_per_rir = TestCohortCreator.set_up_perspectives_per_rir_dict_from_file()
-        all_perspectives = list(chain.from_iterable(cls.all_perspectives_per_rir.values()))
-        cls.all_possible_perspectives_by_code = {perspective.code: perspective for perspective in all_perspectives}
+        cls.all_perspectives = list(chain.from_iterable(cls.all_perspectives_per_rir.values()))
+        cls.all_possible_perspectives_by_code = {perspective.code: perspective for perspective in cls.all_perspectives}
 
-    @pytest.mark.parametrize("target_perspective_codes", [
+    @pytest.mark.parametrize("perspective_codes", [
         (['us-east-1', 'us-west-1', 'ca-west-1', 'eu-west-1', 'eu-central-1', 'ap-southeast-1',]),
     ])
-    def build_randomly_shuffled_available_perspectives_per_rir__should_return_dict_of_remote_perspective_lists(self,
-                                                                                                               target_perspective_codes):
+    def build_randomly_shuffled_available_perspectives_per_rir__should_return_dict_of_remote_perspective_lists(self, perspective_codes):
+        perspectives = [self.all_possible_perspectives_by_code[perspective_code] for perspective_code in perspective_codes]
         test_random_seed = hashlib.sha256('test1hash2seed3'.encode('ASCII')).digest()
-        shuffled_perspectives_per_rir = CohortCreator.build_randomly_shuffled_available_perspectives_per_rir(
-            target_perspective_codes, self.all_possible_perspectives_by_code, test_random_seed)
+        shuffled_perspectives_per_rir = CohortCreator.build_randomly_shuffled_available_perspectives_per_rir(perspectives, test_random_seed)
         # get all rirs from named perspectives
         # convert list to set
         expected_perspectives_per_rir = {
@@ -37,14 +36,9 @@ class TestCohortCreator:
             assert len(shuffled_perspectives_per_rir[rir]) == len(expected_perspectives_per_rir[rir])
 
     def build_randomly_shuffled_available_perspectives_per_rir__should_shuffle_perspectives_the_same_given_the_same_random_seed(self):
-        all_perspectives = list(chain.from_iterable(self.all_perspectives_per_rir.values()))
-        all_perspective_codes = [perspective.code for perspective in all_perspectives]
-        shuffled_perspectives_per_rir_1 = CohortCreator.build_randomly_shuffled_available_perspectives_per_rir(
-            all_perspective_codes, self.all_possible_perspectives_by_code, b'testSeedX')
-        shuffled_perspectives_per_rir_2 = CohortCreator.build_randomly_shuffled_available_perspectives_per_rir(
-            all_perspective_codes, self.all_possible_perspectives_by_code, b'testSeedX')
-        shuffled_perspectives_per_rir_3 = CohortCreator.build_randomly_shuffled_available_perspectives_per_rir(
-            all_perspective_codes, self.all_possible_perspectives_by_code, b'testSeedY')
+        shuffled_perspectives_per_rir_1 = CohortCreator.build_randomly_shuffled_available_perspectives_per_rir(self.all_perspectives, b'testSeedX')
+        shuffled_perspectives_per_rir_2 = CohortCreator.build_randomly_shuffled_available_perspectives_per_rir(self.all_perspectives, b'testSeedX')
+        shuffled_perspectives_per_rir_3 = CohortCreator.build_randomly_shuffled_available_perspectives_per_rir(self.all_perspectives, b'testSeedY')
         # expect 1 and 2 to be identically sorted, while 3 should be different
         assert all(shuffled_perspectives_per_rir_1[rir] == shuffled_perspectives_per_rir_2[rir] for rir in shuffled_perspectives_per_rir_1.keys())
         for rir in shuffled_perspectives_per_rir_1.keys():
@@ -53,14 +47,13 @@ class TestCohortCreator:
         assert any(shuffled_perspectives_per_rir_1[rir] != shuffled_perspectives_per_rir_3[rir] for rir in shuffled_perspectives_per_rir_1.keys())
 
     def build_randomly_shuffled_available_perspectives_per_rir__should_return_empty_dict_given_empty_list_of_perspectives(self):
-        shuffled_perspectives_per_rir = CohortCreator.build_randomly_shuffled_available_perspectives_per_rir(
-            [], self.all_possible_perspectives_by_code, b'testSeed')
+        shuffled_perspectives_per_rir = CohortCreator.build_randomly_shuffled_available_perspectives_per_rir([], b'testSeed')
         assert len(shuffled_perspectives_per_rir.keys()) == 0
 
     def build_randomly_shuffled_available_perspectives_per_rir__should_enrich_each_perspective_with_name_and_list_of_too_close_perspectives(self):
-        target_perspective_codes = ['us-east-1', 'us-west-1', 'ca-west-1', 'eu-west-1', 'eu-central-1', 'ap-southeast-1']
-        shuffled_perspectives_per_rir = CohortCreator.build_randomly_shuffled_available_perspectives_per_rir(
-            target_perspective_codes, self.all_possible_perspectives_by_code, b'testSeed')
+        perspective_codes = ['us-east-1', 'us-west-1', 'ca-west-1', 'eu-west-1', 'eu-central-1', 'ap-southeast-1']
+        perspectives = [self.all_possible_perspectives_by_code[perspective_code] for perspective_code in perspective_codes]
+        shuffled_perspectives_per_rir = CohortCreator.build_randomly_shuffled_available_perspectives_per_rir(perspectives, b'testSeed')
         shuffled_perspectives_flattened = list(chain.from_iterable(shuffled_perspectives_per_rir.values()))
         assert all(perspective.name is not None for perspective in shuffled_perspectives_flattened)
         assert any(len(perspective.too_close_codes) > 0 for perspective in shuffled_perspectives_flattened)
@@ -202,3 +195,7 @@ class TestCohortCreator:
             # get set of unique rirs from perspectives, each of which has a rir attribute
             all_rirs = set(map(lambda perspective: perspective.rir, perspectives))
             return {rir: [perspective for perspective in perspectives if perspective.rir == rir] for rir in all_rirs}
+
+    @staticmethod
+    def convert_codes_to_remote_perspectives(perspective_codes: list[str], all_possible_perspectives_by_code: dict[str, RemotePerspective]) -> list[RemotePerspective]:
+        return [all_possible_perspectives_by_code[perspective_code] for perspective_code in perspective_codes]

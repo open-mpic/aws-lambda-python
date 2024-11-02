@@ -2,6 +2,7 @@ import sys
 import pytest
 
 from open_mpic_core.common_domain.enum.dcv_validation_method import DcvValidationMethod
+from open_mpic_core.common_domain.remote_perspective import RemotePerspective
 from open_mpic_core.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
 from open_mpic_core.mpic_coordinator.mpic_request_validator import MpicRequestValidator
 from unit.test_util.valid_mpic_request_creator import ValidMpicRequestCreator
@@ -11,7 +12,13 @@ from unit.test_util.valid_mpic_request_creator import ValidMpicRequestCreator
 class TestMpicRequestValidator:
     @classmethod
     def setup_class(cls):
-        cls.known_perspectives = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p10']
+        cls.known_perspectives = [
+            RemotePerspective.from_rir_code('rir1.p1'), RemotePerspective.from_rir_code('rir1.p2'),
+            RemotePerspective.from_rir_code('rir1.p3'), RemotePerspective.from_rir_code('rir1.p4'),
+            RemotePerspective.from_rir_code('rir2.p5'), RemotePerspective.from_rir_code('rir2.p6'),
+            RemotePerspective.from_rir_code('rir2.p7'), RemotePerspective.from_rir_code('rir2.p8'),
+            RemotePerspective.from_rir_code('rir3.p9'), RemotePerspective.from_rir_code('rir3.p10')
+        ]
 
     def is_request_valid__should_return_true_and_empty_list_given_valid_caa_check_request_with_perspective_count(self):
         request = ValidMpicRequestCreator.create_valid_caa_mpic_request()
@@ -21,7 +28,8 @@ class TestMpicRequestValidator:
 
     def is_request_valid__should_return_true_given_valid_caa_check_request_with_perspective_list_and_diagnostic_mode_true(self):
         request = ValidMpicRequestCreator.create_valid_caa_mpic_request()
-        request.orchestration_parameters.perspectives = self.known_perspectives[:6]
+        known_perspective_codes = [perspective.code for perspective in self.known_perspectives]
+        request.orchestration_parameters.perspectives = known_perspective_codes[:6]
         request.orchestration_parameters.perspective_count = None
         is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(request, self.known_perspectives, True)
         assert is_request_valid is True
@@ -37,7 +45,8 @@ class TestMpicRequestValidator:
 
     def is_request_valid__should_return_false_and_message_given_caa_check_request_with_perspective_list_and_diagnostic_mode_false(self):
         request = ValidMpicRequestCreator.create_valid_caa_mpic_request()
-        request.orchestration_parameters.perspectives = self.known_perspectives[:6]
+        known_perspective_codes = [perspective.code for perspective in self.known_perspectives]
+        request.orchestration_parameters.perspectives = known_perspective_codes[:6]
         request.orchestration_parameters.perspective_count = None
         is_request_valid, validation_issues = MpicRequestValidator.is_request_valid(request, self.known_perspectives, False)
         assert is_request_valid is False

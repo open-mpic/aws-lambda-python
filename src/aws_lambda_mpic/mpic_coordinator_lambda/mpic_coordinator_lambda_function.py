@@ -32,12 +32,13 @@ class MpicCoordinatorLambdaHandler:
             CheckType.CAA: {self.all_target_perspectives[i]: self.caa_arn_list[i] for i in range(len(self.all_target_perspectives))}
         }
 
-        self.all_target_perspective_codes = [target_perspective.split('.')[1] for target_perspective in self.all_target_perspectives]
-        self.all_possible_perspectives_by_code = self.load_aws_region_config()
+        all_target_perspective_codes = [target_perspective.split('.')[1] for target_perspective in self.all_target_perspectives]
+        all_possible_perspectives_by_code = MpicCoordinatorLambdaHandler.load_aws_region_config()
+        self.target_perspectives = MpicCoordinatorLambdaHandler.convert_codes_to_remote_perspectives(
+            all_target_perspective_codes, all_possible_perspectives_by_code)
 
         self.mpic_coordinator_configuration = MpicCoordinatorConfiguration(
-            self.all_possible_perspectives_by_code,
-            self.all_target_perspective_codes,
+            self.target_perspectives,
             self.default_perspective_count,
             self.enforce_distinct_rir_regions,
             self.global_max_attempts,
@@ -53,7 +54,8 @@ class MpicCoordinatorLambdaHandler:
         self.mpic_request_adapter = TypeAdapter(MpicRequest)
         self.check_response_adapter = TypeAdapter(CheckResponse)
 
-    def load_aws_region_config(self) -> dict[str, RemotePerspective]:
+    @staticmethod
+    def load_aws_region_config() -> dict[str, RemotePerspective]:
         """
         Reads in the available perspectives from a configuration yaml and returns them as a dict (map).
         :return: dict of available perspectives with region code as key
@@ -64,6 +66,20 @@ class MpicCoordinatorLambdaHandler:
             aws_regions_list = aws_region_type_adapter.validate_python(aws_region_config_yaml['aws_available_regions'])
             aws_regions_dict = {region.code: region for region in aws_regions_list}
             return aws_regions_dict
+
+    @staticmethod
+    def convert_codes_to_remote_perspectives(perspective_codes: list[str],
+                                             all_possible_perspectives_by_code: dict[str, RemotePerspective]) -> list[RemotePerspective]:
+        remote_perspectives = []
+
+        for perspective_code in perspective_codes:
+            if perspective_code not in all_possible_perspectives_by_code.keys():
+                continue  # TODO throw an error? check this case in the validator?
+            else:
+                fully_defined_perspective = all_possible_perspectives_by_code[perspective_code]
+                remote_perspectives.append(fully_defined_perspective)
+
+        return remote_perspectives
 
     # This function MUST validate its response and return a proper open_mpic_core object type.
     def call_remote_perspective(self, perspective: RemotePerspective, check_type: CheckType, check_request: BaseCheckRequest) -> CheckResponse:
