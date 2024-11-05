@@ -55,7 +55,7 @@ class TestDcvCheckerLambda:
 
     @staticmethod
     def create_dcv_check_response():
-        return DcvCheckResponse(perspective='arin.us-east-1', check_passed=True,
+        return DcvCheckResponse(perspective_code='us-east-1', check_passed=True,
                                 details=DcvCheckResponseDetails(),
                                 timestamp_ns=time.time_ns())
 

@@ -6,7 +6,7 @@ import os
 
 class MpicDcvCheckerLambdaHandler:
     def __init__(self):
-        self.perspective = RemotePerspective.from_rir_code(os.environ['rir_region'] + "." + os.environ['AWS_REGION'])
+        self.perspective = RemotePerspective(rir=os.environ['rir_region'], code=os.environ['AWS_REGION'])
         self.dcv_checker = MpicDcvChecker(self.perspective)
 
     def process_invocation(self, dcv_request: DcvCheckRequest):

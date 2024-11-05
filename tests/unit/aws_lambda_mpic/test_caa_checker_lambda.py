@@ -36,7 +36,7 @@ class TestCaaCheckerLambda:
 
     @staticmethod
     def create_caa_check_response():
-        return CaaCheckResponse(perspective='arin.us-east-1', check_passed=True,
+        return CaaCheckResponse(perspective_code='us-east-1', check_passed=True,
                                 details=CaaCheckResponseDetails(caa_record_present=True,
                                                                 found_at='example.com',
                                                                 response='dummy_response'),

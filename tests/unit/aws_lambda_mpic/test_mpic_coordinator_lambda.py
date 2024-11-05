@@ -51,7 +51,7 @@ class TestMpicCoordinatorLambda:
                                                                                  dcv_check_request)
         assert check_response.check_passed is True
         # hijacking the value of 'perspective' to verify that the right arguments got passed to the call
-        assert check_response.perspective == dcv_check_request.domain_or_ip_target
+        assert check_response.perspective_code == dcv_check_request.domain_or_ip_target
 
     def lambda_handler__should_return_error_given_invalid_request_body(self):
         request = ValidMpicRequestCreator.create_valid_dcv_mpic_request()
@@ -120,7 +120,7 @@ class TestMpicCoordinatorLambda:
     def create_successful_boto3_api_call_response_for_dcv_check(self, lambda_method, lambda_configuration):
         check_request = DcvCheckRequest.model_validate_json(lambda_configuration['Payload'])
         # hijacking the value of 'perspective' to verify that the right arguments got passed to the call
-        expected_response_body = DcvCheckResponse(perspective=check_request.domain_or_ip_target,
+        expected_response_body = DcvCheckResponse(perspective_code=check_request.domain_or_ip_target,
                                                   check_passed=True, details=DcvCheckResponseDetails())
         expected_response = {'statusCode': 200, 'body': expected_response_body.model_dump_json()}
         json_bytes = json.dumps(expected_response).encode('utf-8')

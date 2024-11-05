@@ -85,7 +85,7 @@ class MpicCoordinatorLambdaHandler:
     def call_remote_perspective(self, perspective: RemotePerspective, check_type: CheckType, check_request: BaseCheckRequest) -> CheckResponse:
         # Uses dcv_arn_list, caa_arn_list
         client = boto3.client('lambda', perspective.code)
-        function_name = self.arns_per_perspective_per_check_type[check_type][perspective.to_rir_code()]
+        function_name = self.arns_per_perspective_per_check_type[check_type][perspective.rir + "." + perspective.code]
         response = client.invoke(  # AWS Lambda-specific structure
                 FunctionName=function_name,
                 InvocationType='RequestResponse',

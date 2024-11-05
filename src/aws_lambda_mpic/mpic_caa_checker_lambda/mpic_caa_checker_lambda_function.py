@@ -6,7 +6,7 @@ import os
 
 class MpicCaaCheckerLambdaHandler:
     def __init__(self):
-        self.perspective = RemotePerspective.from_rir_code(os.environ['rir_region'] + "." + os.environ['AWS_REGION'])
+        self.perspective = RemotePerspective(rir=os.environ['rir_region'], code=os.environ['AWS_REGION'])
         self.default_caa_domain_list = os.environ['default_caa_domains'].split("|")
         self.caa_checker = MpicCaaChecker(self.default_caa_domain_list, self.perspective)
 
