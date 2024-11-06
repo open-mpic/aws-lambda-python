@@ -1,0 +1,3 @@
+[submodule "open_mpic_core_python"]
+	path = open_mpic_core_python
+	url = https://github.com/open-mpic/open-mpic-core-python.git

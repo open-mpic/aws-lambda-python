@@ -14,7 +14,7 @@ api-region: us-east-2
 default-perspective-count: 6
 
 # Path to source code for the functions
-source-path: /src/aws_lambda_python
+source-path: /src/aws_lambda_mpic
 
 caa-domains:
   - example-ca.example.com

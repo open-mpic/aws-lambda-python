@@ -5,7 +5,7 @@ from dns.rdtypes.ANY.CNAME import CNAME
 from dns.rdtypes.ANY.TXT import TXT
 from dns.rrset import RRset
 
-from aws_lambda_python.common_domain.enum.dns_record_type import DnsRecordType
+from open_mpic_core.common_domain.enum.dns_record_type import DnsRecordType
 
 
 class MockDnsObjectCreator:

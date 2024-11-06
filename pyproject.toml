@@ -27,7 +27,8 @@ dependencies = [
     "requests>=2.32.3",
     "dnspython==2.6.1",
     "pydantic==2.8.2",
-]  # consider splitting -- configure.py needs pyyaml, while the aws functions need requests and dnspython
+    "aws-lambda-powertools[parser]==3.2.0",
+]
 
 [project.optional-dependencies]
 provided = [
@@ -50,9 +51,9 @@ Source = "https://github.com/open-mpic/aws-lambda-python"
 #virtual = ".hatch"
 
 [tool.hatch]
-version.path = "src/aws_lambda_python/__about__.py"
-build.sources = ["src", "resources"]
-build.targets.wheel.packages = ["src/aws_lambda_python"]
+version.path = "src/aws_lambda_mpic/__about__.py"
+build.sources = ["src", "resources", "open_mpic_core_python/src"]
+build.targets.wheel.packages = ["src/aws_lambda_mpic", "open_mpic_core_python/src/open_mpic_core"]
 
 [tool.hatch.envs.default]
 skip-install = false
@@ -69,7 +70,7 @@ features = [
 unit = "pytest"
 unit-html = "pytest --html=testreports/index.html" # generate html report (warning: uses an aging plugin, 11-2023)
 integration = "pytest tests/integration"
-coverage = "pytest --cov=src/aws_lambda_python --cov-report=term-missing --cov-report=html"
+coverage = "pytest --cov=src/aws_lambda_mpic --cov=src/open_mpic_core --cov-report=term-missing --cov-report=html"
 
 [tool.hatch.envs.hatch-test]
 features = [
@@ -81,7 +82,7 @@ randomize = true
 
 [tool.pytest.ini_options]
 pythonpath = [
-    "src","."  # need root directory because it has some python utility files we are importing for integration tests
+    "src", "tests", "open_mpic_core_python/src", "." # need root directory because it has some python utility files we are importing for integration tests
 ]
 testpaths = [
     "tests/unit"
@@ -102,19 +103,11 @@ spec_test_format = "{result} {docstring_summary}"  # defaults to {name} if docst
 
 [tool.coverage.run]
 source = [
-    "src/aws_lambda_python"
+    "src/aws_lambda_mpic"
 ]
 
 [tool.coverage.report]
 include_namespace_packages = true
 omit = [
-    "*/src/aws_lambda_python/__about__.py",
-    "src/aws_lambda_python/mpic_coordinator/domain/*",
+    "*/src/*/__about__.py",
 ]
-
-#run.branch = true
-#run.parallel = true
-#run.omit = [
-#    "src/aws_lambda_python/__about__.py",
-#]
-

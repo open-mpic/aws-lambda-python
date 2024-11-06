@@ -3,7 +3,7 @@
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 cd $SCRIPT_DIR
 
-FUNCTIONS_DIR="src/aws_lambda_python"
+FUNCTIONS_DIR="src/aws_lambda_mpic"
 
 rm open-tofu/*.generated.tf
 
