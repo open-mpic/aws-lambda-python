@@ -9,7 +9,8 @@ class MpicDcvCheckerLambdaHandler:
         self.perspective = RemotePerspective(rir=os.environ['rir_region'], code=os.environ['AWS_REGION'])
         self.dcv_checker = MpicDcvChecker(self.perspective)
 
-    def process_invocation(self, dcv_request: DcvCheckRequest):
+    def process_invocation(self, dcv_request_dict: dict):
+        dcv_request = DcvCheckRequest.model_validate(dcv_request_dict)
         dcv_response = self.dcv_checker.check_dcv(dcv_request)
         status_code = 200
         if dcv_response.errors is not None and len(dcv_response.errors) > 0:
