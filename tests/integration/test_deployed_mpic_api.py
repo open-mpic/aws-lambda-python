@@ -10,12 +10,12 @@ from open_mpic_core.common_domain.enum.check_type import CheckType
 from open_mpic_core.mpic_coordinator.domain.mpic_request import MpicCaaRequest
 from open_mpic_core.mpic_coordinator.domain.mpic_request import MpicDcvRequest
 from open_mpic_core.mpic_coordinator.domain.mpic_orchestration_parameters import MpicRequestOrchestrationParameters
-from open_mpic_core.mpic_coordinator.domain.enum.request_path import RequestPath
 
 import testing_api_client
 from open_mpic_core.mpic_coordinator.domain.mpic_response import MpicResponse
 from open_mpic_core.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
 
+MPIC_REQUEST_PATH = "/mpic"
 
 # noinspection PyMethodMayBeStatic
 @pytest.mark.integration
@@ -41,7 +41,7 @@ class TestDeployedMpicApi:
         )
 
         print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
-        response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
+        response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
         # response_body_as_json = response.json()
         assert response.status_code == 200
         # assert response body has a list of perspectives with length 2, and each element has response code 200
@@ -86,7 +86,7 @@ class TestDeployedMpicApi:
                 certificate_type=CertificateType.TLS_SERVER if not is_wildcard_domain else CertificateType.TLS_SERVER_WILDCARD,
                 caa_domains=['example.com'])
         )
-        response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
+        response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
         mpic_response = self.mpic_response_adapter.validate_json(response.text)
         assert mpic_response.is_valid is False
 
@@ -119,7 +119,7 @@ class TestDeployedMpicApi:
                 certificate_type=CertificateType.TLS_SERVER if not is_wildcard_domain else CertificateType.TLS_SERVER_WILDCARD,
                 caa_domains=['caatestsuite.com', 'example.com'])
         )
-        response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
+        response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
         mpic_response = self.mpic_response_adapter.validate_json(response.text)
         assert mpic_response.is_valid is True
 
@@ -135,7 +135,7 @@ class TestDeployedMpicApi:
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
             caa_check_parameters=CaaCheckParameters(certificate_type=CertificateType.TLS_SERVER, caa_domains=['example.com'])
         )
-        response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
+        response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
         mpic_response = self.mpic_response_adapter.validate_json(response.text)
         assert mpic_response.is_valid is False
 
@@ -151,7 +151,7 @@ class TestDeployedMpicApi:
         )
 
         print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
-        response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
+        response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
         assert response.status_code == 200
         response_body = json.loads(response.text)
         print("\nResponse:\n", json.dumps(response_body, indent=4))  # pretty print response body
@@ -161,13 +161,13 @@ class TestDeployedMpicApi:
         request = MpicDcvRequest(
             domain_or_ip_target='ifconfig.me',
             dcv_check_parameters=DcvCheckParameters(
-                validation_details=DcvHttpGenericValidationDetails(http_token_path='/',
+                validation_details=DcvWebsiteChangeValidationDetails(http_token_path='/',
                                                                    challenge_value='test')
             )
         )
 
         print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
-        response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
+        response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
         assert response.status_code == 200
         response_body = json.loads(response.text)
         print("\nResponse:\n", json.dumps(response_body, indent=4))  # pretty print response body
@@ -180,7 +180,7 @@ class TestDeployedMpicApi:
         )
 
         print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
-        response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
+        response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
         assert response.status_code == 500
         response_body = json.loads(response.text)
         print("\nResponse:\n", json.dumps(response_body, indent=4))  # pretty print response body
@@ -197,7 +197,7 @@ class TestDeployedMpicApi:
         request.check_type = 'invalid_check_type'
 
         print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
-        response = api_client.post(RequestPath.MPIC, json.dumps(request.model_dump()))
+        response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
         assert response.status_code == 502
         #response_body = json.loads(response.text)
         #print("\nResponse:\n", json.dumps(response_body, indent=4))
