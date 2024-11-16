@@ -38,7 +38,7 @@ curl -H 'Content-Type: application/json' -H "x-api-key: $(hatch run ./get_api_ke
 
 The above sample must be run from the root directory of a deployed Open MPIC aws-lambda-python implementation for the bash command substitution to work. You can also run `hatch run ./get_api_key.py` and `hatch run ./get_api_url.py`, store these values and then substitute them into the above command. Once deployed, the API is globally accessible and authenticates requests via the `x-api-key` header, so the curl command with both of these values substituted can be run from any Internet-connected machine to trigger the API.
 
-The API is compliant with the [Open MPIC Specification](https://github.com/open-mpic/open-mpic-specification) with the exception of authentication. The API specification uses Bearer header authentication, but this implementation authorizes requests based on the `x-api-key` header. This is because `x-api-key` header authentication is integrated into AWS API Gateway allowing only authenticated requests to trigger lambda calls that incur costs. Unauthenticated requests are terminated by the API Gateway instead of having to be passed to Python code.
+The API is compliant with the [Open MPIC Specification](https://github.com/open-mpic/open-mpic-specification).
 
 Documentation based on the API specification can be viewed [here](https://open-mpic.org/documentation.html).
 
