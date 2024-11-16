@@ -1,5 +1,5 @@
 from open_mpic_core.common_domain.check_parameters import CaaCheckParameters, DcvCheckParameters, \
-    DcvDnsGenericValidationDetails, DcvHttpGenericValidationDetails
+    DcvDnsChangeValidationDetails, DcvWebsiteChangeValidationDetails
 from open_mpic_core.common_domain.enum.certificate_type import CertificateType
 from open_mpic_core.common_domain.enum.dcv_validation_method import DcvValidationMethod
 from open_mpic_core.common_domain.enum.dns_record_type import DnsRecordType
@@ -20,7 +20,7 @@ class ValidMpicRequestCreator:
         )
 
     @staticmethod
-    def create_valid_dcv_mpic_request(validation_method=DcvValidationMethod.DNS_GENERIC) -> MpicDcvRequest:
+    def create_valid_dcv_mpic_request(validation_method=DcvValidationMethod.DNS_CHANGE) -> MpicDcvRequest:
         return MpicDcvRequest(
             domain_or_ip_target='test',
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=6, quorum_count=4),
@@ -44,8 +44,8 @@ class ValidMpicRequestCreator:
     def create_validation_details(cls, validation_method):
         validation_details = {}
         match validation_method:
-            case DcvValidationMethod.DNS_GENERIC:
-                validation_details = DcvDnsGenericValidationDetails(dns_name_prefix='test', dns_record_type=DnsRecordType.A, challenge_value='test')
-            case DcvValidationMethod.HTTP_GENERIC:
-                validation_details = DcvHttpGenericValidationDetails(http_token_path='http://example.com', challenge_value='test')  # noqa E501 (http)
+            case DcvValidationMethod.DNS_CHANGE:
+                validation_details = DcvDnsChangeValidationDetails(dns_name_prefix='test', dns_record_type=DnsRecordType.A, challenge_value='test')
+            case DcvValidationMethod.WEBSITE_CHANGE_V2:
+                validation_details = DcvWebsiteChangeValidationDetails(http_token_path='http://example.com', challenge_value='test')  # noqa E501 (http)
         return validation_details

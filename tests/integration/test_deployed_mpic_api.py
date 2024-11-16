@@ -3,7 +3,7 @@ import sys
 import pytest
 from pydantic import TypeAdapter
 
-from open_mpic_core.common_domain.check_parameters import CaaCheckParameters, DcvHttpGenericValidationDetails
+from open_mpic_core.common_domain.check_parameters import CaaCheckParameters, DcvWebsiteChangeValidationDetails
 from open_mpic_core.common_domain.check_parameters import DcvCheckParameters
 from open_mpic_core.common_domain.enum.certificate_type import CertificateType
 from open_mpic_core.common_domain.enum.check_type import CheckType
@@ -145,7 +145,7 @@ class TestDeployedMpicApi:
             domain_or_ip_target='example.com',
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
             dcv_check_parameters=DcvCheckParameters(
-                validation_details=DcvHttpGenericValidationDetails(http_token_path='/',
+                validation_details=DcvWebsiteChangeValidationDetails(http_token_path='/',
                                                                    challenge_value='test')
             )
         )

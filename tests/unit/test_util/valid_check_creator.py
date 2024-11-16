@@ -1,5 +1,5 @@
-from open_mpic_core.common_domain.check_parameters import DcvCheckParameters, DcvHttpGenericValidationDetails, \
-    DcvDnsGenericValidationDetails, CaaCheckParameters
+from open_mpic_core.common_domain.check_parameters import DcvCheckParameters, DcvWebsiteChangeValidationDetails, \
+    DcvDnsChangeValidationDetails, CaaCheckParameters
 from open_mpic_core.common_domain.check_request import DcvCheckRequest, CaaCheckRequest
 from open_mpic_core.common_domain.enum.certificate_type import CertificateType
 from open_mpic_core.common_domain.enum.dns_record_type import DnsRecordType
@@ -17,7 +17,7 @@ class ValidCheckCreator:
     def create_valid_http_check_request():
         return DcvCheckRequest(domain_or_ip_target='example.com',
                                dcv_check_parameters=DcvCheckParameters(
-                                   validation_details=DcvHttpGenericValidationDetails(
+                                   validation_details=DcvWebsiteChangeValidationDetails(
                                        http_token_path='/.well-known/pki_validation/token111_ca1.txt',
                                        challenge_value='challenge_111')
                                ))
@@ -26,7 +26,7 @@ class ValidCheckCreator:
     def create_valid_dns_check_request(record_type=DnsRecordType.TXT):
         return DcvCheckRequest(domain_or_ip_target='example.com',
                                dcv_check_parameters=DcvCheckParameters(
-                                   validation_details=DcvDnsGenericValidationDetails(
+                                   validation_details=DcvDnsChangeValidationDetails(
                                        dns_name_prefix='_dnsauth',
                                        dns_record_type=record_type,
                                        challenge_value=f"{record_type}_challenge_111.ca1.com.")
