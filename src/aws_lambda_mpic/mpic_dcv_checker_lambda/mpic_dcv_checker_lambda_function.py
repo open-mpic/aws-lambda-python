@@ -14,6 +14,11 @@ class MpicDcvCheckerLambdaHandler:
     def process_invocation(self, dcv_request: DcvCheckRequest):
         dcv_response = self.dcv_checker.check_dcv(dcv_request)
         status_code = 200
+        if dcv_response.errors is not None and len(dcv_response.errors) > 0:
+            if dcv_response.errors[0].error_type == '404':
+                status_code = 404
+            else:
+                status_code = 500
         result = {
             'statusCode': status_code,
             'headers': {'Content-Type': 'application/json'},
