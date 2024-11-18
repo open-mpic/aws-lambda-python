@@ -7,6 +7,7 @@ from open_mpic_core.common_domain.check_request import BaseCheckRequest
 from open_mpic_core.common_domain.check_response import CheckResponse
 from open_mpic_core.mpic_coordinator.domain.mpic_request import MpicRequest
 from open_mpic_core.mpic_coordinator.domain.mpic_request_validation_error import MpicRequestValidationError
+from open_mpic_core.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
 from open_mpic_core.mpic_coordinator.mpic_coordinator import MpicCoordinator, MpicCoordinatorConfiguration
 from open_mpic_core.common_domain.enum.check_type import CheckType
 from open_mpic_core.common_domain.remote_perspective import RemotePerspective
@@ -127,12 +128,30 @@ def get_handler() -> MpicCoordinatorLambdaHandler:
         _handler = MpicCoordinatorLambdaHandler()
     return _handler
 
+def handle_lambda_exceptions(func):
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except ValidationError as validation_error:
+            return {
+                'statusCode': 400,
+                'headers': {'Content-Type': 'application/json'},
+                'body': json.dumps({
+                    'error': MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key,
+                    'validation_issues': validation_error.errors()
+                })
+            }
+        except Exception as e:
+            return {
+                'statusCode': 500,
+                'headers': {'Content-Type': 'application/json'},
+                'body': json.dumps({'error': str(e)})
+            }
+    return wrapper
 
-# TODO We need to find a way to bring back transparent error messages with this new parsing model.
-#      If the parsing to the MPIC request fails, it returns system internal server errors instead of returning
-#      the pydantic error message.
 # noinspection PyUnusedLocal
 # for now, we are not using context, but it is required by the lambda handler signature
+@handle_lambda_exceptions
 @event_parser(model=MpicRequest, envelope=envelopes.ApiGatewayEnvelope)  # AWS Lambda Powertools decorator
 def lambda_handler(event: MpicRequest, context):  # AWS Lambda entry point
     return get_handler().process_invocation(event)
