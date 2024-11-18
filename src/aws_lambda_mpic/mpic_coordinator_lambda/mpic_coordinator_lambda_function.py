@@ -128,6 +128,7 @@ def get_handler() -> MpicCoordinatorLambdaHandler:
         _handler = MpicCoordinatorLambdaHandler()
     return _handler
 
+
 def handle_lambda_exceptions(func):
     def wrapper(*args, **kwargs):
         try:
@@ -148,6 +149,7 @@ def handle_lambda_exceptions(func):
                 'body': json.dumps({'error': str(e)})
             }
     return wrapper
+
 
 # noinspection PyUnusedLocal
 # for now, we are not using context, but it is required by the lambda handler signature
