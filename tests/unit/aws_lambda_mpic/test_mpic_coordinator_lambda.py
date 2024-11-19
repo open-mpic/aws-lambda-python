@@ -74,13 +74,13 @@ class TestMpicCoordinatorLambda:
         result_body = json.loads(result['body'])
         assert result_body['validation_issues'][0]['type'] == 'union_tag_invalid'
 
-    def lambda_handler__should_return_500_error_given_logically_invalid_request(self):
+    def lambda_handler__should_return_400_error_given_logically_invalid_request(self):
         request = ValidMpicRequestCreator.create_valid_dcv_mpic_request()
         request.orchestration_parameters.perspective_count = 1
         api_request = TestMpicCoordinatorLambda.create_api_gateway_request()
         api_request.body = request.model_dump_json()
         result = mpic_coordinator_lambda_function.lambda_handler(api_request, None)
-        assert result['statusCode'] == 500
+        assert result['statusCode'] == 400
 
     def lambda_handler__should_return_500_error_given_other_unexpected_errors(self, set_env_variables, mocker):
         request = ValidMpicRequestCreator.create_valid_dcv_mpic_request()

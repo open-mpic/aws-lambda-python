@@ -100,19 +100,12 @@ class MpicCoordinatorLambdaHandler:
             raise ve
 
     def process_invocation(self, mpic_request: MpicRequest) -> dict:
-        try:
-            mpic_response = self.mpic_coordinator.coordinate_mpic(mpic_request)
-            return {
-                'statusCode': 200,
-                'headers': {'Content-Type': 'application/json'},
-                'body': mpic_response.model_dump_json()
-            }
-        except MpicRequestValidationError as e:  # TODO catch ALL exceptions here?
-            return {
-                'statusCode': 500,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': str(e)})
-            }
+        mpic_response = self.mpic_coordinator.coordinate_mpic(mpic_request)
+        return {
+            'statusCode': 200,
+            'headers': {'Content-Type': 'application/json'},
+            'body': mpic_response.model_dump_json()
+        }
 
 
 # Global instance for Lambda runtime
@@ -130,18 +123,21 @@ def get_handler() -> MpicCoordinatorLambdaHandler:
 
 
 def handle_lambda_exceptions(func):
+    def build_400_response(error_name, issues_list):
+        return {
+            'statusCode': 400,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({'error': error_name, 'validation_issues': issues_list})
+        }
+
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
+        except MpicRequestValidationError as e:
+            validation_issues = json.loads(e.__notes__[0])
+            return build_400_response(MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key, validation_issues)
         except ValidationError as validation_error:
-            return {
-                'statusCode': 400,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({
-                    'error': MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key,
-                    'validation_issues': validation_error.errors()
-                })
-            }
+            return build_400_response(MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key, validation_error.errors())
         except Exception as e:
             return {
                 'statusCode': 500,
