@@ -5,8 +5,6 @@ from open_mpic_core.common_domain.remote_perspective import RemotePerspective
 from open_mpic_core.mpic_caa_checker.mpic_caa_checker import MpicCaaChecker
 import os
 
-from open_mpic_core.mpic_coordinator.domain.mpic_request import MpicCaaRequest
-
 
 class MpicCaaCheckerLambdaHandler:
     def __init__(self):
