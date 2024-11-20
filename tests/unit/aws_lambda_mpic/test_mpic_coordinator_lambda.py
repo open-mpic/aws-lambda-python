@@ -11,7 +11,8 @@ from aws_lambda_powertools.utilities.parser.models import APIGatewayProxyEventMo
 from pydantic import ValidationError, TypeAdapter
 
 from open_mpic_core.common_domain.check_request import DcvCheckRequest
-from open_mpic_core.common_domain.check_response import DcvCheckResponse, DcvCheckResponseDetails
+from open_mpic_core.common_domain.check_response import DcvCheckResponse
+from open_mpic_core.common_domain.check_response_details import DcvDnsChangeResponseDetails
 from open_mpic_core.common_domain.enum.check_type import CheckType
 from open_mpic_core.common_domain.remote_perspective import RemotePerspective
 from open_mpic_core.mpic_coordinator.domain.mpic_orchestration_parameters import MpicEffectiveOrchestrationParameters
@@ -121,7 +122,7 @@ class TestMpicCoordinatorLambda:
         check_request = DcvCheckRequest.model_validate_json(lambda_configuration['Payload'])
         # hijacking the value of 'perspective' to verify that the right arguments got passed to the call
         expected_response_body = DcvCheckResponse(perspective_code=check_request.domain_or_ip_target,
-                                                  check_passed=True, details=DcvCheckResponseDetails())
+                                                  check_passed=True, details=DcvDnsChangeResponseDetails())
         expected_response = {'statusCode': 200, 'body': expected_response_body.model_dump_json()}
         json_bytes = json.dumps(expected_response).encode('utf-8')
         file_like_response = io.BytesIO(json_bytes)
