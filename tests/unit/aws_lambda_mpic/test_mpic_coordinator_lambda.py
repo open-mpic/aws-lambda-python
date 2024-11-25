@@ -54,32 +54,40 @@ class TestMpicCoordinatorLambda:
         # hijacking the value of 'perspective' to verify that the right arguments got passed to the call
         assert check_response.perspective_code == dcv_check_request.domain_or_ip_target
 
-    def lambda_handler__should_return_error_given_invalid_request_body(self):
+    def lambda_handler__should_return_400_error_and_details_given_invalid_request_body(self):
         request = ValidMpicRequestCreator.create_valid_dcv_mpic_request()
         request.domain_or_ip_target = None
         api_request = TestMpicCoordinatorLambda.create_api_gateway_request()
         api_request.body = request.model_dump_json()
-        with pytest.raises(ValidationError) as validation_error:
-            mpic_coordinator_lambda_function.lambda_handler(api_request, None)
-            assert validation_error.value.errors() == [{'loc': ('body',), 'msg': 'field required', 'type': 'value_error.missing'}]
+        result = mpic_coordinator_lambda_function.lambda_handler(api_request, None)
+        assert result['statusCode'] == 400
+        result_body = json.loads(result['body'])
+        assert result_body['validation_issues'][0]['type'] == 'string_type'
 
-    def lambda_handler__should_return_error_given_invalid_check_type(self):
+    def lambda_handler__should_return_400_error_and_details_given_invalid_check_type(self):
         request = ValidMpicRequestCreator.create_valid_dcv_mpic_request()
         request.check_type = 'invalid_check_type'
         api_request = TestMpicCoordinatorLambda.create_api_gateway_request()
         api_request.body = request.model_dump_json()
-        with pytest.raises(ValidationError) as validation_error:
-            mpic_coordinator_lambda_function.lambda_handler(api_request, None)
-            assert validation_error.value.errors() == [
-                {'loc': ('body', 'check_type'),
-                 'msg': 'value is not a valid enumeration member; permitted: \'DCV\', \'CAA\'', 'type': 'type_error.enum'}
-            ]
+        result = mpic_coordinator_lambda_function.lambda_handler(api_request, None)
+        assert result['statusCode'] == 400
+        result_body = json.loads(result['body'])
+        assert result_body['validation_issues'][0]['type'] == 'union_tag_invalid'
 
-    def lambda_handler__should_return_500_error_given_logically_invalid_request(self):
+    def lambda_handler__should_return_400_error_given_logically_invalid_request(self):
         request = ValidMpicRequestCreator.create_valid_dcv_mpic_request()
         request.orchestration_parameters.perspective_count = 1
         api_request = TestMpicCoordinatorLambda.create_api_gateway_request()
         api_request.body = request.model_dump_json()
+        result = mpic_coordinator_lambda_function.lambda_handler(api_request, None)
+        assert result['statusCode'] == 400
+
+    def lambda_handler__should_return_500_error_given_other_unexpected_errors(self, set_env_variables, mocker):
+        request = ValidMpicRequestCreator.create_valid_dcv_mpic_request()
+        api_request = TestMpicCoordinatorLambda.create_api_gateway_request()
+        api_request.body = request.model_dump_json()
+        mocker.patch('open_mpic_core.mpic_coordinator.mpic_coordinator.MpicCoordinator.coordinate_mpic',
+                     side_effect=Exception('Something went wrong'))
         result = mpic_coordinator_lambda_function.lambda_handler(api_request, None)
         assert result['statusCode'] == 500
 

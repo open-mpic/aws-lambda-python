@@ -172,7 +172,7 @@ class TestDeployedMpicApi:
         response_body = json.loads(response.text)
         print("\nResponse:\n", json.dumps(response_body, indent=4))  # pretty print response body
 
-    def api_should_return_500_given_invalid_orchestration_parameters_in_request(self, api_client):
+    def api_should_return_400_given_invalid_orchestration_parameters_in_request(self, api_client):
         request = MpicCaaRequest(
             domain_or_ip_target='example.com',
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=5),  # invalid quorum count
@@ -181,14 +181,13 @@ class TestDeployedMpicApi:
 
         print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
         response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
-        assert response.status_code == 500
+        assert response.status_code == 400
         response_body = json.loads(response.text)
         print("\nResponse:\n", json.dumps(response_body, indent=4))  # pretty print response body
         assert response_body['error'] == MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key
-        # We lost error detail in the last push.
-        #assert any(issue['issue_type'] == MpicRequestValidationMessages.INVALID_QUORUM_COUNT.key for issue in response_body['validation_issues'])
+        assert any(issue['issue_type'] == MpicRequestValidationMessages.INVALID_QUORUM_COUNT.key for issue in response_body['validation_issues'])
 
-    def api_should_return_502_given_invalid_check_type_in_request(self, api_client):
+    def api_should_return_400_given_invalid_check_type_in_request(self, api_client):
         request = MpicCaaRequest(
             domain_or_ip_target='example.com',
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
@@ -198,8 +197,7 @@ class TestDeployedMpicApi:
 
         print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
         response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
-        assert response.status_code == 502
-        #response_body = json.loads(response.text)
-        #print("\nResponse:\n", json.dumps(response_body, indent=4))
-        # We last error details in the last push.
-        #assert response_body['error'] == MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key
+        assert response.status_code == 400
+        response_body = json.loads(response.text)
+        print("\nResponse:\n", json.dumps(response_body, indent=4))
+        assert response_body['error'] == MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key
