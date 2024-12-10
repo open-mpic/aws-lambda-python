@@ -28,6 +28,7 @@ dependencies = [
     "dnspython==2.6.1",
     "pydantic==2.8.2",
     "aws-lambda-powertools[parser]==3.2.0",
+    "open-mpic-core==2.2.0"
 ]
 
 [project.optional-dependencies]
@@ -60,6 +61,11 @@ skip-install = false
 type="virtual"
 path="venv"
 
+[tool.hatch.envs.default.env-vars]
+PIP_INDEX_URL = "https://pypi.org/simple/"
+PIP_EXTRA_INDEX_URL = "https://test.pypi.org/simple/"  # FIXME here temporarily to test open-mpic-core packaging
+PIP_VERBOSE = "1"
+
 [tool.hatch.envs.test]
 features = [
     "test",
@@ -70,7 +76,7 @@ features = [
 unit = "pytest"
 unit-html = "pytest --html=testreports/index.html" # generate html report (warning: uses an aging plugin, 11-2023)
 integration = "pytest tests/integration"
-coverage = "pytest --cov=src/aws_lambda_mpic --cov=src/open_mpic_core --cov-report=term-missing --cov-report=html"
+coverage = "pytest --cov=src/aws_lambda_mpic --cov-report=term-missing --cov-report=html"
 
 [tool.hatch.envs.hatch-test]
 features = [
