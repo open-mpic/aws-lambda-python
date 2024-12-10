@@ -28,7 +28,7 @@ dependencies = [
     "dnspython==2.6.1",
     "pydantic==2.8.2",
     "aws-lambda-powertools[parser]==3.2.0",
-    "open-mpic-core==2.2.0"
+    "open-mpic-core==2.2.0",
 ]
 
 [project.optional-dependencies]
@@ -53,8 +53,8 @@ Source = "https://github.com/open-mpic/aws-lambda-python"
 
 [tool.hatch]
 version.path = "src/aws_lambda_mpic/__about__.py"
-build.sources = ["src", "resources", "open_mpic_core_python/src"]
-build.targets.wheel.packages = ["src/aws_lambda_mpic", "open_mpic_core_python/src/open_mpic_core"]
+build.sources = ["src", "resources"]
+build.targets.wheel.packages = ["src/aws_lambda_mpic"]
 
 [tool.hatch.envs.default]
 skip-install = false
@@ -66,29 +66,61 @@ PIP_INDEX_URL = "https://pypi.org/simple/"
 PIP_EXTRA_INDEX_URL = "https://test.pypi.org/simple/"  # FIXME here temporarily to test open-mpic-core packaging
 PIP_VERBOSE = "1"
 
+[tool.hatch.envs.lambda-layer]
+skip-install = true
+python = "3.11"
+type="virtual"
+path="layer/create_layer_virtualenv"
+
+[tool.hatch.envs.lambda-layer.env-vars]
+PIP_EXTRA_INDEX_URL = "https://test.pypi.org/simple/"
+PIP_ONLY_BINARY = ":all:"
+#PIP_PLATFORM = "manylinux2014_aarch64"
+#PIP_TARGET = "layer/create_layer_virtualenv2/lib/python3.11/site-packages"  # does not work... bug in pip 24.2?
+
+[tool.hatch.envs.lambda-layer.scripts]
+install = "pip install . --platform manylinux2014_aarch64 --only-binary=:all: --target layer/create_layer_virtualenv/lib/python3.11/site-packages"
+
 [tool.hatch.envs.test]
+skip-install = false
 features = [
     "test",
     "provided"
 ]
+installer = "pip"
+
+[tool.hatch.envs.test.env-vars]
+PIP_EXTRA_INDEX_URL = "https://test.pypi.org/simple/"
 
 [tool.hatch.envs.test.scripts]
+pre-install = "python -m ensurepip"
 unit = "pytest"
 unit-html = "pytest --html=testreports/index.html" # generate html report (warning: uses an aging plugin, 11-2023)
 integration = "pytest tests/integration"
 coverage = "pytest --cov=src/aws_lambda_mpic --cov-report=term-missing --cov-report=html"
 
 [tool.hatch.envs.hatch-test]
-features = [
-    "test",
-    "provided"
-]
+#installer = "pip"
+#features = [
+#    "test",
+#    "provided"
+#]
+#dependencies = [
+#    "pytest==8.2.2",
+#    "pytest-cov==5.0.0",
+#    "pytest-mock==3.14.0",
+#    "pytest-html==4.1.1",
+#    "pytest-spec==3.2.0",
+#]
 default-args = ["tests/unit"]
 randomize = true
 
+#[tool.hatch.envs.hatch-test.env-vars]
+#PIP_EXTRA_INDEX_URL = "https://test.pypi.org/simple/"
+
 [tool.pytest.ini_options]
 pythonpath = [
-    "src", "tests", "open_mpic_core_python/src", "." # need root directory because it has some python utility files we are importing for integration tests
+    "src", "tests", "." # need root directory because it has some python utility files we are importing for integration tests
 ]
 testpaths = [
     "tests/unit"

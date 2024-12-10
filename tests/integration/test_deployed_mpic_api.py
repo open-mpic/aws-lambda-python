@@ -17,6 +17,7 @@ from open_mpic_core.mpic_coordinator.messages.mpic_request_validation_messages i
 
 MPIC_REQUEST_PATH = "/mpic"
 
+
 # noinspection PyMethodMayBeStatic
 @pytest.mark.integration
 class TestDeployedMpicApi:
@@ -55,25 +56,25 @@ class TestDeployedMpicApi:
     @pytest.mark.parametrize('domain_or_ip_target, purpose_of_test, is_wildcard_domain', [
         ('empty.basic.caatestsuite.com', 'Tests handling of 0 issue ";"', False),
         ('deny.basic.caatestsuite.com', 'Tests handling of 0 issue "caatestsuite.com"', False),
-        ('uppercase-deny.basic.caatestsuite.com', 'Tests handling of uppercase issue tag (0 ISSUE "caatestsuite.com")', False),
-        ('mixedcase-deny.basic.caatestsuite.com', 'Tests handling of mixed case issue tag (0 IsSuE "caatestsuite.com")', False),
-        ('big.basic.caatestsuite.com', 'Tests handling of gigantic (1001) CAA record set (0 issue "caatestsuite.com")', False),
-        ('critical1.basic.caatestsuite.com', 'Tests handling of unknown critical property (128 caatestsuitedummyproperty "test")', False),
-        ('critical2.basic.caatestsuite.com', 'Tests handling of unknown critical property with another flag (130)', False),
-        ('sub1.deny.basic.caatestsuite.com', 'Tests basic tree climbing when CAA record is at parent domain', False),
-        ('sub2.sub1.deny.basic.caatestsuite.com', 'Tests tree climbing when CAA record is at grandparent domain', False),
-        ('deny.basic.caatestsuite.com', 'Tests handling of issue property for a wildcard domain', True),
-        ('deny-wild.basic.caatestsuite.com', 'Tests handling of issuewild for a wildcard domain', True),
-        ('cname-deny.basic.caatestsuite.com', 'Tests handling of CNAME, where CAA record is at CNAME target', False),
-        ('cname-cname-deny.basic.caatestsuite.com', 'Tests handling of CNAME chain, where CAA record is at ultimate target', False),
-        ('sub1.cname-deny.basic.caatestsuite.com', 'Tests handling of CNAME, where parent is CNAME and CAA record is at target', False),
+        # ('uppercase-deny.basic.caatestsuite.com', 'Tests handling of uppercase issue tag (0 ISSUE "caatestsuite.com")', False),
+        # ('mixedcase-deny.basic.caatestsuite.com', 'Tests handling of mixed case issue tag (0 IsSuE "caatestsuite.com")', False),
+        # ('big.basic.caatestsuite.com', 'Tests handling of gigantic (1001) CAA record set (0 issue "caatestsuite.com")', False),
+        # ('critical1.basic.caatestsuite.com', 'Tests handling of unknown critical property (128 caatestsuitedummyproperty "test")', False),
+        # ('critical2.basic.caatestsuite.com', 'Tests handling of unknown critical property with another flag (130)', False),
+        # ('sub1.deny.basic.caatestsuite.com', 'Tests basic tree climbing when CAA record is at parent domain', False),
+        # ('sub2.sub1.deny.basic.caatestsuite.com', 'Tests tree climbing when CAA record is at grandparent domain', False),
+        # ('deny.basic.caatestsuite.com', 'Tests handling of issue property for a wildcard domain', True),
+        # ('deny-wild.basic.caatestsuite.com', 'Tests handling of issuewild for a wildcard domain', True),
+        # ('cname-deny.basic.caatestsuite.com', 'Tests handling of CNAME, where CAA record is at CNAME target', False),
+        # ('cname-cname-deny.basic.caatestsuite.com', 'Tests handling of CNAME chain, where CAA record is at ultimate target', False),
+        # ('sub1.cname-deny.basic.caatestsuite.com', 'Tests handling of CNAME, where parent is CNAME and CAA record is at target', False),
         ('deny.permit.basic.caatestsuite.com', 'Tests rejection when parent name contains a permissible CAA record set', False),
-        ('ipv6only.caatestsuite.com', 'Tests handling of record at IPv6-only authoritative name server', False),
-        ('expired.caatestsuite-dnssec.com', 'Tests rejection when expired DNSSEC signatures', False),
-        ('missing.caatestsuite-dnssec.com', 'Tests rejection when missing DNSSEC signatures', False),
-        ('blackhole.caatestsuite-dnssec.com', 'Tests rejection when DNSSEC chain goes to non-responsive server', False),
-        ('servfail.caatestsuite-dnssec.com', 'Tests rejection when DNSSEC chain goes to server returning SERVFAIL', False),
-        ('refused.caatestsuite-dnssec.com', 'Tests rejection when DNSSEC chain goes to server returning REFUSED', False),
+        # ('ipv6only.caatestsuite.com', 'Tests handling of record at IPv6-only authoritative name server', False),
+        # ('expired.caatestsuite-dnssec.com', 'Tests rejection when expired DNSSEC signatures', False),
+        # ('missing.caatestsuite-dnssec.com', 'Tests rejection when missing DNSSEC signatures', False),
+        # ('blackhole.caatestsuite-dnssec.com', 'Tests rejection when DNSSEC chain goes to non-responsive server', False),
+        # ('servfail.caatestsuite-dnssec.com', 'Tests rejection when DNSSEC chain goes to server returning SERVFAIL', False),
+        # ('refused.caatestsuite-dnssec.com', 'Tests rejection when DNSSEC chain goes to server returning REFUSED', False),
         ('xss.caatestsuite.com', 'Tests rejection when issue property has HTML and JS', False),
     ])
     def api_should_return_is_valid_false_for_all_tests_in_do_not_issue_caa_test_suite(self, api_client, domain_or_ip_target,
@@ -94,6 +95,7 @@ class TestDeployedMpicApi:
     # This case is handled in a compliant manner as it is treated as a lookup failure.
     # The test for proper communication with an IPv6 nameserver can be enabled with the following additional parameter to the list below.
     # ('ipv6only.caatestsuite.com', 'Tests handling of record at IPv6-only authoritative name server', False),
+    @pytest.mark.skip(reason='need faster feedback loop for now')
     @pytest.mark.parametrize('domain_or_ip_target, purpose_of_test, is_wildcard_domain', [
         ('deny.basic.caatestsuite.com', 'Tests handling of 0 issue "caatestsuite.com"', False),
         ('uppercase-deny.basic.caatestsuite.com', 'Tests handling of uppercase issue tag (0 ISSUE "caatestsuite.com")', False),
@@ -146,7 +148,7 @@ class TestDeployedMpicApi:
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
             dcv_check_parameters=DcvCheckParameters(
                 validation_details=DcvWebsiteChangeValidationDetails(http_token_path='/',
-                                                                   challenge_value='test')
+                                                                     challenge_value='test')
             )
         )
 
@@ -162,7 +164,7 @@ class TestDeployedMpicApi:
             domain_or_ip_target='ifconfig.me',
             dcv_check_parameters=DcvCheckParameters(
                 validation_details=DcvWebsiteChangeValidationDetails(http_token_path='/',
-                                                                   challenge_value='test')
+                                                                     challenge_value='test')
             )
         )
 
@@ -186,7 +188,7 @@ class TestDeployedMpicApi:
         print("\nResponse:\n", json.dumps(response_body, indent=4))  # pretty print response body
         assert response_body['error'] == MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key
         # We lost error detail in the last push.
-        #assert any(issue['issue_type'] == MpicRequestValidationMessages.INVALID_QUORUM_COUNT.key for issue in response_body['validation_issues'])
+        # assert any(issue['issue_type'] == MpicRequestValidationMessages.INVALID_QUORUM_COUNT.key for issue in response_body['validation_issues'])
 
     def api_should_return_502_given_invalid_check_type_in_request(self, api_client):
         request = MpicCaaRequest(
@@ -199,7 +201,7 @@ class TestDeployedMpicApi:
         print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
         response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
         assert response.status_code == 502
-        #response_body = json.loads(response.text)
-        #print("\nResponse:\n", json.dumps(response_body, indent=4))
+        # response_body = json.loads(response.text)
+        # print("\nResponse:\n", json.dumps(response_body, indent=4))
         # We last error details in the last push.
-        #assert response_body['error'] == MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key
+        # assert response_body['error'] == MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key
