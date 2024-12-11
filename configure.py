@@ -38,7 +38,6 @@ def main(raw_args=None):
             stream.write(deployment_id_to_write)
     
     # Read the deployment id.
-    deployment_id = 0
     with open(args.deployment_id_file) as stream:
         deployment_id = int(stream.read())
 
@@ -48,14 +47,14 @@ def main(raw_args=None):
         try:
             config = yaml.safe_load(stream)
         except yaml.YAMLError as exc:
-            print(f"Error loading YAML config at {args.config}. Project not configured. Error details: {exec}.")
+            print(f"Error loading YAML config at {args.config}. Project not configured. Error details: {exc}.")
             exit()
     aws_available_regions = {}
     with open(args.available_regions) as stream:
         try:
             aws_available_regions = yaml.safe_load(stream)['aws-available-regions']
         except yaml.YAMLError as exc:
-            print(f"Error loading YAML config at {args.available_regions}. Project not configured. Error details: {exec}.")
+            print(f"Error loading YAML config at {args.available_regions}. Project not configured. Error details: {exc}.")
             exit()
 
     # Remove all old files.
@@ -96,7 +95,6 @@ def main(raw_args=None):
             main_tf_string = main_tf_string.replace("{{absolut-max-attempts-with-key}}", f"absolute_max_attempts = \"{config['absolute-max-attempts']}\"")
         else:
             main_tf_string = main_tf_string.replace("{{absolut-max-attempts-with-key}}", "")
-            
 
         # Replace enforce distinct rir regions.
         main_tf_string = main_tf_string.replace("{{enforce-distinct-rir-regions}}", f"\"{1 if config['enforce-distinct-rir-regions'] else 0}\"")
@@ -153,7 +151,6 @@ def main(raw_args=None):
 
             # Set the RIR region to load into env variables.
             aws_perspective_tf_region = aws_perspective_tf_region.replace("{{rir-region}}", f"{rir_region}")
-
 
             if not args.aws_perspective_tf_template.endswith(".tf.template"):
                 print(f"Error: invalid tf template name: {args.aws_perspective_tf_template}. Make sure all tf template files end in '.tf.template'.")

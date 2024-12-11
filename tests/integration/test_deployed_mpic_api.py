@@ -17,6 +17,7 @@ from open_mpic_core.mpic_coordinator.messages.mpic_request_validation_messages i
 
 MPIC_REQUEST_PATH = "/mpic"
 
+
 # noinspection PyMethodMayBeStatic
 @pytest.mark.integration
 class TestDeployedMpicApi:
@@ -146,7 +147,7 @@ class TestDeployedMpicApi:
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
             dcv_check_parameters=DcvCheckParameters(
                 validation_details=DcvWebsiteChangeValidationDetails(http_token_path='/',
-                                                                   challenge_value='test')
+                                                                     challenge_value='test')
             )
         )
 
@@ -162,7 +163,7 @@ class TestDeployedMpicApi:
             domain_or_ip_target='ifconfig.me',
             dcv_check_parameters=DcvCheckParameters(
                 validation_details=DcvWebsiteChangeValidationDetails(http_token_path='/',
-                                                                   challenge_value='test')
+                                                                     challenge_value='test')
             )
         )
 

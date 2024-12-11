@@ -12,14 +12,6 @@ resource "aws_lambda_layer_version" "python311_open_mpic_layer" {
     compatible_runtimes = ["python3.11"]
 }
 
-# Mpic Common layer for all lambdas (contains supporting first-party source code)
-resource "aws_lambda_layer_version" "mpic_common_layer" {
-    filename            = "../layer/mpic_common_layer_content.zip"
-    layer_name          = "mpic_common_layer_{{deployment-id}}"
-    source_code_hash    = "${filebase64sha256("../layer/mpic_common_layer_content.zip")}"
-    compatible_runtimes = ["python3.11"]
-}
-
 # Mpic Coordinator layer for the mpic coordinator lambda (contains supporting first-party source code)
 resource "aws_lambda_layer_version" "mpic_coordinator_layer" {
     filename            = "../layer/mpic_coordinator_layer_content.zip"
@@ -61,6 +53,7 @@ resource "aws_iam_role_policy_attachment" "basic-execution-policy-attach" {
 }
 
 resource "aws_iam_role_policy_attachment" "vpc-policy-attach" {
+  count = var.dnssec_enabled ? 1 : 0
   role       = "${aws_iam_role.open_mpic_lambda_role.name}"
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
@@ -83,7 +76,6 @@ resource "aws_lambda_function" "mpic_coordinator_lambda" {
     timeout = 60
     layers = [
         aws_lambda_layer_version.python311_open_mpic_layer.arn,
-        aws_lambda_layer_version.mpic_common_layer.arn,
         aws_lambda_layer_version.mpic_coordinator_layer.arn,
     ]
     environment {
