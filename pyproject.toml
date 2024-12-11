@@ -100,23 +100,8 @@ integration = "pytest tests/integration"
 coverage = "pytest --cov=src/aws_lambda_mpic --cov-report=term-missing --cov-report=html"
 
 [tool.hatch.envs.hatch-test]
-#installer = "pip"
-#features = [
-#    "test",
-#    "provided"
-#]
-#dependencies = [
-#    "pytest==8.2.2",
-#    "pytest-cov==5.0.0",
-#    "pytest-mock==3.14.0",
-#    "pytest-html==4.1.1",
-#    "pytest-spec==3.2.0",
-#]
 default-args = ["tests/unit"]
 randomize = true
-
-#[tool.hatch.envs.hatch-test.env-vars]
-#PIP_EXTRA_INDEX_URL = "https://test.pypi.org/simple/"
 
 [tool.pytest.ini_options]
 pythonpath = [
