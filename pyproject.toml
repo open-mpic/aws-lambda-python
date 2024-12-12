@@ -40,7 +40,6 @@ test = [
     "pytest-cov==5.0.0",
     "pytest-mock==3.14.0",
     "pytest-html==4.1.1",
-    "pytest-spec==3.2.0",
 ]
 
 [project.urls]
@@ -119,7 +118,6 @@ markers = [
 ]
 addopts = [
     "--import-mode=prepend",  # explicit default, as the tests rely on it for proper import resolution
-    "--spec"  # show test names in a more readable format in the console (warning: uses an aging plugin, 5-2021)
 ]
 spec_header_format = "Spec for {test_case} ({path}):"
 spec_test_format = "{result} {docstring_summary}"  # defaults to {name} if docstring is not present in test
