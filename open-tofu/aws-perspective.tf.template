@@ -7,30 +7,6 @@ resource "aws_lambda_layer_version" "python311_open_mpic_layer_{{region}}" {
     provider = aws.{{region}}
 }
 
-resource "aws_lambda_layer_version" "mpic_common_layer_{{region}}" {
-    filename            = "../layer/mpic_common_layer_content.zip"
-    layer_name          = "mpic_common_layer_{{region}}_{{deployment-id}}"
-    source_code_hash    = "${filebase64sha256("../layer/mpic_common_layer_content.zip")}"
-    compatible_runtimes = ["python3.11"]
-    provider = aws.{{region}}
-}
-
-resource "aws_lambda_layer_version" "mpic_caa_checker_layer_{{region}}" {
-    filename            = "../layer/mpic_caa_checker_layer_content.zip"
-    layer_name          = "mpic_caa_checker_layer_{{region}}_{{deployment-id}}"
-    source_code_hash    = "${filebase64sha256("../layer/mpic_caa_checker_layer_content.zip")}"
-    compatible_runtimes = ["python3.11"]
-    provider = aws.{{region}}
-}
-
-resource "aws_lambda_layer_version" "mpic_dcv_checker_layer_{{region}}" {
-    filename            = "../layer/mpic_dcv_checker_layer_content.zip"
-    layer_name          = "mpic_dcv_checker_layer_{{region}}_{{deployment-id}}"
-    source_code_hash    = "${filebase64sha256("../layer/mpic_dcv_checker_layer_content.zip")}"
-    compatible_runtimes = ["python3.11"]
-    provider = aws.{{region}}
-}
-
 variable "vpc_cidr_block_{{region}}" {
   type        = string
   description = "VPC CIDR"
@@ -50,6 +26,7 @@ variable "subnet_private_cidr_block_{{region}}" {
 }
 
 resource "aws_vpc" "vpc_{{region}}" {
+  count = var.dnssec_enabled ? 1 : 0
   cidr_block = var.vpc_cidr_block_{{region}}
   tags = {
     Name = "mpic-{{region}}-vpc"
@@ -60,7 +37,8 @@ resource "aws_vpc" "vpc_{{region}}" {
 }
 
 resource "aws_subnet" "subnet_public_{{region}}" {
-  vpc_id                  = aws_vpc.vpc_{{region}}.id
+  count = var.dnssec_enabled ? 1 : 0
+  vpc_id                  = aws_vpc.vpc_{{region}}[count.index].id
   cidr_block              = var.subnet_public_cidr_block_{{region}}
   depends_on              = [aws_vpc.vpc_{{region}}]
   map_public_ip_on_launch = true
@@ -71,7 +49,8 @@ resource "aws_subnet" "subnet_public_{{region}}" {
 }
 
 resource "aws_internet_gateway" "internet_gateway_{{region}}" {
-  vpc_id = aws_vpc.vpc_{{region}}.id
+  count = var.dnssec_enabled ? 1 : 0
+  vpc_id = aws_vpc.vpc_{{region}}[count.index].id
 
   tags = {
     Name = "mpic-{{region}}-internet-gateway"
@@ -80,11 +59,12 @@ resource "aws_internet_gateway" "internet_gateway_{{region}}" {
 }
 
 resource "aws_route_table" "route_table_public_{{region}}" {
-  vpc_id = aws_vpc.vpc_{{region}}.id
+  count = var.dnssec_enabled ? 1 : 0
+  vpc_id = aws_vpc.vpc_{{region}}[count.index].id
 
   route {
     cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.internet_gateway_{{region}}.id
+    gateway_id = aws_internet_gateway.internet_gateway_{{region}}[count.index].id
   }
 
   tags = {
@@ -94,12 +74,14 @@ resource "aws_route_table" "route_table_public_{{region}}" {
 }
 
 resource "aws_route_table_association" "route_table_association_public_{{region}}" {
-  subnet_id      = aws_subnet.subnet_public_{{region}}.id
-  route_table_id = aws_route_table.route_table_public_{{region}}.id
+  count = var.dnssec_enabled ? 1 : 0
+  subnet_id      = aws_subnet.subnet_public_{{region}}[count.index].id
+  route_table_id = aws_route_table.route_table_public_{{region}}[count.index].id
   provider = aws.{{region}}
 }
 
 resource "aws_eip" "eip_{{region}}" {
+  count = var.dnssec_enabled ? 1 : 0
   domain = "vpc"
   depends_on = [aws_internet_gateway.internet_gateway_{{region}}]
   tags = {
@@ -109,8 +91,9 @@ resource "aws_eip" "eip_{{region}}" {
 }
 
 resource "aws_nat_gateway" "nat_gateway_{{region}}" {
-  allocation_id = aws_eip.eip_{{region}}.id
-  subnet_id     = aws_subnet.subnet_public_{{region}}.id
+  count = var.dnssec_enabled ? 1 : 0
+  allocation_id = aws_eip.eip_{{region}}[count.index].id
+  subnet_id     = aws_subnet.subnet_public_{{region}}[count.index].id
 
   tags = {
     Name = "mpic-{{region}}-nat-gateway"
@@ -119,7 +102,8 @@ resource "aws_nat_gateway" "nat_gateway_{{region}}" {
 }
 
 resource "aws_subnet" "subnet_private_{{region}}" {
-  vpc_id                  = aws_vpc.vpc_{{region}}.id
+  count = var.dnssec_enabled ? 1 : 0
+  vpc_id                  = aws_vpc.vpc_{{region}}[count.index].id
   cidr_block              = var.subnet_private_cidr_block_{{region}}
   map_public_ip_on_launch = false
   depends_on              = [aws_vpc.vpc_{{region}}]
@@ -129,13 +113,13 @@ resource "aws_subnet" "subnet_private_{{region}}" {
   provider = aws.{{region}}
 }
 
-
 resource "aws_route_table" "route_table_private_{{region}}" {
-  vpc_id = aws_vpc.vpc_{{region}}.id
+  count = var.dnssec_enabled ? 1 : 0
+  vpc_id = aws_vpc.vpc_{{region}}[count.index].id
 
   route {
     cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.nat_gateway_{{region}}.id
+    nat_gateway_id = aws_nat_gateway.nat_gateway_{{region}}[count.index].id
   }
 
   tags = {
@@ -145,14 +129,16 @@ resource "aws_route_table" "route_table_private_{{region}}" {
 }
 
 resource "aws_route_table_association" "route_table_association_private_{{region}}" {
-  subnet_id      = aws_subnet.subnet_private_{{region}}.id
-  route_table_id = aws_route_table.route_table_private_{{region}}.id
+  count = var.dnssec_enabled ? 1 : 0
+  subnet_id      = aws_subnet.subnet_private_{{region}}[count.index].id
+  route_table_id = aws_route_table.route_table_private_{{region}}[count.index].id
   provider = aws.{{region}}
 }
 
 resource "aws_default_network_acl" "default_network_acl_{{region}}" {
-  default_network_acl_id = aws_vpc.vpc_{{region}}.default_network_acl_id
-  subnet_ids             = [aws_subnet.subnet_public_{{region}}.id, aws_subnet.subnet_private_{{region}}.id]
+  count = var.dnssec_enabled ? 1 : 0
+  default_network_acl_id = aws_vpc.vpc_{{region}}[count.index].default_network_acl_id
+  subnet_ids             = [aws_subnet.subnet_public_{{region}}[count.index].id, aws_subnet.subnet_private_{{region}}[count.index].id]
 
   ingress {
     protocol   = -1
@@ -178,9 +164,9 @@ resource "aws_default_network_acl" "default_network_acl_{{region}}" {
   provider = aws.{{region}}
 }
 
-
 resource "aws_default_security_group" "default_security_group_{{region}}" {
-  vpc_id = aws_vpc.vpc_{{region}}.id
+  count = var.dnssec_enabled ? 1 : 0
+  vpc_id = aws_vpc.vpc_{{region}}[count.index].id
 
   ingress {
     protocol  = -1
@@ -194,7 +180,7 @@ resource "aws_default_security_group" "default_security_group_{{region}}" {
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
-    # cidr_blocks = ["127.0.0.1/32"]
+   # cidr_blocks = ["127.0.0.1/32"]
   }
 
   tags = {
@@ -204,7 +190,8 @@ resource "aws_default_security_group" "default_security_group_{{region}}" {
 }
 
 resource "aws_route53_resolver_dnssec_config" "dnssec_config_{{region}}" {
-  resource_id = aws_vpc.vpc_{{region}}.id
+  count = var.dnssec_enabled ? 1 : 0
+  resource_id = aws_vpc.vpc_{{region}}[count.index].id
   provider = aws.{{region}}
 }
 
@@ -212,7 +199,12 @@ resource "aws_lambda_function" "mpic_dcv_checker_lambda_{{region}}" {
     filename      = "../{{source-path}}/mpic_dcv_checker_lambda/mpic_dcv_checker_lambda.zip"
     function_name = "open_mpic_dcv_checker_lambda_{{region}}_{{deployment-id}}"
     role          = aws_iam_role.open_mpic_lambda_role.arn
-    depends_on = [aws_iam_role.open_mpic_lambda_role, aws_iam_role_policy_attachment.basic-execution-policy-attach, aws_iam_role_policy_attachment.vpc-policy-attach, aws_iam_role_policy_attachment.invoke-lambda-policy-attach]
+    depends_on = [
+      aws_iam_role.open_mpic_lambda_role,
+      aws_iam_role_policy_attachment.basic-execution-policy-attach,
+      aws_iam_role_policy_attachment.invoke-lambda-policy-attach,
+      aws_iam_role_policy_attachment.vpc-policy-attach
+    ]
     handler       = "mpic_dcv_checker_lambda_function.lambda_handler"
     source_code_hash = filebase64sha256("../{{source-path}}/mpic_dcv_checker_lambda/mpic_dcv_checker_lambda.zip")
     timeout = 60
@@ -220,8 +212,6 @@ resource "aws_lambda_function" "mpic_dcv_checker_lambda_{{region}}" {
     architectures = ["arm64"]
     layers = [
         aws_lambda_layer_version.python311_open_mpic_layer_{{region}}.arn,
-        aws_lambda_layer_version.mpic_common_layer_{{region}}.arn,
-        aws_lambda_layer_version.mpic_dcv_checker_layer_{{region}}.arn,
     ]
     environment {
       variables = {
@@ -229,8 +219,8 @@ resource "aws_lambda_function" "mpic_dcv_checker_lambda_{{region}}" {
       }
     }
     vpc_config {
-        subnet_ids         = [aws_subnet.subnet_private_{{region}}.id]
-        security_group_ids = [aws_default_security_group.default_security_group_{{region}}.id]
+        subnet_ids         = [for s in aws_subnet.subnet_private_{{region}} : s.id]
+        security_group_ids = [for s in aws_default_security_group.default_security_group_{{region}} : s.id]
     }
     provider = aws.{{region}}
 }
@@ -239,7 +229,12 @@ resource "aws_lambda_function" "mpic_caa_checker_lambda_{{region}}" {
     filename      = "../{{source-path}}/mpic_caa_checker_lambda/mpic_caa_checker_lambda.zip"
     function_name = "open_mpic_caa_checker_lambda_{{region}}_{{deployment-id}}"
     role          = aws_iam_role.open_mpic_lambda_role.arn
-    depends_on = [aws_iam_role.open_mpic_lambda_role, aws_iam_role_policy_attachment.basic-execution-policy-attach, aws_iam_role_policy_attachment.vpc-policy-attach, aws_iam_role_policy_attachment.invoke-lambda-policy-attach]
+    depends_on = [
+      aws_iam_role.open_mpic_lambda_role,
+      aws_iam_role_policy_attachment.basic-execution-policy-attach,
+      aws_iam_role_policy_attachment.invoke-lambda-policy-attach,
+      aws_iam_role_policy_attachment.vpc-policy-attach
+    ]
     handler       = "mpic_caa_checker_lambda_function.lambda_handler"
     source_code_hash = filebase64sha256("../{{source-path}}/mpic_caa_checker_lambda/mpic_caa_checker_lambda.zip")
     timeout = 60
@@ -247,12 +242,10 @@ resource "aws_lambda_function" "mpic_caa_checker_lambda_{{region}}" {
     architectures = ["arm64"]
     layers = [
         aws_lambda_layer_version.python311_open_mpic_layer_{{region}}.arn,
-        aws_lambda_layer_version.mpic_common_layer_{{region}}.arn,
-        aws_lambda_layer_version.mpic_caa_checker_layer_{{region}}.arn,
     ]
     vpc_config {
-        subnet_ids         = [aws_subnet.subnet_private_{{region}}.id]
-        security_group_ids = [aws_default_security_group.default_security_group_{{region}}.id]
+        subnet_ids         = [for s in aws_subnet.subnet_private_{{region}} : s.id]
+        security_group_ids = [for s in aws_default_security_group.default_security_group_{{region}} : s.id]
     }
     provider = aws.{{region}}
     environment {

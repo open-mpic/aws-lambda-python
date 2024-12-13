@@ -2,11 +2,11 @@ import time
 import pytest
 
 import aws_lambda_mpic.mpic_dcv_checker_lambda.mpic_dcv_checker_lambda_function as mpic_dcv_checker_lambda_function
-from open_mpic_core.common_domain.check_parameters import DcvWebsiteChangeValidationDetails
-from open_mpic_core.common_domain.check_response import DcvCheckResponse, DcvCheckResponseDetails
-from open_mpic_core.common_domain.check_response_details import DcvWebsiteChangeResponseDetails
 from open_mpic_core.common_domain.validation_error import MpicValidationError
 from unit.test_util.valid_check_creator import ValidCheckCreator
+from open_mpic_core.common_domain.check_response_details import DcvHttpCheckResponseDetails
+from open_mpic_core.common_domain.enum.dcv_validation_method import DcvValidationMethod
+from open_mpic_core.common_domain.check_response import DcvCheckResponse
 
 
 class TestDcvCheckerLambda:
@@ -58,7 +58,7 @@ class TestDcvCheckerLambda:
     @staticmethod
     def create_dcv_check_response():
         return DcvCheckResponse(perspective_code='us-east-1', check_passed=True,
-                                details=DcvWebsiteChangeResponseDetails(),
+                                details=DcvHttpCheckResponseDetails(validation_method=DcvValidationMethod.WEBSITE_CHANGE_V2),
                                 timestamp_ns=time.time_ns())
 
 

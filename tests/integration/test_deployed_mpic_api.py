@@ -17,6 +17,7 @@ from open_mpic_core.mpic_coordinator.messages.mpic_request_validation_messages i
 
 MPIC_REQUEST_PATH = "/mpic"
 
+
 # noinspection PyMethodMayBeStatic
 @pytest.mark.integration
 class TestDeployedMpicApi:
@@ -69,8 +70,8 @@ class TestDeployedMpicApi:
         ('sub1.cname-deny.basic.caatestsuite.com', 'Tests handling of CNAME, where parent is CNAME and CAA record is at target', False),
         ('deny.permit.basic.caatestsuite.com', 'Tests rejection when parent name contains a permissible CAA record set', False),
         ('ipv6only.caatestsuite.com', 'Tests handling of record at IPv6-only authoritative name server', False),
-        ('expired.caatestsuite-dnssec.com', 'Tests rejection when expired DNSSEC signatures', False),
-        ('missing.caatestsuite-dnssec.com', 'Tests rejection when missing DNSSEC signatures', False),
+        #('expired.caatestsuite-dnssec.com', 'Tests rejection when expired DNSSEC signatures', False), # DNSSEC SHOULD be enabled in production but is not a current requirement for MPIC
+        #('missing.caatestsuite-dnssec.com', 'Tests rejection when missing DNSSEC signatures', False), # DNSSEC SHOULD be enabled in production but is not a current requirement for MPIC
         ('blackhole.caatestsuite-dnssec.com', 'Tests rejection when DNSSEC chain goes to non-responsive server', False),
         ('servfail.caatestsuite-dnssec.com', 'Tests rejection when DNSSEC chain goes to server returning SERVFAIL', False),
         ('refused.caatestsuite-dnssec.com', 'Tests rejection when DNSSEC chain goes to server returning REFUSED', False),
@@ -146,7 +147,7 @@ class TestDeployedMpicApi:
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
             dcv_check_parameters=DcvCheckParameters(
                 validation_details=DcvWebsiteChangeValidationDetails(http_token_path='/',
-                                                                   challenge_value='test')
+                                                                     challenge_value='test')
             )
         )
 
@@ -162,7 +163,7 @@ class TestDeployedMpicApi:
             domain_or_ip_target='ifconfig.me',
             dcv_check_parameters=DcvCheckParameters(
                 validation_details=DcvWebsiteChangeValidationDetails(http_token_path='/',
-                                                                   challenge_value='test')
+                                                                     challenge_value='test')
             )
         )
 
