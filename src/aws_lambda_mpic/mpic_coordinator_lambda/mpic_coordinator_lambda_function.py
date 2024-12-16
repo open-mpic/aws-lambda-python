@@ -21,10 +21,9 @@ class MpicCoordinatorLambdaHandler:
     def __init__(self):
         # load environment variables
         self.all_target_perspectives = os.environ['perspective_names'].split("|")
-        self.dcv_arn_list = os.environ['validator_arns'].split("|")  # TODO rename to dcv_arns
+        self.dcv_arn_list = os.environ['dcv_arns'].split("|")  # TODO rename to dcv_arns
         self.caa_arn_list = os.environ['caa_arns'].split("|")
         self.default_perspective_count = int(os.environ['default_perspective_count'])
-        self.enforce_distinct_rir_regions = int(os.environ['enforce_distinct_rir_regions']) == 1  # TODO may not need...
         self.global_max_attempts = int(os.environ['absolute_max_attempts']) if 'absolute_max_attempts' in os.environ else None
         self.hash_secret = os.environ['hash_secret']
 
@@ -41,7 +40,6 @@ class MpicCoordinatorLambdaHandler:
         self.mpic_coordinator_configuration = MpicCoordinatorConfiguration(
             self.target_perspectives,
             self.default_perspective_count,
-            self.enforce_distinct_rir_regions,
             self.global_max_attempts,
             self.hash_secret
         )

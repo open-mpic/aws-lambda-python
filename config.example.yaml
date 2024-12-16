@@ -1,11 +1,11 @@
 # A list of perspectives with the format <RIR>.<AWS-Region> TODO link to pages.
 perspectives:
-  - arin.us-east-2
-  - arin.us-west-2
-  - ripe.eu-central-1
-  - ripe.eu-west-2
-  - apnic.ap-northeast-2
-  - apnic.ap-southeast-1
+  - us-east-2
+  - us-west-2
+  - eu-central-1
+  - eu-west-2
+  - ap-northeast-2
+  - ap-southeast-1
 
 # The AWS region name for the API gateway and controller.
 api-region: us-east-2
