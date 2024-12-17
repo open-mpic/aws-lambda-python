@@ -63,7 +63,7 @@ def main(raw_args=None):
         if file.endswith(".generated.tf"):
             os.remove(os.path.join(open_tofu_dir, file))
 
-    regions = [perspective.split('.')[1] for perspective in config['perspectives']] 
+    regions = config['perspectives']
 
     # Generate "main.generated.tf" based on main.tf.template.
     with open(args.main_tf_template) as stream:
@@ -80,8 +80,8 @@ def main(raw_args=None):
         main_tf_string = main_tf_string.replace("{{perspective-names-list}}", f"\"{perspective_names_list}\"")
         
         # Generate the ARNs list for validators. Note that this is not a list of actual ARN values. It is just a list of ARN names that will be substituted by Open Tofu.
-        arn_validator_list = "|".join([f"${{aws_lambda_function.mpic_dcv_checker_lambda_{region}.arn}}" for region in regions])
-        main_tf_string = main_tf_string.replace("{{validator-arns-list}}", f"\"{arn_validator_list}\"")
+        arn_mpic_dcv_checker_list = "|".join([f"${{aws_lambda_function.mpic_dcv_checker_lambda_{region}.arn}}" for region in regions])
+        main_tf_string = main_tf_string.replace("{{validator-arns-list}}", f"\"{arn_mpic_dcv_checker_list}\"")
         
         # Generate the ARNs list for CAA resolvers. Note that this is not a list of actual ARN values. It is just a list of ARN names that will be substituted by Open Tofu.
         arn_mpic_caa_checker_list = "|".join([f"${{aws_lambda_function.mpic_caa_checker_lambda_{region}.arn}}" for region in regions])
@@ -90,14 +90,11 @@ def main(raw_args=None):
         # Replace default perspective count.
         main_tf_string = main_tf_string.replace("{{default-perspective-count}}", f"\"{config['default-perspective-count']}\"")
 
-        # Replace absolout max attempt count if present.
+        # Replace absolute max attempt count if present.
         if "absolute-max-attempts" in config:
-            main_tf_string = main_tf_string.replace("{{absolut-max-attempts-with-key}}", f"absolute_max_attempts = \"{config['absolute-max-attempts']}\"")
+            main_tf_string = main_tf_string.replace("{{absolute-max-attempts-with-key}}", f"absolute_max_attempts = \"{config['absolute-max-attempts']}\"")
         else:
-            main_tf_string = main_tf_string.replace("{{absolut-max-attempts-with-key}}", "")
-
-        # Replace enforce distinct rir regions.
-        main_tf_string = main_tf_string.replace("{{enforce-distinct-rir-regions}}", f"\"{1 if config['enforce-distinct-rir-regions'] else 0}\"")
+            main_tf_string = main_tf_string.replace("{{absolute-max-attempts-with-key}}", "")
 
         # Store the secret key for the vantage points hash in an environment variable.
         hash_secret = ''.join(secrets.choice(string.ascii_letters) for i in range(20))
@@ -133,11 +130,7 @@ def main(raw_args=None):
         aws_perspective_tf = stream.read()
 
         # Iterate through the different regions specified and produce an output file for each region.
-        for perspective in config['perspectives']:
-            split_perspective = perspective.split(".")
-            region = split_perspective[1]
-            rir_region = split_perspective[0]
-
+        for region in config['perspectives']:
             aws_perspective_tf_region = aws_perspective_tf.replace("{{region}}", region)
             
             # Replace the deployment id.
@@ -148,9 +141,6 @@ def main(raw_args=None):
 
             # Set the source path for the lambda functions.
             aws_perspective_tf_region = aws_perspective_tf_region.replace("{{source-path}}", f"{config['source-path']}")
-
-            # Set the RIR region to load into env variables.
-            aws_perspective_tf_region = aws_perspective_tf_region.replace("{{rir-region}}", f"{rir_region}")
 
             if not args.aws_perspective_tf_template.endswith(".tf.template"):
                 print(f"Error: invalid tf template name: {args.aws_perspective_tf_template}. Make sure all tf template files end in '.tf.template'.")

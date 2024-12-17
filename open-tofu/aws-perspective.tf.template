@@ -213,11 +213,6 @@ resource "aws_lambda_function" "mpic_dcv_checker_lambda_{{region}}" {
     layers = [
         aws_lambda_layer_version.python311_open_mpic_layer_{{region}}.arn,
     ]
-    environment {
-      variables = {
-        rir_region = "{{rir-region}}"
-      }
-    }
     vpc_config {
         subnet_ids         = [for s in aws_subnet.subnet_private_{{region}} : s.id]
         security_group_ids = [for s in aws_default_security_group.default_security_group_{{region}} : s.id]
@@ -251,7 +246,6 @@ resource "aws_lambda_function" "mpic_caa_checker_lambda_{{region}}" {
     environment {
       variables = {
         default_caa_domains = {{default-caa-domains}}
-        rir_region = "{{rir-region}}"
       }
     }
 }

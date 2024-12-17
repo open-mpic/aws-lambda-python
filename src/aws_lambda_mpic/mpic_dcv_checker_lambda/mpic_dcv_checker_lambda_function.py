@@ -1,18 +1,16 @@
 from aws_lambda_powertools.utilities.parser import event_parser
 
 from open_mpic_core.common_domain.check_request import DcvCheckRequest
-from open_mpic_core.common_domain.remote_perspective import RemotePerspective
 from open_mpic_core.mpic_dcv_checker.mpic_dcv_checker import MpicDcvChecker
 import os
 
 
 class MpicDcvCheckerLambdaHandler:
     def __init__(self):
-        self.perspective = RemotePerspective(rir=os.environ['rir_region'], code=os.environ['AWS_REGION'])
-        self.dcv_checker = MpicDcvChecker(self.perspective)
+        self.perspective_code = os.environ['AWS_REGION']
+        self.dcv_checker = MpicDcvChecker(self.perspective_code)
 
-    def process_invocation(self, dcv_request_dict: dict):
-        dcv_request = DcvCheckRequest.model_validate(dcv_request_dict)
+    def process_invocation(self, dcv_request: DcvCheckRequest):
         dcv_response = self.dcv_checker.check_dcv(dcv_request)
         status_code = 200
         if dcv_response.errors is not None and len(dcv_response.errors) > 0:
