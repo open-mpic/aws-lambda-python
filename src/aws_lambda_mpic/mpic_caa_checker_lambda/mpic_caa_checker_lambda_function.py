@@ -1,16 +1,15 @@
 from aws_lambda_powertools.utilities.parser import event_parser
 
 from open_mpic_core.common_domain.check_request import CaaCheckRequest
-from open_mpic_core.common_domain.remote_perspective import RemotePerspective
 from open_mpic_core.mpic_caa_checker.mpic_caa_checker import MpicCaaChecker
 import os
 
 
 class MpicCaaCheckerLambdaHandler:
     def __init__(self):
-        self.perspective = RemotePerspective(rir=os.environ['rir_region'], code=os.environ['AWS_REGION'])
+        self.perspective_code = os.environ['AWS_REGION']
         self.default_caa_domain_list = os.environ['default_caa_domains'].split("|")
-        self.caa_checker = MpicCaaChecker(self.default_caa_domain_list, self.perspective)
+        self.caa_checker = MpicCaaChecker(self.default_caa_domain_list, self.perspective_code)
 
     def process_invocation(self, caa_request: CaaCheckRequest):
         caa_response = self.caa_checker.check_caa(caa_request)

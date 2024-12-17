@@ -85,7 +85,7 @@ resource "aws_lambda_function" "mpic_coordinator_lambda" {
         caa_arns = {{mpic-caa-checker-arns-list}}
         default_perspective_count = {{default-perspective-count}}
         hash_secret = {{hash-secret}}
-        {{absolut-max-attempts-with-key}}
+        {{absolute-max-attempts-with-key}}
       }
     }
 }

@@ -10,7 +10,7 @@ from open_mpic_core.mpic_coordinator.domain.mpic_request_validation_error import
 from open_mpic_core.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
 from open_mpic_core.mpic_coordinator.mpic_coordinator import MpicCoordinator, MpicCoordinatorConfiguration
 from open_mpic_core.common_domain.enum.check_type import CheckType
-from open_mpic_core.common_domain.remote_perspective import RemotePerspective
+from open_mpic_core.mpic_coordinator.domain.remote_perspective import RemotePerspective
 
 import boto3
 import os
@@ -21,7 +21,7 @@ class MpicCoordinatorLambdaHandler:
     def __init__(self):
         # load environment variables
         self.all_target_perspectives = os.environ['perspective_names'].split("|")
-        self.dcv_arn_list = os.environ['dcv_arns'].split("|")  # TODO rename to dcv_arns
+        self.dcv_arn_list = os.environ['dcv_arns'].split("|")
         self.caa_arn_list = os.environ['caa_arns'].split("|")
         self.default_perspective_count = int(os.environ['default_perspective_count'])
         self.global_max_attempts = int(os.environ['absolute_max_attempts']) if 'absolute_max_attempts' in os.environ else None
@@ -32,7 +32,7 @@ class MpicCoordinatorLambdaHandler:
             CheckType.CAA: {self.all_target_perspectives[i]: self.caa_arn_list[i] for i in range(len(self.all_target_perspectives))}
         }
 
-        all_target_perspective_codes = [target_perspective.split('.')[1] for target_perspective in self.all_target_perspectives]
+        all_target_perspective_codes = self.all_target_perspectives
         all_possible_perspectives_by_code = MpicCoordinatorLambdaHandler.load_aws_region_config()
         self.target_perspectives = MpicCoordinatorLambdaHandler.convert_codes_to_remote_perspectives(
             all_target_perspective_codes, all_possible_perspectives_by_code)
@@ -84,7 +84,7 @@ class MpicCoordinatorLambdaHandler:
     def call_remote_perspective(self, perspective: RemotePerspective, check_type: CheckType, check_request: BaseCheckRequest) -> CheckResponse:
         # Uses dcv_arn_list, caa_arn_list
         client = boto3.client('lambda', perspective.code)
-        function_name = self.arns_per_perspective_per_check_type[check_type][perspective.rir + "." + perspective.code]
+        function_name = self.arns_per_perspective_per_check_type[check_type][perspective.code]
         response = client.invoke(  # AWS Lambda-specific structure
                 FunctionName=function_name,
                 InvocationType='RequestResponse',

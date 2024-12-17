@@ -32,7 +32,7 @@ dependencies = [
     "dnspython==2.6.1",
     "pydantic==2.8.2",
     "aws-lambda-powertools[parser]==3.2.0",
-    "open-mpic-core==2.4.0",
+    "open-mpic-core==3.0.0",
 ]
 
 [project.optional-dependencies]

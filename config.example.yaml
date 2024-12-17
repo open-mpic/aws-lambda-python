@@ -22,12 +22,3 @@ caa-domains:
 # absolute maximum regardless of orchestration parameters in request
 # NOT to be interpreted as the default number of attempts (default is 1 unless explicitly set in request)
 absolute-max-attempts: 3
-
-# Whether to run in a more permissive mode for development. Allows specification of named perspectives.
-# False by default. If true, result should NOT be used for production MPIC.
-# TODO align on naming and behavior (and where this kind of flag goes... API request or config here).
-diagnostic-mode: false
-
-# Whether to enforce whether two distinct RIR regions must succeed.
-# TODO align on whether this flag is valid to even manage.
-enforce-distinct-rir-regions: true
