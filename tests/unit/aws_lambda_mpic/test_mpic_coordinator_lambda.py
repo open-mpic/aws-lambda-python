@@ -8,12 +8,12 @@ import pytest
 import yaml
 from aws_lambda_powertools.utilities.parser.models import APIGatewayProxyEventModel, APIGatewayEventRequestContext, \
     APIGatewayEventIdentity
-from pydantic import ValidationError, TypeAdapter
+from open_mpic_core.mpic_coordinator.domain.remote_perspective import RemotePerspective
+from pydantic import TypeAdapter
 
 from open_mpic_core.common_domain.check_request import DcvCheckRequest
 from open_mpic_core.common_domain.check_response import DcvCheckResponse
 from open_mpic_core.common_domain.enum.check_type import CheckType
-from open_mpic_core.common_domain.remote_perspective import RemotePerspective
 from open_mpic_core.common_domain.check_response_details import DcvDnsCheckResponseDetails
 from open_mpic_core.common_domain.enum.dcv_validation_method import DcvValidationMethod
 from open_mpic_core.mpic_coordinator.domain.mpic_orchestration_parameters import MpicEffectiveOrchestrationParameters
@@ -32,11 +32,10 @@ class TestMpicCoordinatorLambda:
     @pytest.fixture(scope='class')
     def set_env_variables():
         envvars = {
-            'perspective_names': 'arin.us-east-1|arin.us-west-1|ripe.eu-west-2|ripe.eu-central-2|apnic.ap-northeast-1|apnic.ap-south-2',
-            'validator_arns': 'arn:aws:acm-pca:us-east-1:123456789012:validator/arin.us-east-1|arn:aws:acm-pca:us-west-1:123456789012:validator/arin.us-west-1|arn:aws:acm-pca:eu-west-2:123456789012:validator/ripe.eu-west-2|arn:aws:acm-pca:eu-central-2:123456789012:validator/ripe.eu-central-2|arn:aws:acm-pca:ap-northeast-1:123456789012:validator/apnic.ap-northeast-1|arn:aws:acm-pca:ap-south-2:123456789012:validator/apnic.ap-south-2',
-            'caa_arns': 'arn:aws:acm-pca:us-east-1:123456789012:caa/arin.us-east-1|arn:aws:acm-pca:us-west-1:123456789012:caa/arin.us-west-1|arn:aws:acm-pca:eu-west-2:123456789012:caa/ripe.eu-west-2|arn:aws:acm-pca:eu-central-2:123456789012:caa/ripe.eu-central-2|arn:aws:acm-pca:ap-northeast-1:123456789012:caa/apnic.ap-northeast-1|arn:aws:acm-pca:ap-south-2:123456789012:caa/apnic.ap-south-2',
+            'perspective_names': 'us-east-1|us-west-1|eu-west-2|eu-central-2|ap-northeast-1|ap-south-2',
+            'dcv_arns': 'arn:aws:acm-pca:us-east-1:123456789012:validator/us-east-1|arn:aws:acm-pca:us-west-1:123456789012:validator/us-west-1|arn:aws:acm-pca:eu-west-2:123456789012:validator/eu-west-2|arn:aws:acm-pca:eu-central-2:123456789012:validator/eu-central-2|arn:aws:acm-pca:ap-northeast-1:123456789012:validator/ap-northeast-1|arn:aws:acm-pca:ap-south-2:123456789012:validator/ap-south-2',
+            'caa_arns': 'arn:aws:acm-pca:us-east-1:123456789012:caa/us-east-1|arn:aws:acm-pca:us-west-1:123456789012:caa/us-west-1|arn:aws:acm-pca:eu-west-2:123456789012:caa/eu-west-2|arn:aws:acm-pca:eu-central-2:123456789012:caa/eu-central-2|arn:aws:acm-pca:ap-northeast-1:123456789012:caa/ap-northeast-1|arn:aws:acm-pca:ap-south-2:123456789012:caa/ap-south-2',
             'default_perspective_count': '3',
-            'enforce_distinct_rir_regions': '1',  # TODO may not need this...
             'hash_secret': 'test_secret'
         }
         with pytest.MonkeyPatch.context() as class_scoped_monkeypatch:

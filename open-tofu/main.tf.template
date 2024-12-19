@@ -81,12 +81,11 @@ resource "aws_lambda_function" "mpic_coordinator_lambda" {
     environment {
       variables = {
         perspective_names = {{perspective-names-list}}
-        validator_arns = {{validator-arns-list}}
+        dcv_arns = {{validator-arns-list}}
         caa_arns = {{mpic-caa-checker-arns-list}}
         default_perspective_count = {{default-perspective-count}}
-        enforce_distinct_rir_regions = {{enforce-distinct-rir-regions}}
         hash_secret = {{hash-secret}}
-        {{absolut-max-attempts-with-key}}
+        {{absolute-max-attempts-with-key}}
       }
     }
 }

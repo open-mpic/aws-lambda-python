@@ -1,11 +1,11 @@
 # A list of perspectives with the format <RIR>.<AWS-Region> TODO link to pages.
 perspectives:
-  - arin.us-east-2
-  - arin.us-west-2
-  - ripe.eu-central-1
-  - ripe.eu-west-2
-  - apnic.ap-northeast-2
-  - apnic.ap-southeast-1
+  - us-east-2
+  - us-west-2
+  - eu-central-1
+  - eu-west-2
+  - ap-northeast-2
+  - ap-southeast-1
 
 # The AWS region name for the API gateway and controller.
 api-region: us-east-2
@@ -22,12 +22,3 @@ caa-domains:
 # absolute maximum regardless of orchestration parameters in request
 # NOT to be interpreted as the default number of attempts (default is 1 unless explicitly set in request)
 absolute-max-attempts: 3
-
-# Whether to run in a more permissive mode for development. Allows specification of named perspectives.
-# False by default. If true, result should NOT be used for production MPIC.
-# TODO align on naming and behavior (and where this kind of flag goes... API request or config here).
-diagnostic-mode: false
-
-# Whether to enforce whether two distinct RIR regions must succeed.
-# TODO align on whether this flag is valid to even manage.
-enforce-distinct-rir-regions: true
