@@ -80,9 +80,7 @@ resource "aws_lambda_function" "mpic_coordinator_lambda" {
     ]
     environment {
       variables = {
-        perspective_names = {{perspective-names-list}}
-        dcv_arns = {{validator-arns-list}}
-        caa_arns = {{mpic-caa-checker-arns-list}}
+        perspectives = jsonencode({{perspectives}})
         default_perspective_count = {{default-perspective-count}}
         hash_secret = {{hash-secret}}
         {{absolute-max-attempts-with-key}}
