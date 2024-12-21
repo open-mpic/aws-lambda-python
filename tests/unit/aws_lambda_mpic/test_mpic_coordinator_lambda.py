@@ -1,6 +1,5 @@
 import io
 import json
-import os
 from datetime import datetime
 from importlib import resources
 
@@ -73,6 +72,7 @@ class TestMpicCoordinatorLambda:
         request.domain_or_ip_target = None
         api_request = TestMpicCoordinatorLambda.create_api_gateway_request()
         api_request.body = request.model_dump_json()
+        # noinspection PyTypeChecker
         result = mpic_coordinator_lambda_function.lambda_handler(api_request, None)
         assert result['statusCode'] == 400
         result_body = json.loads(result['body'])
@@ -83,18 +83,22 @@ class TestMpicCoordinatorLambda:
         request.check_type = 'invalid_check_type'
         api_request = TestMpicCoordinatorLambda.create_api_gateway_request()
         api_request.body = request.model_dump_json()
+        # noinspection PyTypeChecker
         result = mpic_coordinator_lambda_function.lambda_handler(api_request, None)
         assert result['statusCode'] == 400
         result_body = json.loads(result['body'])
-        assert result_body['validation_issues'][0]['type'] == 'union_tag_invalid'
+        assert result_body['validation_issues'][0]['type'] == 'literal_error'
 
     def lambda_handler__should_return_400_error_given_logically_invalid_request(self):
         request = ValidMpicRequestCreator.create_valid_dcv_mpic_request()
         request.orchestration_parameters.perspective_count = 1
         api_request = TestMpicCoordinatorLambda.create_api_gateway_request()
         api_request.body = request.model_dump_json()
+        # noinspection PyTypeChecker
         result = mpic_coordinator_lambda_function.lambda_handler(api_request, None)
         assert result['statusCode'] == 400
+        result_body = json.loads(result['body'])
+        assert result_body['validation_issues'][0]['issue_type'] == 'invalid-perspective-count'
 
     def lambda_handler__should_return_500_error_given_other_unexpected_errors(self, set_env_variables, mocker):
         request = ValidMpicRequestCreator.create_valid_dcv_mpic_request()
@@ -102,6 +106,7 @@ class TestMpicCoordinatorLambda:
         api_request.body = request.model_dump_json()
         mocker.patch('open_mpic_core.mpic_coordinator.mpic_coordinator.MpicCoordinator.coordinate_mpic',
                      side_effect=Exception('Something went wrong'))
+        # noinspection PyTypeChecker
         result = mpic_coordinator_lambda_function.lambda_handler(api_request, None)
         assert result['statusCode'] == 500
 
@@ -117,6 +122,7 @@ class TestMpicCoordinatorLambda:
             'headers': {'Content-Type': 'application/json'},
             'body': mock_return_value.model_dump_json()
         }
+        # noinspection PyTypeChecker
         result = mpic_coordinator_lambda_function.lambda_handler(api_request, None)
         assert result == expected_response
 
