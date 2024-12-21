@@ -21,6 +21,7 @@ from open_mpic_core.mpic_coordinator.domain.mpic_response import MpicCaaResponse
 from aws_lambda_mpic.mpic_coordinator_lambda.mpic_coordinator_lambda_function import MpicCoordinatorLambdaHandler
 from botocore.response import StreamingBody
 import aws_lambda_mpic.mpic_coordinator_lambda.mpic_coordinator_lambda_function as mpic_coordinator_lambda_function
+from aws_lambda_mpic.mpic_coordinator_lambda.mpic_coordinator_lambda_function import PerspectiveEndpoints, PerspectiveEndpointInfo
 
 from unit.test_util.valid_check_creator import ValidCheckCreator
 from unit.test_util.valid_mpic_request_creator import ValidMpicRequestCreator
@@ -31,10 +32,22 @@ class TestMpicCoordinatorLambda:
     @staticmethod
     @pytest.fixture(scope='class')
     def set_env_variables():
+        perspectives_as_dict = {
+            "us-east-1": PerspectiveEndpoints(caa_endpoint_info=PerspectiveEndpointInfo(arn='arn:aws:acm-pca:us-east-1:123456789012:caa/us-east-1'),
+                                              dcv_endpoint_info=PerspectiveEndpointInfo(arn='arn:aws:acm-pca:us-east-1:123456789012:dcv/us-east-1')),
+            "us-west-1": PerspectiveEndpoints(caa_endpoint_info=PerspectiveEndpointInfo(arn='arn:aws:acm-pca:us-west-1:123456789012:caa/us-west-1'),
+                                              dcv_endpoint_info=PerspectiveEndpointInfo(arn='arn:aws:acm-pca:us-west-1:123456789012:dcv/us-west-1')),
+            "eu-west-2": PerspectiveEndpoints(caa_endpoint_info=PerspectiveEndpointInfo(arn='arn:aws:acm-pca:eu-west-2:123456789012:caa/eu-west-2'),
+                                              dcv_endpoint_info=PerspectiveEndpointInfo(arn='arn:aws:acm-pca:eu-west-2:123456789012:dcv/eu-west-2')),
+            "eu-central-2": PerspectiveEndpoints(caa_endpoint_info=PerspectiveEndpointInfo(arn='arn:aws:acm-pca:eu-central-2:123456789012:caa/eu-central-2'),
+                                                 dcv_endpoint_info=PerspectiveEndpointInfo(arn='arn:aws:acm-pca:eu-central-2:123456789012:dcv/eu-central-2')),
+            "ap-northeast-1": PerspectiveEndpoints(caa_endpoint_info=PerspectiveEndpointInfo(arn='arn:aws:acm-pca:ap-northeast-1:123456789012:caa/ap-northeast-1'),
+                                                   dcv_endpoint_info=PerspectiveEndpointInfo(arn='arn:aws:acm-pca:ap-northeast-1:123456789012:dcv/ap-northeast-1')),
+            "ap-south-2": PerspectiveEndpoints(caa_endpoint_info=PerspectiveEndpointInfo(arn='arn:aws:acm-pca:ap-south-2:123456789012:caa/ap-south-2'),
+                                               dcv_endpoint_info=PerspectiveEndpointInfo(arn='arn:aws:acm-pca:ap-south-2:123456789012:dcv/ap-south-2'))
+        }
         envvars = {
-            'perspective_names': 'us-east-1|us-west-1|eu-west-2|eu-central-2|ap-northeast-1|ap-south-2',
-            'dcv_arns': 'arn:aws:acm-pca:us-east-1:123456789012:validator/us-east-1|arn:aws:acm-pca:us-west-1:123456789012:validator/us-west-1|arn:aws:acm-pca:eu-west-2:123456789012:validator/eu-west-2|arn:aws:acm-pca:eu-central-2:123456789012:validator/eu-central-2|arn:aws:acm-pca:ap-northeast-1:123456789012:validator/ap-northeast-1|arn:aws:acm-pca:ap-south-2:123456789012:validator/ap-south-2',
-            'caa_arns': 'arn:aws:acm-pca:us-east-1:123456789012:caa/us-east-1|arn:aws:acm-pca:us-west-1:123456789012:caa/us-west-1|arn:aws:acm-pca:eu-west-2:123456789012:caa/eu-west-2|arn:aws:acm-pca:eu-central-2:123456789012:caa/eu-central-2|arn:aws:acm-pca:ap-northeast-1:123456789012:caa/ap-northeast-1|arn:aws:acm-pca:ap-south-2:123456789012:caa/ap-south-2',
+            'perspectives': json.dumps({k: v.model_dump() for k, v in perspectives_as_dict.items()}),
             'default_perspective_count': '3',
             'hash_secret': 'test_secret'
         }
@@ -56,6 +69,7 @@ class TestMpicCoordinatorLambda:
 
     def lambda_handler__should_return_400_error_and_details_given_invalid_request_body(self):
         request = ValidMpicRequestCreator.create_valid_dcv_mpic_request()
+        # noinspection PyTypeChecker
         request.domain_or_ip_target = None
         api_request = TestMpicCoordinatorLambda.create_api_gateway_request()
         api_request.body = request.model_dump_json()
@@ -118,11 +132,11 @@ class TestMpicCoordinatorLambda:
     def constructor__should_initialize_mpic_coordinator_and_set_target_perspectives(self, set_env_variables):
         mpic_coordinator_lambda_handler = MpicCoordinatorLambdaHandler()
         all_possible_perspectives = TestMpicCoordinatorLambda.get_perspectives_by_code_dict_from_file()
-        named_perspectives = os.environ['perspective_names'].split('|')
+        for target_perspective in mpic_coordinator_lambda_handler.target_perspectives:
+            assert target_perspective in all_possible_perspectives.values()
         mpic_coordinator = mpic_coordinator_lambda_handler.mpic_coordinator
-        us_east_1_perspective = all_possible_perspectives['us-east-1']
-        assert us_east_1_perspective in mpic_coordinator.target_perspectives
-        assert len(named_perspectives) == len(mpic_coordinator.target_perspectives)
+        assert len(mpic_coordinator.target_perspectives) == 6
+        assert mpic_coordinator.default_perspective_count == 3
         assert mpic_coordinator.hash_secret == 'test_secret'
 
     # noinspection PyUnusedLocal

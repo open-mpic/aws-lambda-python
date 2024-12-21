@@ -2,7 +2,7 @@ from importlib import resources
 
 import yaml
 from aws_lambda_powertools.utilities.parser import event_parser, envelopes
-from pydantic import TypeAdapter, ValidationError
+from pydantic import TypeAdapter, ValidationError, BaseModel
 from open_mpic_core.common_domain.check_request import BaseCheckRequest
 from open_mpic_core.common_domain.check_response import CheckResponse
 from open_mpic_core.mpic_coordinator.domain.mpic_request import MpicRequest
@@ -17,25 +17,32 @@ import os
 import json
 
 
+class PerspectiveEndpointInfo(BaseModel):
+    arn: str
+
+
+class PerspectiveEndpoints(BaseModel):
+    dcv_endpoint_info: PerspectiveEndpointInfo
+    caa_endpoint_info: PerspectiveEndpointInfo
+
+
 class MpicCoordinatorLambdaHandler:
     def __init__(self):
-        # load environment variables
-        self.all_target_perspectives = os.environ['perspective_names'].split("|")
-        self.dcv_arn_list = os.environ['dcv_arns'].split("|")
-        self.caa_arn_list = os.environ['caa_arns'].split("|")
+        perspectives_json = os.environ['perspectives']
+        perspectives = {code: PerspectiveEndpoints.model_validate(endpoints) for code, endpoints in json.loads(perspectives_json).items()}
+        self.all_target_perspective_codes = list(perspectives.keys())
         self.default_perspective_count = int(os.environ['default_perspective_count'])
         self.global_max_attempts = int(os.environ['absolute_max_attempts']) if 'absolute_max_attempts' in os.environ else None
         self.hash_secret = os.environ['hash_secret']
 
-        self.arns_per_perspective_per_check_type = {
-            CheckType.DCV: {self.all_target_perspectives[i]: self.dcv_arn_list[i] for i in range(len(self.all_target_perspectives))},
-            CheckType.CAA: {self.all_target_perspectives[i]: self.caa_arn_list[i] for i in range(len(self.all_target_perspectives))}
+        self.remotes_per_perspective_per_check_type = {
+            CheckType.DCV: {perspective_code: perspective_config.dcv_endpoint_info for perspective_code, perspective_config in perspectives.items()},
+            CheckType.CAA: {perspective_code: perspective_config.caa_endpoint_info for perspective_code, perspective_config in perspectives.items()}
         }
 
-        all_target_perspective_codes = self.all_target_perspectives
         all_possible_perspectives_by_code = MpicCoordinatorLambdaHandler.load_aws_region_config()
         self.target_perspectives = MpicCoordinatorLambdaHandler.convert_codes_to_remote_perspectives(
-            all_target_perspective_codes, all_possible_perspectives_by_code)
+            self.all_target_perspective_codes, all_possible_perspectives_by_code)
 
         self.mpic_coordinator_configuration = MpicCoordinatorConfiguration(
             self.target_perspectives,
@@ -84,9 +91,9 @@ class MpicCoordinatorLambdaHandler:
     def call_remote_perspective(self, perspective: RemotePerspective, check_type: CheckType, check_request: BaseCheckRequest) -> CheckResponse:
         # Uses dcv_arn_list, caa_arn_list
         client = boto3.client('lambda', perspective.code)
-        function_name = self.arns_per_perspective_per_check_type[check_type][perspective.code]
+        function_endpoint_info = self.remotes_per_perspective_per_check_type[check_type][perspective.code]
         response = client.invoke(  # AWS Lambda-specific structure
-                FunctionName=function_name,
+                FunctionName=function_endpoint_info.arn,
                 InvocationType='RequestResponse',
                 Payload=check_request.model_dump_json()  # AWS Lambda functions expect a JSON string for payload
             )
