@@ -32,7 +32,7 @@ dependencies = [
     "dnspython==2.6.1",
     "pydantic==2.8.2",
     "aws-lambda-powertools[parser]==3.2.0",
-    "open-mpic-core==3.0.0",
+    "open-mpic-core==3.0.1",
 ]
 
 [project.optional-dependencies]
@@ -66,7 +66,7 @@ path="venv"
 
 [tool.hatch.envs.default.env-vars]
 PIP_INDEX_URL = "https://pypi.org/simple/"
-PIP_EXTRA_INDEX_URL = "https://test.pypi.org/simple/"  # FIXME here temporarily to test open-mpic-core packaging
+#PIP_EXTRA_INDEX_URL = "https://test.pypi.org/simple/"  # FIXME here temporarily to test open-mpic-core packaging
 PIP_VERBOSE = "1"
 
 [tool.hatch.envs.lambda-layer]
@@ -76,7 +76,7 @@ type="virtual"
 path="layer/create_layer_virtualenv"
 
 [tool.hatch.envs.lambda-layer.env-vars]
-PIP_EXTRA_INDEX_URL = "https://test.pypi.org/simple/"
+#PIP_EXTRA_INDEX_URL = "https://test.pypi.org/simple/"
 PIP_ONLY_BINARY = ":all:"
 #PIP_PLATFORM = "manylinux2014_aarch64"
 #PIP_TARGET = "layer/create_layer_virtualenv2/lib/python3.11/site-packages"  # does not work... bug in pip 24.2?
@@ -92,8 +92,8 @@ features = [
 ]
 installer = "pip"
 
-[tool.hatch.envs.test.env-vars]
-PIP_EXTRA_INDEX_URL = "https://test.pypi.org/simple/"
+#[tool.hatch.envs.test.env-vars]
+#PIP_EXTRA_INDEX_URL = "https://test.pypi.org/simple/"
 
 [tool.hatch.envs.test.scripts]
 pre-install = "python -m ensurepip"
