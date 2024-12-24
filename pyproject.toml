@@ -10,7 +10,7 @@ name = "aws-lambda-python"
 dynamic = ["version"]
 description = 'MPIC standard API implementation leveraging AWS Lambda.'
 readme = "README.md"
-requires-python = "==3.11.9"
+requires-python = ">=3.11"
 license = "MIT"
 keywords = []
 authors = [
@@ -32,7 +32,7 @@ dependencies = [
     "dnspython==2.6.1",
     "pydantic==2.8.2",
     "aws-lambda-powertools[parser]==3.2.0",
-    "open-mpic-core==3.0.1",
+    "open-mpic-core==3.0.2",
 ]
 
 [project.optional-dependencies]
