@@ -123,8 +123,6 @@ markers = [
 addopts = [
     "--import-mode=prepend",  # explicit default, as the tests rely on it for proper import resolution
 ]
-spec_header_format = "Spec for {test_case} ({path}):"
-spec_test_format = "{result} {docstring_summary}"  # defaults to {name} if docstring is not present in test
 
 [tool.coverage.run]
 source = [
