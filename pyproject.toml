@@ -32,7 +32,7 @@ dependencies = [
     "dnspython==2.6.1",
     "pydantic==2.8.2",
     "aws-lambda-powertools[parser]==3.2.0",
-    "open-mpic-core==3.0.2",
+    "open-mpic-core==3.1.0",
 ]
 
 [project.optional-dependencies]
@@ -123,8 +123,6 @@ markers = [
 addopts = [
     "--import-mode=prepend",  # explicit default, as the tests rely on it for proper import resolution
 ]
-spec_header_format = "Spec for {test_case} ({path}):"
-spec_test_format = "{result} {docstring_summary}"  # defaults to {name} if docstring is not present in test
 
 [tool.coverage.run]
 source = [
