@@ -4,7 +4,7 @@ import pytest
 
 import aws_lambda_mpic.mpic_caa_checker_lambda.mpic_caa_checker_lambda_function as mpic_caa_checker_lambda_function
 from open_mpic_core.common_domain.check_response import CaaCheckResponse, CaaCheckResponseDetails
-from unit.test_util.valid_check_creator import ValidCheckCreator
+from open_mpic_core_test.test_util.valid_check_creator import ValidCheckCreator
 
 
 class TestCaaCheckerLambda:
@@ -12,7 +12,6 @@ class TestCaaCheckerLambda:
     @pytest.fixture(scope='class')
     def set_env_variables():
         envvars = {
-            'rir_region': 'arin',
             'AWS_REGION': 'us-east-1',
             'default_caa_domains': 'ca1.com|ca2.org|ca3.net'
         }

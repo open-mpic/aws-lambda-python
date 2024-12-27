@@ -22,8 +22,8 @@ from botocore.response import StreamingBody
 import aws_lambda_mpic.mpic_coordinator_lambda.mpic_coordinator_lambda_function as mpic_coordinator_lambda_function
 from aws_lambda_mpic.mpic_coordinator_lambda.mpic_coordinator_lambda_function import PerspectiveEndpoints, PerspectiveEndpointInfo
 
-from unit.test_util.valid_check_creator import ValidCheckCreator
-from unit.test_util.valid_mpic_request_creator import ValidMpicRequestCreator
+from open_mpic_core_test.test_util.valid_mpic_request_creator import ValidMpicRequestCreator
+from open_mpic_core_test.test_util.valid_check_creator import ValidCheckCreator
 
 
 # noinspection PyMethodMayBeStatic
@@ -63,7 +63,7 @@ class TestMpicCoordinatorLambda:
                                                                                  CheckType.DCV,
                                                                                  dcv_check_request)
         assert check_response.check_passed is True
-        # hijacking the value of 'perspective' to verify that the right arguments got passed to the call
+        # hijacking the value of 'perspective_code' to verify that the right arguments got passed to the call
         assert check_response.perspective_code == dcv_check_request.domain_or_ip_target
 
     def lambda_handler__should_return_400_error_and_details_given_invalid_request_body(self):
@@ -148,7 +148,7 @@ class TestMpicCoordinatorLambda:
     # noinspection PyUnusedLocal
     def create_successful_boto3_api_call_response_for_dcv_check(self, lambda_method, lambda_configuration):
         check_request = DcvCheckRequest.model_validate_json(lambda_configuration['Payload'])
-        # hijacking the value of 'perspective' to verify that the right arguments got passed to the call
+        # hijacking the value of 'perspective_code' to verify that the right arguments got passed to the call
         expected_response_body = DcvCheckResponse(perspective_code=check_request.domain_or_ip_target,
                                                   check_passed=True, details=DcvDnsCheckResponseDetails(validation_method=DcvValidationMethod.ACME_DNS_01))
         expected_response = {'statusCode': 200, 'body': expected_response_body.model_dump_json()}
@@ -198,10 +198,11 @@ class TestMpicCoordinatorLambda:
 
     @staticmethod
     def get_perspectives_by_code_dict_from_file() -> dict[str, RemotePerspective]:
-        perspectives_yaml = yaml.safe_load(resources.open_text('resources', 'aws_region_config.yaml'))
-        perspective_type_adapter = TypeAdapter(list[RemotePerspective])
-        perspectives = perspective_type_adapter.validate_python(perspectives_yaml['aws_available_regions'])
-        return {perspective.code: perspective for perspective in perspectives}
+        with resources.files('resources').joinpath('aws_region_config.yaml').open('r') as file:
+            perspectives_yaml = yaml.safe_load(file)
+            perspective_type_adapter = TypeAdapter(list[RemotePerspective])
+            perspectives = perspective_type_adapter.validate_python(perspectives_yaml['aws_available_regions'])
+            return {perspective.code: perspective for perspective in perspectives}
 
 
 if __name__ == '__main__':
