@@ -3,7 +3,7 @@ import sys
 import pytest
 from pydantic import TypeAdapter
 
-from open_mpic_core.common_domain.check_parameters import CaaCheckParameters, DcvWebsiteChangeValidationDetails
+from open_mpic_core.common_domain.check_parameters import CaaCheckParameters, DcvWebsiteChangeValidationDetails, DcvAcmeDns01ValidationDetails
 from open_mpic_core.common_domain.check_parameters import DcvCheckParameters
 from open_mpic_core.common_domain.enum.certificate_type import CertificateType
 from open_mpic_core.common_domain.enum.check_type import CheckType
@@ -141,23 +141,48 @@ class TestDeployedMpicApi:
         mpic_response = self.mpic_response_adapter.validate_json(response.text)
         assert mpic_response.is_valid is False
 
-    @pytest.mark.skip(reason='Not implemented yet')
-    def api_should_return_200_given_valid_dcv_validation(self, api_client):
+    @pytest.mark.parametrize('domain_or_ip_target, purpose_of_test', [
+        ('dns-01.integration-testing.open-mpic.org', 'Standard proper dns-01 test'),
+        ('dns-01-multi.integration-testing.open-mpic.org', 'Proper dns-01 test with multiple TXT records'),
+        ('dns-01-cname.integration-testing.open-mpic.org', 'Proper dns-01 test with CNAME')
+    ])
+    def api_should_return_200_given_valid_dns_01_validation(self, api_client, domain_or_ip_target, purpose_of_test):
+        print(f"Running test for {domain_or_ip_target} ({purpose_of_test})")
         request = MpicDcvRequest(
-            domain_or_ip_target='example.com',
+            domain_or_ip_target=domain_or_ip_target,
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
             dcv_check_parameters=DcvCheckParameters(
-                validation_details=DcvWebsiteChangeValidationDetails(http_token_path='/',
-                                                                     challenge_value='test')
+                validation_details=DcvAcmeDns01ValidationDetails(key_authorization="7FwkJPsKf-TH54wu4eiIFA3nhzYaevsL7953ihy-tpo")
             )
         )
 
         print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
         response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
         assert response.status_code == 200
-        response_body = json.loads(response.text)
-        print("\nResponse:\n", json.dumps(response_body, indent=4))  # pretty print response body
-        # finish test... (and figure out how to actually run it successfully and reliably)
+        mpic_response = self.mpic_response_adapter.validate_json(response.text)
+        
+        assert mpic_response.is_valid is True
+
+    @pytest.mark.parametrize('domain_or_ip_target, purpose_of_test', [
+        ('dns-01-leading-whitespace.integration-testing.open-mpic.org', 'leading whitespace'),
+        ('dns-01-trailing-whitespace.integration-testing.open-mpic.org', 'trailing'),
+        ('dns-01-nxdomain.integration-testing.open-mpic.org', 'NXDOMAIN')
+    ])
+    def api_should_return_200_is_valid_false_given_invalid_dns_01_validation(self, api_client, domain_or_ip_target, purpose_of_test):
+        request = MpicDcvRequest(
+            domain_or_ip_target=domain_or_ip_target,
+            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
+            dcv_check_parameters=DcvCheckParameters(
+                validation_details=DcvAcmeDns01ValidationDetails(key_authorization="7FwkJPsKf-TH54wu4eiIFA3nhzYaevsL7953ihy-tpo")
+            )
+        )
+
+        print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
+        response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
+        assert response.status_code == 200
+        mpic_response = self.mpic_response_adapter.validate_json(response.text)
+        
+        assert mpic_response.is_valid is False
 
     def api_should_return_200_and_failed_corroboration_given_failed_dcv_check(self, api_client):
         request = MpicDcvRequest(
