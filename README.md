@@ -81,6 +81,8 @@ hatch run test:integration
 ```
 Note: integration tests cannot currently be invoked by running `pytest tests/integration` because `PYTHONPATH` is not set correctly in that case.
 
+The integration tests test a live, deployed API and point the API at real web resources that are provisioned for testing purposes. The integration test content is currently hosted on `caatestsuite.com` (maintained by SSLMate) and `integration-testing.open-mpic.org` (maintained by the maintainers of the Open MPIC project). The zone file for `caatestsuite.com` can be found [here](https://github.com/SSLMate/caatestsuite) along with more info about the tests at [caatestsuite.com](https://caatestsuite.com), and the zone file for `integration-testing.open-mpic.org` can be found [here](https://github.com/open-mpic/open-mpic-integration-zone). Both of these services are maintained on a best-effort basis. If there is an issue with integration tests, check the availability of these two services and the responses from the sub-domains used in the integration tests. THESE SERVICES ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND. They are not intended for use outside of development integration testing (i.e., no excessive query volume, no use in production systems).
+
 If you encounter issues running integration tests with the above commands, contact the project maintainers.
 
 
@@ -93,9 +95,8 @@ After `tofu destroy`, `./clean.sh` in the root directory also clears generated/z
 
 # Remaining tasks
 
-The Open MPIC project is currently under development. The pre-alpha release includes support for the HTTP and DNS domain validation methods using Amazon Web Services Lambda and API Gateway. The work items remaining to a feature-complete production-level product include the following: (subject to change)
+The Open MPIC project is currently under development. The work items remaining to a feature-complete production-level product include the following: (subject to change)
 
-- Full alighnment with API spec v2
 - Additional integration testing
 
 Throughout the development process, we will address any GitHub issues raised, and may modify the API accordingly. We also welcome pull requests from the general community.
