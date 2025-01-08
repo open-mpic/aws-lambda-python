@@ -130,9 +130,8 @@ class MpicCoordinatorLambdaHandler:
         finally:
             await self.release_lambda_client(perspective.code, client)
 
-    def process_invocation(self, mpic_request: MpicRequest) -> dict:
-        event_loop = asyncio.get_event_loop()
-        mpic_response = event_loop.run_until_complete(self.mpic_coordinator.coordinate_mpic(mpic_request))
+    async def process_invocation(self, mpic_request: MpicRequest) -> dict:
+        mpic_response = await self.mpic_coordinator.coordinate_mpic(mpic_request)
         return {
             'statusCode': 200,
             'headers': {'Content-Type': 'application/json'},
@@ -145,9 +144,6 @@ _handler = None
 
 
 async def initialize_handler() -> MpicCoordinatorLambdaHandler:
-    """
-    Async initialization for the handler
-    """
     handler = MpicCoordinatorLambdaHandler()
     await handler.initialize_client_pools()
     return handler
@@ -155,7 +151,8 @@ async def initialize_handler() -> MpicCoordinatorLambdaHandler:
 
 def get_handler() -> MpicCoordinatorLambdaHandler:
     """
-    Singleton pattern to avoid recreating the handler on every Lambda invocation
+    Singleton pattern to avoid recreating the handler on every Lambda invocation.
+    Performs lazy initialization using event loop.
     """
     global _handler
     if _handler is None:
@@ -200,4 +197,5 @@ def handle_lambda_exceptions(func):
 @handle_lambda_exceptions
 @event_parser(model=MpicRequest, envelope=envelopes.ApiGatewayEnvelope)  # AWS Lambda Powertools decorator
 def lambda_handler(event: MpicRequest, context):  # AWS Lambda entry point
-    return get_handler().process_invocation(event)
+    handler = get_handler()
+    return asyncio.get_event_loop().run_until_complete(handler.process_invocation(event))
