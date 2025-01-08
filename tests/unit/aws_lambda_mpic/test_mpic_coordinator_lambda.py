@@ -200,16 +200,6 @@ class TestMpicCoordinatorLambda:
                 return json_bytes
         return {'Payload': MockStreamingBody()}
 
-    # noinspection PyUnusedLocal
-    def create_error_boto3_api_call_response(self, lambda_method, lambda_configuration):
-        # note: all perspective response details will be identical in these tests due to this mocking
-        expected_response_body = 'Something went wrong'
-        expected_response = {'statusCode': 500, 'body': expected_response_body}
-        json_bytes = json.dumps(expected_response).encode('utf-8')
-        file_like_response = io.BytesIO(json_bytes)
-        streaming_body_response = StreamingBody(file_like_response, len(json_bytes))
-        return {'Payload': streaming_body_response}
-
     @staticmethod
     def create_caa_mpic_response():
         caa_request = ValidMpicRequestCreator.create_valid_caa_mpic_request()

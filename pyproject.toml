@@ -34,12 +34,12 @@ dependencies = [
     "aiohttp==3.11.11",
     "aws-lambda-powertools[parser]==3.2.0",
     "open-mpic-core==4.1.2",
+    "aioboto3~=13.3.0",
 ]
 
 [project.optional-dependencies]
 provided = [
     "boto3~=1.35.74",
-    "aioboto3~=13.3.0",
 ]
 test = [
     "pytest==8.2.2",
