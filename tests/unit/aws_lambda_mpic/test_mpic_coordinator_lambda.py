@@ -2,6 +2,7 @@ import io
 import json
 from datetime import datetime
 from importlib import resources
+from unittest.mock import AsyncMock
 
 import pytest
 import yaml
@@ -55,16 +56,40 @@ class TestMpicCoordinatorLambda:
                 class_scoped_monkeypatch.setenv(k, v)
             yield class_scoped_monkeypatch  # restore the environment afterward
 
-    def call_remote_perspective__should_make_aws_lambda_call_with_provided_arguments_and_return_check_response(self, set_env_variables, mocker):
-        mocker.patch('botocore.client.BaseClient._make_api_call', side_effect=self.create_successful_boto3_api_call_response_for_dcv_check)
+    async def call_remote_perspective__should_make_aws_lambda_call_with_provided_arguments_and_return_check_response(self, set_env_variables, mocker):
+        # Mock the aioboto3 client creation and context manager
+        mock_client = AsyncMock()
+        mock_client.invoke = AsyncMock(side_effect=self.create_successful_aioboto3_response_for_dcv_check)
+
+        # Mock the __aenter__ and __aexit__ methods
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.__aexit__.return_value = None
+
+        # Mock the session creation and client initialization
+        mock_session = mocker.patch('aioboto3.Session')
+        mock_session.return_value.client.return_value = mock_client
+
+        # mocker.patch('botocore.client.BaseClient._make_api_call', side_effect=self.create_successful_boto3_api_call_response_for_dcv_check)
         dcv_check_request = ValidCheckCreator.create_valid_dns_check_request()
         mpic_coordinator_lambda_handler = MpicCoordinatorLambdaHandler()
-        check_response = mpic_coordinator_lambda_handler.call_remote_perspective(RemotePerspective(code='us-west-1', rir='arin'),
-                                                                                 CheckType.DCV,
-                                                                                 dcv_check_request)
+
+        await mpic_coordinator_lambda_handler.initialize_client_pools()
+
+        check_response = await mpic_coordinator_lambda_handler.call_remote_perspective(
+            RemotePerspective(code='us-west-1', rir='arin'),
+            CheckType.DCV,
+            dcv_check_request
+        )
         assert check_response.check_passed is True
         # hijacking the value of 'perspective_code' to verify that the right arguments got passed to the call
         assert check_response.perspective_code == dcv_check_request.domain_or_ip_target
+
+        # Verify the mock was called correctly
+        mock_client.invoke.assert_called_once_with(
+            FunctionName=mocker.ANY,  # You can be more specific here if needed
+            InvocationType='RequestResponse',
+            Payload=dcv_check_request.model_dump_json()
+        )
 
     def lambda_handler__should_return_400_error_and_details_given_invalid_request_body(self):
         request = ValidMpicRequestCreator.create_valid_dcv_mpic_request()
@@ -156,6 +181,22 @@ class TestMpicCoordinatorLambda:
         file_like_response = io.BytesIO(json_bytes)
         streaming_body_response = StreamingBody(file_like_response, len(json_bytes))
         return {'Payload': streaming_body_response}
+
+    # noinspection PyUnusedLocal
+    async def create_successful_aioboto3_response_for_dcv_check(self, *args, **kwargs):
+        check_request = DcvCheckRequest.model_validate_json(kwargs['Payload'])
+        # hijacking the value of 'perspective_code' to verify that the right arguments got passed to the call
+        expected_response_body = DcvCheckResponse(perspective_code=check_request.domain_or_ip_target,
+                                                  check_passed=True, details=DcvDnsCheckResponseDetails(validation_method=DcvValidationMethod.ACME_DNS_01))
+        expected_response = {'statusCode': 200, 'body': expected_response_body.model_dump_json()}
+        json_bytes = json.dumps(expected_response).encode('utf-8')
+
+        # Mock the response structure that aioboto3 would return
+        class MockStreamingBody:
+            # noinspection PyMethodMayBeStatic
+            async def read(self):
+                return json_bytes
+        return {'Payload': MockStreamingBody()}
 
     # noinspection PyUnusedLocal
     def create_error_boto3_api_call_response(self, lambda_method, lambda_configuration):

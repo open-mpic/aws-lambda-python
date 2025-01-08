@@ -1,5 +1,9 @@
+import asyncio
+from asyncio import Queue
+from collections import defaultdict
 from importlib import resources
 
+import aioboto3
 import yaml
 from aws_lambda_powertools.utilities.parser import event_parser, envelopes
 from pydantic import TypeAdapter, ValidationError, BaseModel
@@ -16,6 +20,8 @@ import boto3
 import os
 import json
 
+from pytest_asyncio.plugin import event_loop
+
 
 class PerspectiveEndpointInfo(BaseModel):
     arn: str
@@ -30,7 +36,7 @@ class MpicCoordinatorLambdaHandler:
     def __init__(self):
         perspectives_json = os.environ['perspectives']
         perspectives = {code: PerspectiveEndpoints.model_validate(endpoints) for code, endpoints in json.loads(perspectives_json).items()}
-        self.all_target_perspective_codes = list(perspectives.keys())
+        self._all_target_perspective_codes = list(perspectives.keys())
         self.default_perspective_count = int(os.environ['default_perspective_count'])
         self.global_max_attempts = int(os.environ['absolute_max_attempts']) if 'absolute_max_attempts' in os.environ else None
         self.hash_secret = os.environ['hash_secret']
@@ -42,7 +48,7 @@ class MpicCoordinatorLambdaHandler:
 
         all_possible_perspectives_by_code = MpicCoordinatorLambdaHandler.load_aws_region_config()
         self.target_perspectives = MpicCoordinatorLambdaHandler.convert_codes_to_remote_perspectives(
-            self.all_target_perspective_codes, all_possible_perspectives_by_code)
+            self._all_target_perspective_codes, all_possible_perspectives_by_code)
 
         self.mpic_coordinator_configuration = MpicCoordinatorConfiguration(
             self.target_perspectives,
@@ -59,6 +65,28 @@ class MpicCoordinatorLambdaHandler:
         # for correct deserialization of responses based on discriminator field (check type)
         self.mpic_request_adapter = TypeAdapter(MpicRequest)
         self.check_response_adapter = TypeAdapter(CheckResponse)
+
+        self._session = aioboto3.Session()
+        self._client_pools = defaultdict(lambda: Queue(maxsize=10))  # pool of 10 clients per region
+
+    async def initialize_client_pools(self):
+        # Call this during cold start
+        for perspective_code in self._all_target_perspective_codes:
+            for _ in range(10):  # pre-populate pool
+                client = await self._session.client('lambda', perspective_code).__aenter__()
+                await self._client_pools[perspective_code].put(client)
+
+    async def get_lambda_client(self, perspective_code: str):
+        return await self._client_pools[perspective_code].get()
+
+    async def release_lambda_client(self, perspective_code: str, client):
+        await self._client_pools[perspective_code].put(client)
+
+    # async def cleanup(self):  # Call this during shutdown if needed (maybe not needed in Lambda)
+    #     for pool in self._client_pools.values():
+    #         while not pool.empty():
+    #             client = await pool.get()
+    #             await client.__aexit__(None, None, None)
 
     @staticmethod
     def load_aws_region_config() -> dict[str, RemotePerspective]:
@@ -88,24 +116,26 @@ class MpicCoordinatorLambdaHandler:
         return remote_perspectives
 
     # This function MUST validate its response and return a proper open_mpic_core object type.
-    def call_remote_perspective(self, perspective: RemotePerspective, check_type: CheckType, check_request: BaseCheckRequest) -> CheckResponse:
-        # Uses dcv_arn_list, caa_arn_list
-        client = boto3.client('lambda', perspective.code)
-        function_endpoint_info = self.remotes_per_perspective_per_check_type[check_type][perspective.code]
-        response = client.invoke(  # AWS Lambda-specific structure
+    async def call_remote_perspective(self, perspective: RemotePerspective, check_type: CheckType, check_request: BaseCheckRequest) -> CheckResponse:
+        client = await self.get_lambda_client(perspective.code)
+        try:
+            function_endpoint_info = self.remotes_per_perspective_per_check_type[check_type][perspective.code]
+            response = await client.invoke(  # AWS Lambda-specific structure
                 FunctionName=function_endpoint_info.arn,
                 InvocationType='RequestResponse',
                 Payload=check_request.model_dump_json()  # AWS Lambda functions expect a JSON string for payload
             )
-        response_payload = json.loads(response['Payload'].read().decode('utf-8'))
-        try:
+            response_payload = json.loads(await response['Payload'].read())
             return self.check_response_adapter.validate_json(response_payload['body'])
         except ValidationError as ve:
             # We might want to handle this differently later.
             raise ve
+        finally:
+            await self.release_lambda_client(perspective.code, client)
 
     def process_invocation(self, mpic_request: MpicRequest) -> dict:
-        mpic_response = self.mpic_coordinator.coordinate_mpic(mpic_request)
+        event_loop = asyncio.get_event_loop()
+        mpic_response = event_loop.run_until_complete(self.mpic_coordinator.coordinate_mpic(mpic_request))
         return {
             'statusCode': 200,
             'headers': {'Content-Type': 'application/json'},
@@ -117,13 +147,29 @@ class MpicCoordinatorLambdaHandler:
 _handler = None
 
 
+async def initialize_handler() -> MpicCoordinatorLambdaHandler:
+    """
+    Async initialization for the handler
+    """
+    handler = MpicCoordinatorLambdaHandler()
+    await handler.initialize_client_pools()
+    return handler
+
+
 def get_handler() -> MpicCoordinatorLambdaHandler:
     """
     Singleton pattern to avoid recreating the handler on every Lambda invocation
     """
     global _handler
     if _handler is None:
-        _handler = MpicCoordinatorLambdaHandler()
+        try:
+            event_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            # No running event loop, create a new one
+            event_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(event_loop)
+
+        _handler = event_loop.run_until_complete(initialize_handler())
     return _handler
 
 
