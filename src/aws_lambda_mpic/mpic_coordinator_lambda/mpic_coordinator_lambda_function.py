@@ -1,10 +1,13 @@
+import os
+import json
+import yaml
 import asyncio
+import aioboto3
+
 from asyncio import Queue
 from collections import defaultdict
 from importlib import resources
 
-import aioboto3
-import yaml
 from aws_lambda_powertools.utilities.parser import event_parser, envelopes
 from pydantic import TypeAdapter, ValidationError, BaseModel
 from open_mpic_core.common_domain.check_request import BaseCheckRequest
@@ -15,12 +18,6 @@ from open_mpic_core.mpic_coordinator.messages.mpic_request_validation_messages i
 from open_mpic_core.mpic_coordinator.mpic_coordinator import MpicCoordinator, MpicCoordinatorConfiguration
 from open_mpic_core.common_domain.enum.check_type import CheckType
 from open_mpic_core.mpic_coordinator.domain.remote_perspective import RemotePerspective
-
-import boto3
-import os
-import json
-
-from pytest_asyncio.plugin import event_loop
 
 
 class PerspectiveEndpointInfo(BaseModel):

@@ -61,9 +61,8 @@ class TestMpicCoordinatorLambda:
         mock_client = AsyncMock()
         mock_client.invoke = AsyncMock(side_effect=self.create_successful_aioboto3_response_for_dcv_check)
 
-        # Mock the __aenter__ and __aexit__ methods
+        # Mock the __aenter__ method that gets called in initialize_client_pools()
         mock_client.__aenter__.return_value = mock_client
-        mock_client.__aexit__.return_value = None
 
         # Mock the session creation and client initialization
         mock_session = mocker.patch('aioboto3.Session')
@@ -75,8 +74,9 @@ class TestMpicCoordinatorLambda:
 
         await mpic_coordinator_lambda_handler.initialize_client_pools()
 
+        perspective_code = 'us-west-1'
         check_response = await mpic_coordinator_lambda_handler.call_remote_perspective(
-            RemotePerspective(code='us-west-1', rir='arin'),
+            RemotePerspective(code=perspective_code, rir='arin'),
             CheckType.DCV,
             dcv_check_request
         )
@@ -84,9 +84,11 @@ class TestMpicCoordinatorLambda:
         # hijacking the value of 'perspective_code' to verify that the right arguments got passed to the call
         assert check_response.perspective_code == dcv_check_request.domain_or_ip_target
 
+        function_endpoint_info = mpic_coordinator_lambda_handler.remotes_per_perspective_per_check_type[CheckType.DCV][perspective_code]
+
         # Verify the mock was called correctly
         mock_client.invoke.assert_called_once_with(
-            FunctionName=mocker.ANY,  # You can be more specific here if needed
+            FunctionName=function_endpoint_info.arn,
             InvocationType='RequestResponse',
             Payload=dcv_check_request.model_dump_json()
         )
@@ -114,7 +116,7 @@ class TestMpicCoordinatorLambda:
         result_body = json.loads(result['body'])
         assert result_body['validation_issues'][0]['type'] == 'literal_error'
 
-    def lambda_handler__should_return_400_error_given_logically_invalid_request(self):
+    def lambda_handler__should_return_400_error_given_logically_invalid_request(self, set_env_variables):
         request = ValidMpicRequestCreator.create_valid_dcv_mpic_request()
         request.orchestration_parameters.perspective_count = 1
         api_request = TestMpicCoordinatorLambda.create_api_gateway_request()
