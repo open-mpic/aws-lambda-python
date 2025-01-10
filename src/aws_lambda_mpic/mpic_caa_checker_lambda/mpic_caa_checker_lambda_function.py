@@ -1,3 +1,5 @@
+import asyncio
+
 from aws_lambda_powertools.utilities.parser import event_parser
 
 from open_mpic_core.common_domain.check_request import CaaCheckRequest
@@ -12,7 +14,14 @@ class MpicCaaCheckerLambdaHandler:
         self.caa_checker = MpicCaaChecker(self.default_caa_domain_list, self.perspective_code)
 
     def process_invocation(self, caa_request: CaaCheckRequest):
-        caa_response = self.caa_checker.check_caa(caa_request)
+        try:
+            event_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            # No running event loop, create a new one
+            event_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(event_loop)
+
+        caa_response = event_loop.run_until_complete(self.caa_checker.check_caa(caa_request))
         result = {
             'statusCode': 200,  # note: must be snakeCase
             'headers': {'Content-Type': 'application/json'},
