@@ -81,12 +81,14 @@ class TestDeployedMpicApi:
     def api_should_return_is_valid_false_for_all_tests_in_do_not_issue_caa_test_suite(self, api_client, domain_or_ip_target,
                                                                                       purpose_of_test, is_wildcard_domain):
         print(f"Running test for {domain_or_ip_target} ({purpose_of_test})")
+        if is_wildcard_domain:
+            domain_or_ip_target = "*." + domain_or_ip_target
         request = MpicCaaRequest(
             domain_or_ip_target=domain_or_ip_target,
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
             caa_check_parameters=CaaCheckParameters(
-                certificate_type=CertificateType.TLS_SERVER if not is_wildcard_domain else CertificateType.TLS_SERVER_WILDCARD,
-                caa_domains=['example.com'])
+                certificate_type=CertificateType.TLS_SERVER, caa_domains=['example.com']
+            )
         )
         response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
         mpic_response = self.mpic_response_adapter.validate_json(response.text)
@@ -120,7 +122,7 @@ class TestDeployedMpicApi:
             domain_or_ip_target=domain_or_ip_target,
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
             caa_check_parameters=CaaCheckParameters(
-                caa_domains=['caatestsuite.com', 'example.com'])
+                certificate_type=CertificateType.TLS_SERVER, caa_domains=['caatestsuite.com', 'example.com'])
         )
         response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
         mpic_response = self.mpic_response_adapter.validate_json(response.text)
