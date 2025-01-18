@@ -26,14 +26,14 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-    "open-mpic-core @ git+https://github.com/open-mpic/open-mpic-core-python.git@main",
+#    "open-mpic-core @ git+https://github.com/open-mpic/open-mpic-core-python.git@main",
     "pyyaml==6.0.1",
     "requests>=2.32.3",
     "dnspython==2.6.1",
     "pydantic==2.8.2",
     "aiohttp==3.11.11",
     "aws-lambda-powertools[parser]==3.2.0",
-    #"open-mpic-core==4.1.2",
+    "open-mpic-core==4.4.0",
     "aioboto3~=13.3.0",
 ]
 
