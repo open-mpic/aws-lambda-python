@@ -65,7 +65,7 @@ class MpicCoordinatorLambdaHandler:
             self.hash_secret
         )
 
-        self.mpic_coordinator = MpicCoordinator(self.call_remote_perspective, self.mpic_coordinator_configuration, self.log_level)
+        self.mpic_coordinator = MpicCoordinator(self.call_remote_perspective, self.mpic_coordinator_configuration, self.logger.level)
 
         # for correct deserialization of responses based on discriminator field (check type)
         self.mpic_request_adapter = TypeAdapter(MpicRequest)

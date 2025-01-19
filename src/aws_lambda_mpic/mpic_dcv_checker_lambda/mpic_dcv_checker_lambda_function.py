@@ -19,7 +19,7 @@ class MpicDcvCheckerLambdaHandler:
         if self.log_level:
             self.logger.setLevel(self.log_level)
 
-        self.dcv_checker = MpicDcvChecker(perspective_code=self.perspective_code, log_level=self.log_level)
+        self.dcv_checker = MpicDcvChecker(perspective_code=self.perspective_code, log_level=self.logger.level)
 
     def process_invocation(self, dcv_request: DcvCheckRequest):
         try:

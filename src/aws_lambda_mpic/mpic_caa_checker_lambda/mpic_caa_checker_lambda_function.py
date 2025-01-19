@@ -22,7 +22,7 @@ class MpicCaaCheckerLambdaHandler:
 
         self.caa_checker = MpicCaaChecker(default_caa_domain_list=self.default_caa_domain_list,
                                           perspective_code=self.perspective_code,
-                                          log_level=self.log_level)
+                                          log_level=self.logger.level)
 
     def process_invocation(self, caa_request: CaaCheckRequest):
         try:
