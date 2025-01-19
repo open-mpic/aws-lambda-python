@@ -1,4 +1,7 @@
+import logging
 import time
+from io import StringIO
+
 import pytest
 
 import aws_lambda_mpic.mpic_dcv_checker_lambda.mpic_dcv_checker_lambda_function as mpic_dcv_checker_lambda_function
@@ -10,11 +13,30 @@ from open_mpic_core_test.test_util.valid_check_creator import ValidCheckCreator
 
 
 class TestDcvCheckerLambda:
+    @pytest.fixture(autouse=True)
+    def setup_logging(self):
+        # Clear existing handlers
+        root = logging.getLogger()
+        for handler in root.handlers[:]:
+            root.removeHandler(handler)
+
+        # noinspection PyAttributeOutsideInit
+        self.log_output = StringIO()  # to be able to inspect what gets logged
+        handler = logging.StreamHandler(self.log_output)
+        handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+
+        # Configure fresh logging
+        logging.basicConfig(
+            handlers=[handler]
+        )
+        yield
+
     @staticmethod
     @pytest.fixture(scope='class')
     def set_env_variables():
         envvars = {
             'AWS_REGION': 'us-east-1',
+            'log_level': 'TRACE'
         }
         with pytest.MonkeyPatch.context() as class_scoped_monkeypatch:
             for k, v in envvars.items():
@@ -52,6 +74,15 @@ class TestDcvCheckerLambda:
         dcv_check_request = ValidCheckCreator.create_valid_http_check_request()
         result = mpic_dcv_checker_lambda_function.lambda_handler(dcv_check_request, None)
         assert result == mock_return_value
+
+    def lambda_handler__should_set_log_level_of_caa_checker(self, set_env_variables, mocker):
+        dcv_check_request = ValidCheckCreator.create_valid_http_check_request()
+        mocker.patch('open_mpic_core.mpic_dcv_checker.mpic_dcv_checker.MpicDcvChecker.perform_http_based_validation',
+                     return_value=TestDcvCheckerLambda.create_dcv_check_response())
+        result = mpic_dcv_checker_lambda_function.lambda_handler(dcv_check_request, None)
+        assert result['statusCode'] == 200
+        log_contents = self.log_output.getvalue()
+        assert all(text in log_contents for text in ['MpicDcvChecker', 'TRACE'])  # Verify the log level was set
 
     @staticmethod
     def create_dcv_check_response():
