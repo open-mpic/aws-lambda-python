@@ -133,7 +133,7 @@ class MpicCoordinatorLambdaHandler:
             response_payload = json.loads(await response['Payload'].read())
             return self.check_response_adapter.validate_json(response_payload['body'])
         except ValidationError as ve:
-            logger.log(level=logging.ERROR, msg=f"Validation error in response from {perspective.code}: {ve}")
+            self.logger.log(level=logging.ERROR, msg=f"Validation error in response from {perspective.code}: {ve}")
             raise ve
         finally:
             await self.release_lambda_client(perspective.code, client)
