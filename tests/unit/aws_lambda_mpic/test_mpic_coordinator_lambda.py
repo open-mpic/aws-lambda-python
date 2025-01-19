@@ -1,6 +1,5 @@
 import io
 import json
-import logging
 from datetime import datetime
 from importlib import resources
 from unittest.mock import AsyncMock
@@ -30,24 +29,6 @@ from open_mpic_core_test.test_util.valid_check_creator import ValidCheckCreator
 
 # noinspection PyMethodMayBeStatic
 class TestMpicCoordinatorLambda:
-    @pytest.fixture(autouse=True)
-    def setup_logging(self):
-        # Clear existing handlers
-        root = logging.getLogger()
-        for handler in root.handlers[:]:
-            root.removeHandler(handler)
-
-        # noinspection PyAttributeOutsideInit
-        self.log_output = io.StringIO()  # to be able to inspect what gets logged
-        handler = logging.StreamHandler(self.log_output)
-        handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-
-        # Configure fresh logging
-        logging.basicConfig(
-            handlers=[handler]
-        )
-        yield
-
     @staticmethod
     @pytest.fixture(scope='class')
     def set_env_variables():
@@ -173,7 +154,7 @@ class TestMpicCoordinatorLambda:
         result = mpic_coordinator_lambda_function.lambda_handler(api_request, None)
         assert result == expected_response
 
-    def lambda_handler__should_set_log_level_for_coordinator(self, set_env_variables, mocker):
+    def lambda_handler__should_set_log_level_for_coordinator(self, set_env_variables, setup_logging, mocker):
         mpic_request = ValidMpicRequestCreator.create_valid_mpic_request(CheckType.CAA)
         api_request = TestMpicCoordinatorLambda.create_api_gateway_request()
         api_request.body = mpic_request.model_dump_json()
@@ -192,7 +173,7 @@ class TestMpicCoordinatorLambda:
         # noinspection PyTypeChecker
         result = mpic_coordinator_lambda_function.lambda_handler(api_request, None)
         assert result['statusCode'] == 200
-        log_contents = self.log_output.getvalue()
+        log_contents = setup_logging.getvalue()
         assert all(text in log_contents for text in ['MpicCoordinator', 'TRACE'])  # Verify the log level was set
 
     def load_aws_region_config__should_return_dict_of_aws_regions_with_proximity_info_by_region_code(self):
