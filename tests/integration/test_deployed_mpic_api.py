@@ -1,6 +1,7 @@
 import json
 import sys
 import pytest
+
 from pydantic import TypeAdapter
 
 from open_mpic_core.common_domain.check_parameters import CaaCheckParameters, DcvWebsiteChangeValidationDetails
