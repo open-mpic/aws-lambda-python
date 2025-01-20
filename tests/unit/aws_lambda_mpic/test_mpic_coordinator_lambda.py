@@ -12,9 +12,9 @@ from open_mpic_core.mpic_coordinator.domain.remote_perspective import RemotePers
 from pydantic import TypeAdapter
 
 from open_mpic_core.common_domain.check_request import DcvCheckRequest
-from open_mpic_core.common_domain.check_response import DcvCheckResponse
+from open_mpic_core.common_domain.check_response import DcvCheckResponse, CaaCheckResponse
 from open_mpic_core.common_domain.enum.check_type import CheckType
-from open_mpic_core.common_domain.check_response_details import DcvDnsCheckResponseDetails
+from open_mpic_core.common_domain.check_response_details import DcvDnsCheckResponseDetails, CaaCheckResponseDetails
 from open_mpic_core.common_domain.enum.dcv_validation_method import DcvValidationMethod
 from open_mpic_core.mpic_coordinator.domain.mpic_orchestration_parameters import MpicEffectiveOrchestrationParameters
 from open_mpic_core.mpic_coordinator.domain.mpic_response import MpicCaaResponse
@@ -49,7 +49,8 @@ class TestMpicCoordinatorLambda:
         envvars = {
             'perspectives': json.dumps({k: v.model_dump() for k, v in perspectives_as_dict.items()}),
             'default_perspective_count': '3',
-            'hash_secret': 'test_secret'
+            'hash_secret': 'test_secret',
+            'log_level': 'TRACE'
         }
         with pytest.MonkeyPatch.context() as class_scoped_monkeypatch:
             for k, v in envvars.items():
@@ -153,6 +154,28 @@ class TestMpicCoordinatorLambda:
         result = mpic_coordinator_lambda_function.lambda_handler(api_request, None)
         assert result == expected_response
 
+    def lambda_handler__should_set_log_level_for_coordinator(self, set_env_variables, setup_logging, mocker):
+        mpic_request = ValidMpicRequestCreator.create_valid_mpic_request(CheckType.CAA)
+        api_request = TestMpicCoordinatorLambda.create_api_gateway_request()
+        api_request.body = mpic_request.model_dump_json()
+        mocked_perspective_responses = [
+            CaaCheckResponse(perspective_code='us-east-1', check_passed=True, details=CaaCheckResponseDetails(caa_record_present=False)),
+            CaaCheckResponse(perspective_code='us-west-1', check_passed=True, details=CaaCheckResponseDetails(caa_record_present=False)),
+            CaaCheckResponse(perspective_code='eu-west-2', check_passed=True, details=CaaCheckResponseDetails(caa_record_present=False)),
+            CaaCheckResponse(perspective_code='eu-central-2', check_passed=True, details=CaaCheckResponseDetails(caa_record_present=False)),
+            CaaCheckResponse(perspective_code='ap-northeast-1', check_passed=True, details=CaaCheckResponseDetails(caa_record_present=False)),
+            CaaCheckResponse(perspective_code='ap-south-2', check_passed=True, details=CaaCheckResponseDetails(caa_record_present=False)),
+        ]
+        mocked_validity_per_perspective = {response.perspective_code: response.check_passed for response in mocked_perspective_responses}
+        mock_return = (mocked_perspective_responses, mocked_validity_per_perspective)
+
+        mocker.patch('open_mpic_core.mpic_coordinator.mpic_coordinator.MpicCoordinator.issue_async_calls_and_collect_responses', return_value=mock_return)
+        # noinspection PyTypeChecker
+        result = mpic_coordinator_lambda_function.lambda_handler(api_request, None)
+        assert result['statusCode'] == 200
+        log_contents = setup_logging.getvalue()
+        assert all(text in log_contents for text in ['MpicCoordinator', 'TRACE'])  # Verify the log level was set
+
     def load_aws_region_config__should_return_dict_of_aws_regions_with_proximity_info_by_region_code(self):
         mpic_coordinator_lambda_handler = MpicCoordinatorLambdaHandler()
         loaded_aws_regions = mpic_coordinator_lambda_handler.load_aws_region_config()
@@ -211,6 +234,14 @@ class TestMpicCoordinatorLambda:
             is_valid=True,
             perspectives=[],
             caa_check_parameters=caa_request.caa_check_parameters
+        )
+
+    @staticmethod
+    def create_caa_perspective_response(*args, **kwargs) -> CaaCheckResponse:
+        return CaaCheckResponse(
+            perspective_code=kwargs['perspective'].code,
+            check_passed=True,
+            details=CaaCheckResponseDetails(caa_record_present=False),
         )
 
     @staticmethod
