@@ -19,7 +19,9 @@ class MpicDcvCheckerLambdaHandler:
         if self.log_level:
             self.logger.setLevel(self.log_level)
 
-        self.dcv_checker = MpicDcvChecker(perspective_code=self.perspective_code, log_level=self.logger.level)
+        self.dcv_checker = MpicDcvChecker(perspective_code=self.perspective_code,
+                                          reuse_http_client=False,
+                                          log_level=self.logger.level)
 
     def process_invocation(self, dcv_request: DcvCheckRequest):
         try:
@@ -28,6 +30,9 @@ class MpicDcvCheckerLambdaHandler:
             # No running event loop, create a new one
             event_loop = asyncio.new_event_loop()
             asyncio.set_event_loop(event_loop)
+
+        self.logger.debug("(debug log) Processing DCV check request: %s", dcv_request)
+        print("(print) Processing DCV check request: %s", dcv_request)
 
         dcv_response = event_loop.run_until_complete(self.dcv_checker.check_dcv(dcv_request))
         status_code = 200

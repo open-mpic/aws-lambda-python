@@ -156,9 +156,9 @@ def main(raw_args=None):
 
             # Set log level if present.
             if "log-level" in config:
-                main_tf_string = main_tf_string.replace("{{log-level-with-key}}", f"log_level = \"{config['log-level']}\"")
+                aws_perspective_tf_region = aws_perspective_tf_region.replace("{{log-level-with-key}}", f"log_level = \"{config['log-level']}\"")
             else:
-                main_tf_string = main_tf_string.replace("{{log-level-with-key}}", "")
+                aws_perspective_tf_region = aws_perspective_tf_region.replace("{{log-level-with-key}}", "")
 
             if not args.aws_perspective_tf_template.endswith(".tf.template"):
                 print(f"Error: invalid tf template name: {args.aws_perspective_tf_template}. Make sure all tf template files end in '.tf.template'.")

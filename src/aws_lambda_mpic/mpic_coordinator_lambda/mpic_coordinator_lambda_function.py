@@ -43,7 +43,7 @@ class MpicCoordinatorLambdaHandler:
         self.default_perspective_count = int(os.environ['default_perspective_count'])
         self.global_max_attempts = int(os.environ['absolute_max_attempts']) if 'absolute_max_attempts' in os.environ else None
         self.hash_secret = os.environ['hash_secret']
-        self.log_level = os.environ['log_level'] if 'log_level' in os.environ else None
+        self.log_level = os.getenv('log_level', None)
 
         self.logger = logger.getChild(self.__class__.__name__)
         if self.log_level:
