@@ -12,6 +12,9 @@ class MpicDcvCheckerLambdaHandler:
         self.perspective_code = os.environ['AWS_REGION']
         self.dcv_checker = MpicDcvChecker(self.perspective_code)
 
+    async def initialize(self):
+        await self.dcv_checker.initialize()
+
     def process_invocation(self, dcv_request: DcvCheckRequest):
         try:
             event_loop = asyncio.get_running_loop()
@@ -39,13 +42,26 @@ class MpicDcvCheckerLambdaHandler:
 _handler = None
 
 
+async def initialize_handler() -> MpicDcvCheckerLambdaHandler:
+    handler = MpicDcvCheckerLambdaHandler()
+    await handler.initialize()
+    return handler
+
+
 def get_handler() -> MpicDcvCheckerLambdaHandler:
     """
     Singleton pattern to avoid recreating the handler on every Lambda invocation
     """
     global _handler
     if _handler is None:
-        _handler = MpicDcvCheckerLambdaHandler()
+        try:
+            event_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            # No running event loop, create a new one
+            event_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(event_loop)
+
+        _handler = event_loop.run_until_complete(initialize_handler())
     return _handler
 
 
