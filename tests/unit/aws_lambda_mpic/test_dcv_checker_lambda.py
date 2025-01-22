@@ -1,12 +1,5 @@
-import asyncio
 import time
-from asyncio import StreamReader
-from unittest.mock import MagicMock, AsyncMock
-
 import pytest
-from aiohttp import ClientResponse
-from multidict import CIMultiDictProxy, CIMultiDict
-from yarl import URL
 
 import aws_lambda_mpic.mpic_dcv_checker_lambda.mpic_dcv_checker_lambda_function as mpic_dcv_checker_lambda_function
 from open_mpic_core.common_domain.validation_error import MpicValidationError
