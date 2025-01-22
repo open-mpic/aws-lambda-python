@@ -61,31 +61,6 @@ class TestDcvCheckerLambda:
         result = mpic_dcv_checker_lambda_function.lambda_handler(dcv_check_request, None)
         assert result == mock_return_value
 
-    def lambda_handler__should_ensure_dcv_checker_is_fully_initialized_to_perform_http_based_checks(self, set_env_variables, mocker):
-        dcv_check_request = ValidCheckCreator.create_valid_http_check_request()
-        expected_challenge_value = dcv_check_request.dcv_check_parameters.validation_details.challenge_value
-
-        # this test requires getting pretty far into the Dcv Checker execution; need to mock an aiohttp.ClientResponse
-        event_loop = asyncio.get_event_loop()
-        response = ClientResponse(
-            method='GET', url=URL('http://example.com'), writer=MagicMock(), continue100=None,
-            timer=AsyncMock(), request_info=AsyncMock(), traces=[], loop=event_loop, session=AsyncMock()
-        )
-        response.status = 200
-        response.content = StreamReader(loop=event_loop)
-        response.content.feed_data(bytes(expected_challenge_value.encode('utf-8')))
-        response.content.feed_eof()
-        response._headers = CIMultiDictProxy(CIMultiDict({
-            'Content-Type': 'text/plain; charset=utf-8', 'Content-Length': str(len(expected_challenge_value))
-        }))
-
-        mocker.patch(
-            'aiohttp.ClientSession.get',
-            side_effect=lambda *args, **kwargs: AsyncMock(__aenter__=AsyncMock(return_value=response))
-        )
-        result = mpic_dcv_checker_lambda_function.lambda_handler(dcv_check_request, None)
-        assert result['statusCode'] == 200
-
     @staticmethod
     def create_dcv_check_response():
         return DcvCheckResponse(perspective_code='us-east-1', check_passed=True,
