@@ -1,16 +1,25 @@
+import os
 import asyncio
 
 from aws_lambda_powertools.utilities.parser import event_parser
 
 from open_mpic_core.common_domain.check_request import DcvCheckRequest
 from open_mpic_core.mpic_dcv_checker.mpic_dcv_checker import MpicDcvChecker
-import os
+from open_mpic_core.common_util.trace_level_logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class MpicDcvCheckerLambdaHandler:
     def __init__(self):
         self.perspective_code = os.environ['AWS_REGION']
-        self.dcv_checker = MpicDcvChecker(self.perspective_code)
+        self.log_level = os.environ['log_level'] if 'log_level' in os.environ else None
+
+        self.logger = logger.getChild(self.__class__.__name__)
+        if self.log_level:
+            self.logger.setLevel(self.log_level)
+
+        self.dcv_checker = MpicDcvChecker(perspective_code=self.perspective_code, log_level=self.logger.level)
 
     def process_invocation(self, dcv_request: DcvCheckRequest):
         try:

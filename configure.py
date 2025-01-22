@@ -109,6 +109,12 @@ def main(raw_args=None):
         # Set the source path for the lambda functions.
         main_tf_string = main_tf_string.replace("{{source-path}}", f"{config['source-path']}")
 
+        # Set log level if present.
+        if "log-level" in config:
+            main_tf_string = main_tf_string.replace("{{log-level-with-key}}", f"log_level = \"{config['log-level']}\"")
+        else:
+            main_tf_string = main_tf_string.replace("{{log-level-with-key}}", "")
+
         # Derive the out file from the input file name.
         if not args.main_tf_template.endswith(".tf.template"):
             print(f"Error: invalid tf template name: {args.main_tf_template}. Make sure all tf template files end in '.tf.template'.")
@@ -147,6 +153,12 @@ def main(raw_args=None):
 
             # Set the source path for the lambda functions.
             aws_perspective_tf_region = aws_perspective_tf_region.replace("{{source-path}}", f"{config['source-path']}")
+
+            # Set log level if present.
+            if "log-level" in config:
+                main_tf_string = main_tf_string.replace("{{log-level-with-key}}", f"log_level = \"{config['log-level']}\"")
+            else:
+                main_tf_string = main_tf_string.replace("{{log-level-with-key}}", "")
 
             if not args.aws_perspective_tf_template.endswith(".tf.template"):
                 print(f"Error: invalid tf template name: {args.aws_perspective_tf_template}. Make sure all tf template files end in '.tf.template'.")

@@ -22,3 +22,5 @@ caa-domains:
 # absolute maximum regardless of orchestration parameters in request
 # NOT to be interpreted as the default number of attempts (default is 1 unless explicitly set in request)
 absolute-max-attempts: 3
+
+log-level: INFO

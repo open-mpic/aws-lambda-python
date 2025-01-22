@@ -8,6 +8,8 @@ from open_mpic_core.common_domain.enum.dcv_validation_method import DcvValidatio
 from open_mpic_core.common_domain.check_response import DcvCheckResponse
 from open_mpic_core_test.test_util.valid_check_creator import ValidCheckCreator
 
+from unit.aws_lambda_mpic.conftest import setup_logging
+
 
 # noinspection PyMethodMayBeStatic
 class TestDcvCheckerLambda:
@@ -16,6 +18,7 @@ class TestDcvCheckerLambda:
     def set_env_variables():
         envvars = {
             'AWS_REGION': 'us-east-1',
+            'log_level': 'TRACE'
         }
         with pytest.MonkeyPatch.context() as class_scoped_monkeypatch:
             for k, v in envvars.items():
@@ -53,6 +56,15 @@ class TestDcvCheckerLambda:
         dcv_check_request = ValidCheckCreator.create_valid_http_check_request()
         result = mpic_dcv_checker_lambda_function.lambda_handler(dcv_check_request, None)
         assert result == mock_return_value
+
+    def lambda_handler__should_set_log_level_of_dcv_checker(self, set_env_variables, mocker, setup_logging):
+        dcv_check_request = ValidCheckCreator.create_valid_http_check_request()
+        mocker.patch('open_mpic_core.mpic_dcv_checker.mpic_dcv_checker.MpicDcvChecker.perform_http_based_validation',
+                     return_value=TestDcvCheckerLambda.create_dcv_check_response())
+        result = mpic_dcv_checker_lambda_function.lambda_handler(dcv_check_request, None)
+        assert result['statusCode'] == 200
+        log_contents = setup_logging.getvalue()
+        assert all(text in log_contents for text in ['MpicDcvChecker', 'TRACE'])  # Verify the log level was set
 
     @staticmethod
     def create_dcv_check_response():
