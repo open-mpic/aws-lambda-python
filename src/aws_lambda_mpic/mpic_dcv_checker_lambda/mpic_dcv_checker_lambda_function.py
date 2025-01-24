@@ -1,19 +1,27 @@
+import os
 import asyncio
 
 from aws_lambda_powertools.utilities.parser import event_parser
 
 from open_mpic_core.common_domain.check_request import DcvCheckRequest
 from open_mpic_core.mpic_dcv_checker.mpic_dcv_checker import MpicDcvChecker
-import os
+from open_mpic_core.common_util.trace_level_logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class MpicDcvCheckerLambdaHandler:
     def __init__(self):
         self.perspective_code = os.environ['AWS_REGION']
-        self.dcv_checker = MpicDcvChecker(self.perspective_code)
+        self.log_level = os.environ['log_level'] if 'log_level' in os.environ else None
 
-    async def initialize(self):
-        await self.dcv_checker.initialize()
+        self.logger = logger.getChild(self.__class__.__name__)
+        if self.log_level:
+            self.logger.setLevel(self.log_level)
+
+        self.dcv_checker = MpicDcvChecker(perspective_code=self.perspective_code,
+                                          reuse_http_client=False,
+                                          log_level=self.logger.level)
 
     def process_invocation(self, dcv_request: DcvCheckRequest):
         try:
@@ -22,6 +30,9 @@ class MpicDcvCheckerLambdaHandler:
             # No running event loop, create a new one
             event_loop = asyncio.new_event_loop()
             asyncio.set_event_loop(event_loop)
+
+        self.logger.debug("(debug log) Processing DCV check request: %s", dcv_request)
+        print("(print) Processing DCV check request: %s", dcv_request)
 
         dcv_response = event_loop.run_until_complete(self.dcv_checker.check_dcv(dcv_request))
         status_code = 200
@@ -42,26 +53,13 @@ class MpicDcvCheckerLambdaHandler:
 _handler = None
 
 
-async def initialize_handler() -> MpicDcvCheckerLambdaHandler:
-    handler = MpicDcvCheckerLambdaHandler()
-    await handler.initialize()
-    return handler
-
-
 def get_handler() -> MpicDcvCheckerLambdaHandler:
     """
     Singleton pattern to avoid recreating the handler on every Lambda invocation
     """
     global _handler
     if _handler is None:
-        try:
-            event_loop = asyncio.get_running_loop()
-        except RuntimeError:
-            # No running event loop, create a new one
-            event_loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(event_loop)
-
-        _handler = event_loop.run_until_complete(initialize_handler())
+        _handler = MpicDcvCheckerLambdaHandler()
     return _handler
 
 

@@ -84,6 +84,7 @@ resource "aws_lambda_function" "mpic_coordinator_lambda" {
         default_perspective_count = {{default-perspective-count}}
         hash_secret = {{hash-secret}}
         {{absolute-max-attempts-with-key}}
+        {{log-level-with-key}}
       }
     }
 }

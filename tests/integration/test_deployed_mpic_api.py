@@ -1,6 +1,8 @@
 import json
 import sys
 import pytest
+from open_mpic_core.common_domain.enum.dcv_validation_method import DcvValidationMethod
+
 from pydantic import TypeAdapter
 
 from open_mpic_core.common_domain.check_parameters import CaaCheckParameters, DcvWebsiteChangeValidationDetails, DcvAcmeDns01ValidationDetails, DcvDnsChangeValidationDetails
@@ -206,11 +208,9 @@ class TestDeployedMpicApi:
 
         print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
         response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
-        assert response.status_code == 200
         print("\nResponse:\n", json.dumps(json.loads(response.text), indent=4))  # pretty print request body
-        
+        assert response.status_code == 200
         mpic_response = self.mpic_response_adapter.validate_json(response.text)
-        
         assert mpic_response.is_valid is True
 
     def api_should_return_200_and_failed_corroboration_given_failed_dcv_check(self, api_client):

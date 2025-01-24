@@ -1,5 +1,8 @@
+import logging
 import os
 import json
+import traceback
+
 import yaml
 import asyncio
 import aioboto3
@@ -7,9 +10,9 @@ import aioboto3
 from asyncio import Queue
 from collections import defaultdict
 from importlib import resources
-
-from aws_lambda_powertools.utilities.parser import event_parser, envelopes
 from pydantic import TypeAdapter, ValidationError, BaseModel
+from aws_lambda_powertools.utilities.parser import event_parser, envelopes
+
 from open_mpic_core.common_domain.check_request import BaseCheckRequest
 from open_mpic_core.common_domain.check_response import CheckResponse
 from open_mpic_core.mpic_coordinator.domain.mpic_request import MpicRequest
@@ -18,6 +21,9 @@ from open_mpic_core.mpic_coordinator.messages.mpic_request_validation_messages i
 from open_mpic_core.mpic_coordinator.mpic_coordinator import MpicCoordinator, MpicCoordinatorConfiguration
 from open_mpic_core.common_domain.enum.check_type import CheckType
 from open_mpic_core.mpic_coordinator.domain.remote_perspective import RemotePerspective
+from open_mpic_core.common_util.trace_level_logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class PerspectiveEndpointInfo(BaseModel):
@@ -37,6 +43,11 @@ class MpicCoordinatorLambdaHandler:
         self.default_perspective_count = int(os.environ['default_perspective_count'])
         self.global_max_attempts = int(os.environ['absolute_max_attempts']) if 'absolute_max_attempts' in os.environ else None
         self.hash_secret = os.environ['hash_secret']
+        self.log_level = os.getenv('log_level', None)
+
+        self.logger = logger.getChild(self.__class__.__name__)
+        if self.log_level:
+            self.logger.setLevel(self.log_level)
 
         self.remotes_per_perspective_per_check_type = {
             CheckType.DCV: {perspective_code: perspective_config.dcv_endpoint_info for perspective_code, perspective_config in perspectives.items()},
@@ -54,10 +65,7 @@ class MpicCoordinatorLambdaHandler:
             self.hash_secret
         )
 
-        self.mpic_coordinator = MpicCoordinator(
-            self.call_remote_perspective,
-            self.mpic_coordinator_configuration
-        )
+        self.mpic_coordinator = MpicCoordinator(self.call_remote_perspective, self.mpic_coordinator_configuration, self.logger.level)
 
         # for correct deserialization of responses based on discriminator field (check type)
         self.mpic_request_adapter = TypeAdapter(MpicRequest)
@@ -125,7 +133,7 @@ class MpicCoordinatorLambdaHandler:
             response_payload = json.loads(await response['Payload'].read())
             return self.check_response_adapter.validate_json(response_payload['body'])
         except ValidationError as ve:
-            # We might want to handle this differently later.
+            self.logger.log(level=logging.ERROR, msg=f"Validation error in response from {perspective.code}: {ve}")
             raise ve
         finally:
             await self.release_lambda_client(perspective.code, client)
@@ -184,6 +192,9 @@ def handle_lambda_exceptions(func):
         except ValidationError as validation_error:
             return build_400_response(MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key, validation_error.errors())
         except Exception as e:
+            logger.error(f"An error occurred: {str(e)}")
+            print(traceback.format_exc())
+            print(f"BOY HOWDY error occurred: {str(e)}")
             return {
                 'statusCode': 500,
                 'headers': {'Content-Type': 'application/json'},

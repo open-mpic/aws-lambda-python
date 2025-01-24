@@ -1,12 +1,5 @@
-import asyncio
 import time
-from asyncio import StreamReader
-from unittest.mock import MagicMock, AsyncMock
-
 import pytest
-from aiohttp import ClientResponse
-from multidict import CIMultiDictProxy, CIMultiDict
-from yarl import URL
 
 import aws_lambda_mpic.mpic_dcv_checker_lambda.mpic_dcv_checker_lambda_function as mpic_dcv_checker_lambda_function
 from open_mpic_core.common_domain.validation_error import MpicValidationError
@@ -14,6 +7,8 @@ from open_mpic_core.common_domain.check_response_details import DcvHttpCheckResp
 from open_mpic_core.common_domain.enum.dcv_validation_method import DcvValidationMethod
 from open_mpic_core.common_domain.check_response import DcvCheckResponse
 from open_mpic_core_test.test_util.valid_check_creator import ValidCheckCreator
+
+from unit.aws_lambda_mpic.conftest import setup_logging
 
 
 # noinspection PyMethodMayBeStatic
@@ -23,6 +18,7 @@ class TestDcvCheckerLambda:
     def set_env_variables():
         envvars = {
             'AWS_REGION': 'us-east-1',
+            'log_level': 'TRACE'
         }
         with pytest.MonkeyPatch.context() as class_scoped_monkeypatch:
             for k, v in envvars.items():
@@ -61,30 +57,14 @@ class TestDcvCheckerLambda:
         result = mpic_dcv_checker_lambda_function.lambda_handler(dcv_check_request, None)
         assert result == mock_return_value
 
-    def lambda_handler__should_ensure_dcv_checker_is_fully_initialized_to_perform_http_based_checks(self, set_env_variables, mocker):
+    def lambda_handler__should_set_log_level_of_dcv_checker(self, set_env_variables, mocker, setup_logging):
         dcv_check_request = ValidCheckCreator.create_valid_http_check_request()
-        expected_challenge_value = dcv_check_request.dcv_check_parameters.validation_details.challenge_value
-
-        # this test requires getting pretty far into the Dcv Checker execution; need to mock an aiohttp.ClientResponse
-        event_loop = asyncio.get_event_loop()
-        response = ClientResponse(
-            method='GET', url=URL('http://example.com'), writer=MagicMock(), continue100=None,
-            timer=AsyncMock(), request_info=AsyncMock(), traces=[], loop=event_loop, session=AsyncMock()
-        )
-        response.status = 200
-        response.content = StreamReader(loop=event_loop)
-        response.content.feed_data(bytes(expected_challenge_value.encode('utf-8')))
-        response.content.feed_eof()
-        response._headers = CIMultiDictProxy(CIMultiDict({
-            'Content-Type': 'text/plain; charset=utf-8', 'Content-Length': str(len(expected_challenge_value))
-        }))
-
-        mocker.patch(
-            'aiohttp.ClientSession.get',
-            side_effect=lambda *args, **kwargs: AsyncMock(__aenter__=AsyncMock(return_value=response))
-        )
+        mocker.patch('open_mpic_core.mpic_dcv_checker.mpic_dcv_checker.MpicDcvChecker.perform_http_based_validation',
+                     return_value=TestDcvCheckerLambda.create_dcv_check_response())
         result = mpic_dcv_checker_lambda_function.lambda_handler(dcv_check_request, None)
         assert result['statusCode'] == 200
+        log_contents = setup_logging.getvalue()
+        assert all(text in log_contents for text in ['MpicDcvChecker', 'TRACE'])  # Verify the log level was set
 
     @staticmethod
     def create_dcv_check_response():
