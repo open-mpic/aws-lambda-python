@@ -33,8 +33,9 @@ dependencies = [
     "pydantic==2.8.2",
     "aiohttp==3.11.11",
     "aws-lambda-powertools[parser]==3.2.0",
-    "open-mpic-core==4.6.1",
+    "open-mpic-core==4.6.2",
     "aioboto3~=13.3.0",
+    "black==24.8.0",
 ]
 
 [project.optional-dependencies]
@@ -135,3 +136,6 @@ include_namespace_packages = true
 omit = [
     "*/src/*/__about__.py",
 ]
+
+[tool.black]
+line-length = 120
