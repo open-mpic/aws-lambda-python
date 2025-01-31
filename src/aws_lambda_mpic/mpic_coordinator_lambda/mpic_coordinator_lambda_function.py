@@ -206,7 +206,6 @@ def handle_lambda_exceptions(func):
         except Exception as e:
             logger.error(f"An error occurred: {str(e)}")
             print(traceback.format_exc())
-            print(f"BOY HOWDY error occurred: {str(e)}")
             return {
                 "statusCode": 500,
                 "headers": {"Content-Type": "application/json"},
