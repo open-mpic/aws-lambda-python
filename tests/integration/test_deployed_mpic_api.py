@@ -5,7 +5,7 @@ from open_mpic_core.common_domain.enum.dcv_validation_method import DcvValidatio
 
 from pydantic import TypeAdapter
 
-from open_mpic_core.common_domain.check_parameters import CaaCheckParameters, DcvWebsiteChangeValidationDetails, DcvAcmeDns01ValidationDetails, DcvDnsChangeValidationDetails
+from open_mpic_core.common_domain.check_parameters import CaaCheckParameters, DcvWebsiteChangeValidationDetails, DcvAcmeDns01ValidationDetails, DcvAcmeHttp01ValidationDetails, DcvDnsChangeValidationDetails
 from open_mpic_core.common_domain.check_parameters import DcvCheckParameters
 from open_mpic_core.common_domain.enum.certificate_type import CertificateType
 from open_mpic_core.common_domain.enum.check_type import CheckType
@@ -190,6 +190,69 @@ class TestDeployedMpicApi:
         mpic_response = self.mpic_response_adapter.validate_json(response.text)
         
         assert mpic_response.is_valid is False
+
+
+    @pytest.mark.parametrize('domain_or_ip_target, purpose_of_test, token, key_authorization', [
+        ('integration-testing.open-mpic.org', 'Standard http-01 test', "evaGxfADs6pSRb2LAv9IZf17Dt3juxGJ-PCt92wr-oA", "evaGxfADs6pSRb2LAv9IZf17Dt3juxGJ-PCt92wr-oA.NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs"),
+        ('integration-testing.open-mpic.org', 'Redirect 302 http-01 test', "evaGxfADs6pSRb2LAv9IZf17Dt3juxGJ-PCt92wr-oB", "evaGxfADs6pSRb2LAv9IZf17Dt3juxGJ-PCt92wr-oA.NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs")
+    ])
+    def api_should_return_200_given_valid_http_01_validation(self, api_client, domain_or_ip_target, purpose_of_test, token, key_authorization):
+        print(f"Running test for {domain_or_ip_target} ({purpose_of_test})")
+        request = MpicDcvRequest(
+            domain_or_ip_target=domain_or_ip_target,
+            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
+            dcv_check_parameters=DcvCheckParameters(
+                validation_details=DcvAcmeHttp01ValidationDetails(key_authorization=key_authorization, token=token)
+            )
+        )
+        print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
+        response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
+        assert response.status_code == 200
+        mpic_response = self.mpic_response_adapter.validate_json(response.text)
+        
+        assert mpic_response.is_valid is True
+
+
+    @pytest.mark.parametrize('domain_or_ip_target, purpose_of_test, token, key_authorization', [
+        ('integration-testing.open-mpic.org', 'Failed http-01 test', "evaGxfADs6pSRb2LAv9IZf17Dt3juxGJ-PCt92wr-oA", "evaGxfADs6pSRb2LAv9IZf17Dt3juxGJ-PCt92wr-oA.NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xa"),
+        ('integration-testing.open-mpic.org', 'Failed 302 http-01 test', "evaGxfADs6pSRb2LAv9IZf17Dt3juxGJ-PCt92wr-oB", "evaGxfADs6pSRb2LAv9IZf17Dt3juxGJ-PCt92wr-oA.NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xa")
+    ])
+    def api_should_return_200_given_invalid_http_01_validation(self, api_client, domain_or_ip_target, purpose_of_test, token, key_authorization):
+        print(f"Running test for {domain_or_ip_target} ({purpose_of_test})")
+        request = MpicDcvRequest(
+            domain_or_ip_target=domain_or_ip_target,
+            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
+            dcv_check_parameters=DcvCheckParameters(
+                validation_details=DcvAcmeHttp01ValidationDetails(key_authorization=key_authorization, token=token)
+            )
+        )
+        print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
+        response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
+        assert response.status_code == 200
+        mpic_response = self.mpic_response_adapter.validate_json(response.text)
+        
+        assert mpic_response.is_valid is False
+
+    @pytest.mark.parametrize('domain_or_ip_target, purpose_of_test, http_token_path, challenge_value', [
+        ('integration-testing.open-mpic.org', 'Valid website change v2 challenge', 'validation-doc.txt', 'test-validation'),
+        ('integration-testing.open-mpic.org', 'Valid 302 website change v2 challenge', 'validation-doc-redirect.txt', "test-validation-redirect")
+    ])
+    def api_should_return_200_given_valid_website_change_validation(self, api_client, domain_or_ip_target, purpose_of_test, http_token_path, challenge_value):
+        print(f"Running test for {domain_or_ip_target} ({purpose_of_test})")
+        request = MpicDcvRequest(
+            domain_or_ip_target=domain_or_ip_target,
+            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
+            dcv_check_parameters=DcvCheckParameters(
+                validation_details=DcvWebsiteChangeValidationDetails(http_token_path=http_token_path,
+                                                                     challenge_value=challenge_value)
+            )
+        )
+        print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
+        response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
+        assert response.status_code == 200
+        mpic_response = self.mpic_response_adapter.validate_json(response.text)
+        
+        assert mpic_response.is_valid is True
 
     @pytest.mark.parametrize('domain_or_ip_target, dns_record_type, challenge_value, purpose_of_test', [
         ('dns-change-txt.integration-testing.open-mpic.org', DnsRecordType.TXT, "1234567890abcdefg.", 'standard TXT dns change'),
