@@ -12,15 +12,13 @@ logger = get_logger(__name__)
 
 class MpicDcvCheckerLambdaHandler:
     def __init__(self):
-        self.perspective_code = os.environ['AWS_REGION']
         self.log_level = os.environ['log_level'] if 'log_level' in os.environ else None
 
         self.logger = logger.getChild(self.__class__.__name__)
         if self.log_level:
             self.logger.setLevel(self.log_level)
 
-        self.dcv_checker = MpicDcvChecker(perspective_code=self.perspective_code,
-                                          reuse_http_client=False,
+        self.dcv_checker = MpicDcvChecker(reuse_http_client=False,
                                           log_level=self.logger.level)
 
     def process_invocation(self, dcv_request: DcvCheckRequest):

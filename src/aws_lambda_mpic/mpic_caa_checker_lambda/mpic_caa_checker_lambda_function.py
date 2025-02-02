@@ -12,7 +12,6 @@ logger = get_logger(__name__)
 
 class MpicCaaCheckerLambdaHandler:
     def __init__(self):
-        self.perspective_code = os.environ['AWS_REGION']
         self.default_caa_domain_list = os.environ['default_caa_domains'].split("|")
         self.log_level = os.environ['log_level'] if 'log_level' in os.environ else None
 
@@ -21,7 +20,6 @@ class MpicCaaCheckerLambdaHandler:
             self.logger.setLevel(self.log_level)
 
         self.caa_checker = MpicCaaChecker(default_caa_domain_list=self.default_caa_domain_list,
-                                          perspective_code=self.perspective_code,
                                           log_level=self.logger.level)
 
     def process_invocation(self, caa_request: CaaCheckRequest):
