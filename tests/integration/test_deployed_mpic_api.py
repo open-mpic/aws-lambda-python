@@ -8,6 +8,7 @@ from pydantic import TypeAdapter
 from open_mpic_core.common_domain.check_parameters import (
     CaaCheckParameters,
     DcvWebsiteChangeValidationDetails,
+    DcvContactEmailTxtValidationDetails,
     DcvAcmeDns01ValidationDetails,
     DcvAcmeHttp01ValidationDetails,
     DcvDnsChangeValidationDetails,
@@ -251,7 +252,8 @@ class TestDeployedMpicApi:
     # fmt: off
     @pytest.mark.parametrize('domain_or_ip_target, purpose_of_test, token, key_authorization', [
         ('integration-testing.open-mpic.org', 'Failed http-01 test', "evaGxfADs6pSRb2LAv9IZf17Dt3juxGJ-PCt92wr-oA", "evaGxfADs6pSRb2LAv9IZf17Dt3juxGJ-PCt92wr-oA.NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xa"),
-        ('integration-testing.open-mpic.org', 'Failed 302 http-01 test', "evaGxfADs6pSRb2LAv9IZf17Dt3juxGJ-PCt92wr-oB", "evaGxfADs6pSRb2LAv9IZf17Dt3juxGJ-PCt92wr-oA.NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xa")
+        ('integration-testing.open-mpic.org', 'Failed 302 http-01 test', "evaGxfADs6pSRb2LAv9IZf17Dt3juxGJ-PCt92wr-oB", "evaGxfADs6pSRb2LAv9IZf17Dt3juxGJ-PCt92wr-oA.NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xa"),
+        ('integration-testing.open-mpic.org', 'Failed http-01, bad redirect', "evaGxfADs6pSRb2LAv9IZf17Dt3juxGJ-PCt92wr-oC", "evaGxfADs6pSRb2LAv9IZf17Dt3juxGJ-PCt92wr-oA.NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs"),
     ])
     # fmt: on
     def api_should_return_200_given_invalid_http_01_validation(
@@ -299,6 +301,33 @@ class TestDeployedMpicApi:
         assert mpic_response.is_valid is True
 
     # fmt: off
+    @pytest.mark.parametrize('domain_or_ip_target, purpose_of_test, http_token_path, challenge_value', [
+        ('integration-testing.open-mpic.org', 'Website change v2 challenge bad port redirect', 'validation-doc-bad-port-redirect.txt', 'test-validation-redirect')
+    ])
+    # fmt: on
+    def api_should_return_200_is_valid_false_given_invalid_website_change_validation(
+        self, api_client, domain_or_ip_target, purpose_of_test, http_token_path, challenge_value
+    ):
+        print(f"Running test for {domain_or_ip_target} ({purpose_of_test})")
+        request = MpicDcvRequest(
+            domain_or_ip_target=domain_or_ip_target,
+            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
+            dcv_check_parameters=DcvCheckParameters(
+                validation_details=DcvWebsiteChangeValidationDetails(
+                    http_token_path=http_token_path, challenge_value=challenge_value
+                )
+            ),
+        )
+        print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
+        response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
+        assert response.status_code == 200
+        mpic_response = self.mpic_response_adapter.validate_json(response.text)
+        # We have a bad redirect to a non-authorized port. Must be is_valid False.
+        assert mpic_response.is_valid is False
+
+
+
+    # fmt: off
     @pytest.mark.parametrize('domain_or_ip_target, dns_record_type, challenge_value, purpose_of_test', [
         ('dns-change-txt.integration-testing.open-mpic.org', DnsRecordType.TXT, "1234567890abcdefg.", 'standard TXT dns change'),
         ('dns-change-cname.integration-testing.open-mpic.org', DnsRecordType.CNAME, "1234567890abcdefg.", 'standard CNAME dns change'),
@@ -339,6 +368,38 @@ class TestDeployedMpicApi:
         assert response.status_code == 200
         response_body = json.loads(response.text)
         print("\nResponse:\n", json.dumps(response_body, indent=4))  # pretty print response body
+
+    # fmt: off
+    @pytest.mark.parametrize('domain_or_ip_target, challenge_value, is_valid, purpose_of_test', [
+        ("dns-email-txt.integration-testing.open-mpic.org", "testadmin.email.txt@example.com", True, "Standard email in TXT record exact match"),
+        ("dns-email-txt-cname.integration-testing.open-mpic.org", "testadmin.cname.target@example.com", True, "Standard email in TXT record exact match with CNAME"),
+        ("dns-email-txt-whitespace.integration-testing.open-mpic.org", "testadmin.email.txt.whitespace@example.com", False, "Whitespace email in TXT record exact match with whitespace is valid false"),
+        ("dns-email-txt-null-char.integration-testing.open-mpic.org", "testadmin.email.txt.null.char@example.com", False, "Null char email in TXT record exact match is valid false"),
+        ("dns-email-txt-junk.integration-testing.open-mpic.org", "testadmin.email.txt.junk@example.com", False, "Junk around email in TXT record exact match is valid false"),
+    ])
+    # fmt: on
+    def api_should_return_200_and_appropriate_is_valid_given_valid_contact_email_txt_validation(
+        self, api_client, domain_or_ip_target, challenge_value, is_valid, purpose_of_test
+    ):
+        print(f"Running test for {domain_or_ip_target} ({purpose_of_test})")
+        request = MpicDcvRequest(
+            domain_or_ip_target=domain_or_ip_target,
+            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
+            dcv_check_parameters=DcvCheckParameters(
+                validation_details=DcvContactEmailTxtValidationDetails(
+                    challenge_value=challenge_value,
+                    require_exact_match=True
+                )
+            ),
+        )
+
+        print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
+        response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
+        print("\nResponse:\n", json.dumps(json.loads(response.text), indent=4))  # pretty print request body
+        assert response.status_code == 200
+        mpic_response = self.mpic_response_adapter.validate_json(response.text)
+        assert mpic_response.is_valid == is_valid
+
 
     def api_should_return_400_given_invalid_orchestration_parameters_in_request(self, api_client):
         request = MpicCaaRequest(
