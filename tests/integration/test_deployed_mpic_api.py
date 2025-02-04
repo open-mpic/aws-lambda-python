@@ -12,7 +12,7 @@ from open_mpic_core import (
 )
 from open_mpic_core import DcvCheckParameters
 from open_mpic_core import CertificateType, CheckType, DnsRecordType
-from open_mpic_core import MpicCaaRequest, MpicDcvRequest, MpicResponse
+from open_mpic_core import MpicCaaRequest, MpicDcvRequest, MpicResponse, PerspectiveResponse
 from open_mpic_core import MpicRequestOrchestrationParameters
 from open_mpic_core import MpicRequestValidationMessages
 from open_mpic_core import DcvAcmeHttp01ValidationParameters
@@ -56,10 +56,10 @@ class TestDeployedMpicApi:
         mpic_response = self.mpic_response_adapter.validate_json(response.text)
         print("\nResponse:\n", json.dumps(mpic_response.model_dump(), indent=4))  # pretty print response body
         assert mpic_response.is_valid is True
-        perspectives_list = mpic_response.perspectives
+        perspectives_list: list[PerspectiveResponse] = mpic_response.perspectives
         assert len(perspectives_list) == request.orchestration_parameters.perspective_count
         assert (
-            len(list(filter(lambda perspective: perspective.check_type == CheckType.CAA, perspectives_list)))
+            len(list(filter(lambda perspective: perspective.check_response.check_type == CheckType.CAA, perspectives_list)))
             == request.orchestration_parameters.perspective_count
         )
 
@@ -276,10 +276,8 @@ class TestDeployedMpicApi:
         request = MpicDcvRequest(
             domain_or_ip_target=domain_or_ip_target,
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
-            dcv_check_parameters=DcvCheckParameters(
-                validation_details=DcvWebsiteChangeValidationParameters(
-                    http_token_path=http_token_path, challenge_value=challenge_value
-                )
+            dcv_check_parameters=DcvWebsiteChangeValidationParameters(
+                http_token_path=http_token_path, challenge_value=challenge_value
             ),
         )
         print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
