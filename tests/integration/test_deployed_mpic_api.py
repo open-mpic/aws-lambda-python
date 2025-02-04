@@ -6,9 +6,9 @@ from pydantic import TypeAdapter
 
 from open_mpic_core import (
     CaaCheckParameters,
-    DcvWebsiteChangeValidationDetails,
-    DcvAcmeDns01ValidationDetails,
-    DcvDnsChangeValidationDetails,
+    DcvWebsiteChangeValidationParameters,
+    DcvAcmeDns01ValidationParameters,
+    DcvDnsChangeValidationParameters,
 )
 from open_mpic_core import DcvCheckParameters
 from open_mpic_core import CertificateType, CheckType, DnsRecordType
@@ -178,10 +178,8 @@ class TestDeployedMpicApi:
         request = MpicDcvRequest(
             domain_or_ip_target=domain_or_ip_target,
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
-            dcv_check_parameters=DcvCheckParameters(
-                validation_details=DcvAcmeDns01ValidationDetails(
-                    key_authorization="7FwkJPsKf-TH54wu4eiIFA3nhzYaevsL7953ihy-tpo"
-                )
+            dcv_check_parameters=DcvAcmeDns01ValidationParameters(
+                key_authorization="7FwkJPsKf-TH54wu4eiIFA3nhzYaevsL7953ihy-tpo"
             ),
         )
 
@@ -206,10 +204,8 @@ class TestDeployedMpicApi:
         request = MpicDcvRequest(
             domain_or_ip_target=domain_or_ip_target,
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
-            dcv_check_parameters=DcvCheckParameters(
-                validation_details=DcvAcmeDns01ValidationDetails(
-                    key_authorization="7FwkJPsKf-TH54wu4eiIFA3nhzYaevsL7953ihy-tpo"
-                )
+            dcv_check_parameters=DcvAcmeDns01ValidationParameters(
+                key_authorization="7FwkJPsKf-TH54wu4eiIFA3nhzYaevsL7953ihy-tpo"
             ),
         )
 
@@ -255,10 +251,8 @@ class TestDeployedMpicApi:
         request = MpicDcvRequest(
             domain_or_ip_target=domain_or_ip_target,
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
-            dcv_check_parameters=DcvCheckParameters(
-                validation_details=DcvAcmeDns01ValidationDetails(
-                    key_authorization="7FwkJPsKf-TH54wu4eiIFA3nhzYaevsL7953ihy-tpo"
-                )
+            dcv_check_parameters=DcvAcmeDns01ValidationParameters(
+                key_authorization="7FwkJPsKf-TH54wu4eiIFA3nhzYaevsL7953ihy-tpo"
             ),
         )
 
@@ -283,7 +277,7 @@ class TestDeployedMpicApi:
             domain_or_ip_target=domain_or_ip_target,
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
             dcv_check_parameters=DcvCheckParameters(
-                validation_details=DcvWebsiteChangeValidationDetails(
+                validation_details=DcvWebsiteChangeValidationParameters(
                     http_token_path=http_token_path, challenge_value=challenge_value
                 )
             ),
@@ -309,10 +303,8 @@ class TestDeployedMpicApi:
         request = MpicDcvRequest(
             domain_or_ip_target=domain_or_ip_target,
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
-            dcv_check_parameters=DcvCheckParameters(
-                validation_details=DcvDnsChangeValidationDetails(
-                    challenge_value=challenge_value, dns_record_type=dns_record_type, dns_name_prefix=""
-                )
+            dcv_check_parameters=DcvDnsChangeValidationParameters(
+                challenge_value=challenge_value, dns_record_type=dns_record_type, dns_name_prefix=""
             ),
         )
 
@@ -326,9 +318,7 @@ class TestDeployedMpicApi:
     def api_should_return_200_and_failed_corroboration_given_failed_dcv_check(self, api_client):
         request = MpicDcvRequest(
             domain_or_ip_target="ifconfig.me",
-            dcv_check_parameters=DcvCheckParameters(
-                validation_details=DcvWebsiteChangeValidationDetails(http_token_path="/", challenge_value="test")
-            ),
+            dcv_check_parameters=DcvWebsiteChangeValidationParameters(http_token_path="/", challenge_value="test")
         )
 
         print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body

@@ -14,7 +14,7 @@ from aws_lambda_powertools.utilities.parser.models import (
 from pydantic import TypeAdapter
 
 from open_mpic_core import RemotePerspective
-from open_mpic_core import DcvCheckRequest, DcvCheckResponse, CaaCheckResponse
+from open_mpic_core import DcvCheckRequest, DcvCheckResponse, CaaCheckResponse, PerspectiveResponse
 from open_mpic_core import CheckType
 from open_mpic_core import DcvDnsCheckResponseDetails, CaaCheckResponseDetails
 from open_mpic_core import DcvValidationMethod
@@ -75,7 +75,6 @@ class TestMpicCoordinatorLambda:
                 class_scoped_monkeypatch.setenv(k, v)
             yield class_scoped_monkeypatch  # restore the environment afterward
 
-    @pytest.mark.skip("Perspective names are no longer returned. Value hijacking trick is not valid anymore.")
     async def call_remote_perspective__should_make_aws_lambda_call_with_provided_arguments_and_return_check_response(
         self, set_env_variables, mocker
     ):
@@ -100,8 +99,8 @@ class TestMpicCoordinatorLambda:
             RemotePerspective(code=perspective_code, rir="arin"), CheckType.DCV, dcv_check_request
         )
         assert check_response.check_passed is True
-        # hijacking the value of 'perspective_code' to verify that the right arguments got passed to the call
-        assert check_response.perspective == dcv_check_request.domain_or_ip_target
+        # hijacking the value of 'details.found_at' to verify that the right arguments got passed to the call
+        assert check_response.details.found_at == dcv_check_request.domain_or_ip_target
 
         function_endpoint_info = lambda_handler.remotes_per_perspective_per_check_type[CheckType.DCV][perspective_code]
 
@@ -181,17 +180,17 @@ class TestMpicCoordinatorLambda:
         api_request = TestMpicCoordinatorLambda.create_api_gateway_request()
         api_request.body = mpic_request.model_dump_json()
         mocked_perspective_responses = [
-            CaaCheckResponse(
-                perspective_code=code, check_passed=True, details=CaaCheckResponseDetails(caa_record_present=False)
+            PerspectiveResponse(
+                perspective_code=code,
+                check_response=CaaCheckResponse(
+                    check_passed=True, details=CaaCheckResponseDetails(caa_record_present=False)
+                ),
             )
             for code in ["us-east-1", "us-west-1", "eu-west-2", "eu-central-2", "ap-northeast-1", "ap-south-2"]
         ]
-        mocked_validity_per_perspective = {
-            response.perspective_code: response.check_passed for response in mocked_perspective_responses
-        }
-        mock_return = (mocked_perspective_responses, mocked_validity_per_perspective)
+        mock_return = mocked_perspective_responses
 
-        mocker.patch("open_mpic_core.MpicCoordinator.issue_async_calls_and_collect_responses", return_value=mock_return)
+        mocker.patch("open_mpic_core.MpicCoordinator.call_checkers_and_collect_responses", return_value=mock_return)
         # noinspection PyTypeChecker
         result = mpic_coordinator_lambda_function.lambda_handler(api_request, None)
         assert result["statusCode"] == 200
@@ -222,7 +221,6 @@ class TestMpicCoordinatorLambda:
         check_request = DcvCheckRequest.model_validate_json(lambda_configuration["Payload"])
         # hijacking the value of 'perspective_code' to verify that the right arguments got passed to the call
         expected_response_body = DcvCheckResponse(
-            perspective_code=check_request.domain_or_ip_target,
             check_passed=True,
             details=DcvDnsCheckResponseDetails(validation_method=DcvValidationMethod.ACME_DNS_01),
         )
@@ -235,11 +233,12 @@ class TestMpicCoordinatorLambda:
     # noinspection PyUnusedLocal
     async def create_successful_aioboto3_response_for_dcv_check(self, *args, **kwargs):
         check_request = DcvCheckRequest.model_validate_json(kwargs["Payload"])
-        # hijacking the value of 'perspective_code' to verify that the right arguments got passed to the call
+        # hijacking the value of 'found_at' to verify that the right arguments got passed to the call
         expected_response_body = DcvCheckResponse(
-            perspective_code=check_request.domain_or_ip_target,
             check_passed=True,
-            details=DcvDnsCheckResponseDetails(validation_method=DcvValidationMethod.ACME_DNS_01),
+            details=DcvDnsCheckResponseDetails(
+                validation_method=DcvValidationMethod.ACME_DNS_01, found_at=check_request.domain_or_ip_target
+            ),
         )
         expected_response = {"statusCode": 200, "body": expected_response_body.model_dump_json()}
         json_bytes = json.dumps(expected_response).encode("utf-8")
@@ -269,7 +268,6 @@ class TestMpicCoordinatorLambda:
     @staticmethod
     def create_caa_perspective_response(*args, **kwargs) -> CaaCheckResponse:
         return CaaCheckResponse(
-            perspective_code=kwargs["perspective"].code,
             check_passed=True,
             details=CaaCheckResponseDetails(caa_record_present=False),
         )

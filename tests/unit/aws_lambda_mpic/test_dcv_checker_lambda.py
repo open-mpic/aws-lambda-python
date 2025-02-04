@@ -71,9 +71,8 @@ class TestDcvCheckerLambda:
     @staticmethod
     def create_dcv_check_response():
         return DcvCheckResponse(
-            perspective_code="us-east-1",
             check_passed=True,
-            details=DcvHttpCheckResponseDetails(validation_method=DcvValidationMethod.WEBSITE_CHANGE_V2),
+            details=DcvHttpCheckResponseDetails(validation_method=DcvValidationMethod.WEBSITE_CHANGE),
             timestamp_ns=time.time_ns(),
         )
 
