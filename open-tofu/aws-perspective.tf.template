@@ -1,8 +1,8 @@
 # Each layer must be created in the region of the functions.
-resource "aws_lambda_layer_version" "python311_open_mpic_layer_{{region}}" {
-    filename            = "../layer/python311_layer_content.zip"
-    layer_name          = "python311_open_mpic_layer_{{region}}_{{deployment-id}}"
-    source_code_hash    = "${filebase64sha256("../layer/python311_layer_content.zip")}"
+resource "aws_lambda_layer_version" "python3_open_mpic_layer_{{region}}" {
+    filename            = "../layer/python3_layer_content.zip"
+    layer_name          = "python3_open_mpic_layer_{{region}}_{{deployment-id}}"
+    source_code_hash    = "${filebase64sha256("../layer/python3_layer_content.zip")}"
     compatible_runtimes = ["python3.11"]
     provider = aws.{{region}}
 }
@@ -211,7 +211,7 @@ resource "aws_lambda_function" "mpic_dcv_checker_lambda_{{region}}" {
     runtime = "python3.11"
     architectures = ["arm64"]
     layers = [
-        aws_lambda_layer_version.python311_open_mpic_layer_{{region}}.arn,
+        aws_lambda_layer_version.python3_open_mpic_layer_{{region}}.arn,
     ]
     vpc_config {
         subnet_ids         = [for s in aws_subnet.subnet_private_{{region}} : s.id]
@@ -241,7 +241,7 @@ resource "aws_lambda_function" "mpic_caa_checker_lambda_{{region}}" {
     runtime = "python3.11"
     architectures = ["arm64"]
     layers = [
-        aws_lambda_layer_version.python311_open_mpic_layer_{{region}}.arn,
+        aws_lambda_layer_version.python3_open_mpic_layer_{{region}}.arn,
     ]
     vpc_config {
         subnet_ids         = [for s in aws_subnet.subnet_private_{{region}} : s.id]

@@ -5,10 +5,10 @@ provider "aws" {
 }
 
 # Python open-mpic layer (contains third party libraries)
-resource "aws_lambda_layer_version" "python311_open_mpic_layer" {
-    filename            = "../layer/python311_layer_content.zip"
-    layer_name          = "python_311_open_mpic_layer_{{deployment-id}}"
-    source_code_hash    = "${filebase64sha256("../layer/python311_layer_content.zip")}"
+resource "aws_lambda_layer_version" "python3_open_mpic_layer" {
+    filename            = "../layer/python3_layer_content.zip"
+    layer_name          = "python3_open_mpic_layer_{{deployment-id}}"
+    source_code_hash    = "${filebase64sha256("../layer/python3_layer_content.zip")}"
     compatible_runtimes = ["python3.11"]
 }
 
@@ -75,7 +75,7 @@ resource "aws_lambda_function" "mpic_coordinator_lambda" {
     architectures = ["arm64"]
     timeout = 60
     layers = [
-        aws_lambda_layer_version.python311_open_mpic_layer.arn,
+        aws_lambda_layer_version.python3_open_mpic_layer.arn,
         aws_lambda_layer_version.mpic_coordinator_layer.arn,
     ]
     environment {
