@@ -55,6 +55,10 @@ Source = "https://github.com/open-mpic/aws-lambda-python"
 #[dirs.env]
 #virtual = ".hatch"
 
+[tool.api]
+spec_version = "3.0.0"
+spec_repository = "https://github.com/open-mpic/open-mpic-specification"
+
 [tool.hatch]
 version.path = "src/aws_lambda_mpic/__about__.py"
 build.sources = ["src", "resources"]
