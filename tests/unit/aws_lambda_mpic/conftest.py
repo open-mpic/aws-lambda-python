@@ -13,7 +13,7 @@ def setup_logging():
 
     log_output = StringIO()  # to be able to inspect what gets logged
     handler = logging.StreamHandler(log_output)
-    handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+    handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
 
     # Configure fresh logging
     logging.basicConfig(handlers=[handler])

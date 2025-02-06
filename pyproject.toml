@@ -26,15 +26,16 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-    #"open-mpic-core @ git+https://github.com/open-mpic/open-mpic-core-python.git@ds-trace-logging",
+#    "open-mpic-core @ git+https://github.com/open-mpic/open-mpic-core-python.git@birgelee-dcv-caa-perspective-code-response",
     "pyyaml==6.0.1",
     "requests>=2.32.3",
     "dnspython==2.6.1",
     "pydantic==2.8.2",
     "aiohttp==3.11.11",
     "aws-lambda-powertools[parser]==3.2.0",
-    "open-mpic-core==4.6.1",
+    "open-mpic-core==5.0.0",
     "aioboto3~=13.3.0",
+    "black==24.8.0",
 ]
 
 [project.optional-dependencies]
@@ -54,6 +55,10 @@ Source = "https://github.com/open-mpic/aws-lambda-python"
 #[dirs.env]
 #virtual = ".hatch"
 
+[tool.api]
+spec_version = "3.0.0"
+spec_repository = "https://github.com/open-mpic/open-mpic-specification"
+
 [tool.hatch]
 version.path = "src/aws_lambda_mpic/__about__.py"
 build.sources = ["src", "resources"]
@@ -69,20 +74,37 @@ PIP_INDEX_URL = "https://pypi.org/simple/"
 #PIP_EXTRA_INDEX_URL = "https://test.pypi.org/simple/"  # FIXME here temporarily to test open-mpic-core packaging
 PIP_VERBOSE = "1"
 
-[tool.hatch.envs.lambda-layer]
+[tool.hatch.envs.lambda]
 skip-install = true
 python = "3.11"
 type="virtual"
 path="layer/create_layer_virtualenv"
 
-[tool.hatch.envs.lambda-layer.env-vars]
+[tool.hatch.envs.lambda.env-vars]
 #PIP_EXTRA_INDEX_URL = "https://test.pypi.org/simple/"
 PIP_ONLY_BINARY = ":all:"
 #PIP_PLATFORM = "manylinux2014_aarch64"
 #PIP_TARGET = "layer/create_layer_virtualenv2/lib/python3.11/site-packages"  # does not work... bug in pip 24.2?
 
-[tool.hatch.envs.lambda-layer.scripts]
-install = "pip install . --platform manylinux2014_aarch64 --only-binary=:all: --target layer/create_layer_virtualenv/lib/python3.11/site-packages"
+[tool.hatch.envs.lambda.scripts]
+layer-install = "pip install . --platform manylinux2014_aarch64 --only-binary=:all: --target layer/create_layer_virtualenv/lib/python3.11/site-packages"
+layer-package = "sh ./package-layer.sh"
+configure-tf = "python configure.py"
+zip-lambdas = "sh ./zip-all.sh"
+apply-tf = "(cd open-tofu && tofu apply -var=\"dnssec_enabled=false\" -auto-approve)"
+prepare = [
+    "layer-install",
+    "layer-package",
+    "configure-tf",
+    "zip-lambdas"
+]
+clean = "sh ./clean.sh"
+deploy = [
+    "clean",
+    "prepare",
+    "apply-tf"
+]
+
 
 [tool.hatch.envs.test]
 skip-install = false
@@ -135,3 +157,6 @@ include_namespace_packages = true
 omit = [
     "*/src/*/__about__.py",
 ]
+
+[tool.black]
+line-length = 120

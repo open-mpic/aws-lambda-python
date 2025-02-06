@@ -3,25 +3,21 @@ import asyncio
 
 from aws_lambda_powertools.utilities.parser import event_parser
 
-from open_mpic_core.common_domain.check_request import DcvCheckRequest
-from open_mpic_core.mpic_dcv_checker.mpic_dcv_checker import MpicDcvChecker
-from open_mpic_core.common_util.trace_level_logger import get_logger
+from open_mpic_core import DcvCheckRequest, MpicDcvChecker
+from open_mpic_core import get_logger
 
 logger = get_logger(__name__)
 
 
 class MpicDcvCheckerLambdaHandler:
     def __init__(self):
-        self.perspective_code = os.environ['AWS_REGION']
-        self.log_level = os.environ['log_level'] if 'log_level' in os.environ else None
+        self.log_level = os.environ["log_level"] if "log_level" in os.environ else None
 
         self.logger = logger.getChild(self.__class__.__name__)
         if self.log_level:
             self.logger.setLevel(self.log_level)
 
-        self.dcv_checker = MpicDcvChecker(perspective_code=self.perspective_code,
-                                          reuse_http_client=False,
-                                          log_level=self.logger.level)
+        self.dcv_checker = MpicDcvChecker(reuse_http_client=False, log_level=self.logger.level)
 
     def process_invocation(self, dcv_request: DcvCheckRequest):
         try:
@@ -37,14 +33,14 @@ class MpicDcvCheckerLambdaHandler:
         dcv_response = event_loop.run_until_complete(self.dcv_checker.check_dcv(dcv_request))
         status_code = 200
         if dcv_response.errors is not None and len(dcv_response.errors) > 0:
-            if dcv_response.errors[0].error_type == '404':
+            if dcv_response.errors[0].error_type == "404":
                 status_code = 404
             else:
                 status_code = 500
         result = {
-            'statusCode': status_code,
-            'headers': {'Content-Type': 'application/json'},
-            'body': dcv_response.model_dump_json()
+            "statusCode": status_code,
+            "headers": {"Content-Type": "application/json"},
+            "body": dcv_response.model_dump_json(),
         }
         return result
 

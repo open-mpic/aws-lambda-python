@@ -1,28 +1,24 @@
 import json
 import sys
 import pytest
-from open_mpic_core.common_domain.enum.dcv_validation_method import DcvValidationMethod
 
 from pydantic import TypeAdapter
 
-from open_mpic_core.common_domain.check_parameters import (
+from open_mpic_core import (
     CaaCheckParameters,
-    DcvWebsiteChangeValidationDetails,
-    DcvAcmeDns01ValidationDetails,
-    DcvAcmeHttp01ValidationDetails,
-    DcvDnsChangeValidationDetails,
+    DcvWebsiteChangeValidationParameters,
+    DcvAcmeDns01ValidationParameters,
+    DcvDnsChangeValidationParameters,
 )
-from open_mpic_core.common_domain.check_parameters import DcvCheckParameters
-from open_mpic_core.common_domain.enum.certificate_type import CertificateType
-from open_mpic_core.common_domain.enum.check_type import CheckType
-from open_mpic_core.common_domain.enum.dns_record_type import DnsRecordType
-from open_mpic_core.mpic_coordinator.domain.mpic_request import MpicCaaRequest
-from open_mpic_core.mpic_coordinator.domain.mpic_request import MpicDcvRequest
-from open_mpic_core.mpic_coordinator.domain.mpic_orchestration_parameters import MpicRequestOrchestrationParameters
+from open_mpic_core import DcvCheckParameters
+from open_mpic_core import CertificateType, CheckType, DnsRecordType
+from open_mpic_core import MpicCaaRequest, MpicDcvRequest, MpicResponse, PerspectiveResponse
+from open_mpic_core import MpicRequestOrchestrationParameters
+from open_mpic_core import MpicRequestValidationMessages
+from open_mpic_core import DcvAcmeHttp01ValidationParameters
 
 import testing_api_client
-from open_mpic_core.mpic_coordinator.domain.mpic_response import MpicResponse
-from open_mpic_core.mpic_coordinator.messages.mpic_request_validation_messages import MpicRequestValidationMessages
+
 
 MPIC_REQUEST_PATH = "/mpic"
 
@@ -60,10 +56,10 @@ class TestDeployedMpicApi:
         mpic_response = self.mpic_response_adapter.validate_json(response.text)
         print("\nResponse:\n", json.dumps(mpic_response.model_dump(), indent=4))  # pretty print response body
         assert mpic_response.is_valid is True
-        perspectives_list = mpic_response.perspectives
+        perspectives_list: list[PerspectiveResponse] = mpic_response.perspectives
         assert len(perspectives_list) == request.orchestration_parameters.perspective_count
         assert (
-            len(list(filter(lambda perspective: perspective.check_type == CheckType.CAA, perspectives_list)))
+            len(list(filter(lambda perspective: perspective.check_response.check_type == CheckType.CAA, perspectives_list)))
             == request.orchestration_parameters.perspective_count
         )
 
@@ -182,10 +178,8 @@ class TestDeployedMpicApi:
         request = MpicDcvRequest(
             domain_or_ip_target=domain_or_ip_target,
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
-            dcv_check_parameters=DcvCheckParameters(
-                validation_details=DcvAcmeDns01ValidationDetails(
-                    key_authorization="7FwkJPsKf-TH54wu4eiIFA3nhzYaevsL7953ihy-tpo"
-                )
+            dcv_check_parameters=DcvAcmeDns01ValidationParameters(
+                key_authorization="7FwkJPsKf-TH54wu4eiIFA3nhzYaevsL7953ihy-tpo"
             ),
         )
 
@@ -210,10 +204,8 @@ class TestDeployedMpicApi:
         request = MpicDcvRequest(
             domain_or_ip_target=domain_or_ip_target,
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
-            dcv_check_parameters=DcvCheckParameters(
-                validation_details=DcvAcmeDns01ValidationDetails(
-                    key_authorization="7FwkJPsKf-TH54wu4eiIFA3nhzYaevsL7953ihy-tpo"
-                )
+            dcv_check_parameters=DcvAcmeDns01ValidationParameters(
+                key_authorization="7FwkJPsKf-TH54wu4eiIFA3nhzYaevsL7953ihy-tpo"
             ),
         )
 
@@ -237,9 +229,7 @@ class TestDeployedMpicApi:
         request = MpicDcvRequest(
             domain_or_ip_target=domain_or_ip_target,
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
-            dcv_check_parameters=DcvCheckParameters(
-                validation_details=DcvAcmeHttp01ValidationDetails(key_authorization=key_authorization, token=token)
-            ),
+            dcv_check_parameters=DcvAcmeHttp01ValidationParameters(key_authorization=key_authorization, token=token)
         )
         print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
         response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
@@ -261,10 +251,11 @@ class TestDeployedMpicApi:
         request = MpicDcvRequest(
             domain_or_ip_target=domain_or_ip_target,
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
-            dcv_check_parameters=DcvCheckParameters(
-                validation_details=DcvAcmeHttp01ValidationDetails(key_authorization=key_authorization, token=token)
+            dcv_check_parameters=DcvAcmeDns01ValidationParameters(
+                key_authorization="7FwkJPsKf-TH54wu4eiIFA3nhzYaevsL7953ihy-tpo"
             ),
         )
+
         print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
         response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
         assert response.status_code == 200
@@ -285,10 +276,8 @@ class TestDeployedMpicApi:
         request = MpicDcvRequest(
             domain_or_ip_target=domain_or_ip_target,
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
-            dcv_check_parameters=DcvCheckParameters(
-                validation_details=DcvWebsiteChangeValidationDetails(
-                    http_token_path=http_token_path, challenge_value=challenge_value
-                )
+            dcv_check_parameters=DcvWebsiteChangeValidationParameters(
+                http_token_path=http_token_path, challenge_value=challenge_value
             ),
         )
         print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
@@ -312,10 +301,8 @@ class TestDeployedMpicApi:
         request = MpicDcvRequest(
             domain_or_ip_target=domain_or_ip_target,
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
-            dcv_check_parameters=DcvCheckParameters(
-                validation_details=DcvDnsChangeValidationDetails(
-                    challenge_value=challenge_value, dns_record_type=dns_record_type, dns_name_prefix=""
-                )
+            dcv_check_parameters=DcvDnsChangeValidationParameters(
+                challenge_value=challenge_value, dns_record_type=dns_record_type, dns_name_prefix=""
             ),
         )
 
@@ -329,9 +316,7 @@ class TestDeployedMpicApi:
     def api_should_return_200_and_failed_corroboration_given_failed_dcv_check(self, api_client):
         request = MpicDcvRequest(
             domain_or_ip_target="ifconfig.me",
-            dcv_check_parameters=DcvCheckParameters(
-                validation_details=DcvWebsiteChangeValidationDetails(http_token_path="/", challenge_value="test")
-            ),
+            dcv_check_parameters=DcvWebsiteChangeValidationParameters(http_token_path="/", challenge_value="test")
         )
 
         print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
