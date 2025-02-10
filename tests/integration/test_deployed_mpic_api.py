@@ -291,7 +291,7 @@ class TestDeployedMpicApi:
     @pytest.mark.parametrize('domain_or_ip_target, dns_record_type, challenge_value, purpose_of_test', [
         ('dns-change-txt.integration-testing.open-mpic.org', DnsRecordType.TXT, "1234567890abcdefg.", 'standard TXT dns change'),
         ('dns-change-cname.integration-testing.open-mpic.org', DnsRecordType.CNAME, "1234567890abcdefg.", 'standard CNAME dns change'),
-        ('dns-change-caa.integration-testing.open-mpic.org', DnsRecordType.CAA, '0 dnschange "1234567890abcdefg."', 'standard CAA dns change'),
+        ('dns-change-caa.integration-testing.open-mpic.org', DnsRecordType.CAA, '1234567890abcdefg.', 'standard CAA dns change'),
     ])
     # fmt: on
     def api_should_return_200_is_valid_true_given_valid_dns_change_validation(
