@@ -33,7 +33,7 @@ dependencies = [
     "pydantic==2.8.2",
     "aiohttp==3.11.11",
     "aws-lambda-powertools[parser]==3.2.0",
-    "open-mpic-core==5.0.0",
+    "open-mpic-core==5.1.0",
     "aioboto3~=13.3.0",
     "black==24.8.0",
 ]
@@ -91,7 +91,9 @@ layer-install = "pip install . --platform manylinux2014_aarch64 --only-binary=:a
 layer-package = "sh ./package-layer.sh"
 configure-tf = "python configure.py"
 zip-lambdas = "sh ./zip-all.sh"
-apply-tf = "(cd open-tofu && tofu apply -var=\"dnssec_enabled=false\" -auto-approve)"
+apply-tf-dnssec = "(cd open-tofu && tofu apply -var=\"dnssec_enabled=true\"  -auto-approve)"
+apply-tf-no-dnssec = "(cd open-tofu && tofu apply -var=\"dnssec_enabled=false\" -auto-approve)"
+destroy-tf = "(cd open-tofu && tofu destroy -auto-approve)"
 prepare = [
     "layer-install",
     "layer-package",
@@ -99,10 +101,15 @@ prepare = [
     "zip-lambdas"
 ]
 clean = "sh ./clean.sh"
-deploy = [
+deploy-dnssec = [
     "clean",
     "prepare",
-    "apply-tf"
+    "apply-tf-dnssec"
+]
+deploy-no-dnssec = [
+    "clean",
+    "prepare",
+    "apply-tf-no-dnssec"
 ]
 
 
