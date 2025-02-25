@@ -26,14 +26,14 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-#    "open-mpic-core @ git+https://github.com/open-mpic/open-mpic-core-python.git@birgelee-dcv-caa-perspective-code-response",
+#    "open-mpic-core @ git+https://github.com/open-mpic/open-mpic-core-python.git@birgelee-key-auth-hash",
     "pyyaml==6.0.1",
     "requests>=2.32.3",
     "dnspython==2.6.1",
     "pydantic==2.8.2",
     "aiohttp==3.11.11",
     "aws-lambda-powertools[parser]==3.2.0",
-    "open-mpic-core==5.1.0",
+    "open-mpic-core==5.2.0",
     "aioboto3~=13.3.0",
     "black==24.8.0",
 ]
@@ -56,7 +56,7 @@ Source = "https://github.com/open-mpic/aws-lambda-python"
 #virtual = ".hatch"
 
 [tool.api]
-spec_version = "3.0.0"
+spec_version = "3.1.0"
 spec_repository = "https://github.com/open-mpic/open-mpic-specification"
 
 [tool.hatch]
