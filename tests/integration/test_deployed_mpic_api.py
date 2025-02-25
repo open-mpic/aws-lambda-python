@@ -179,7 +179,7 @@ class TestDeployedMpicApi:
             domain_or_ip_target=domain_or_ip_target,
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
             dcv_check_parameters=DcvAcmeDns01ValidationParameters(
-                key_authorization="7FwkJPsKf-TH54wu4eiIFA3nhzYaevsL7953ihy-tpo"
+                key_authorization_hash="7FwkJPsKf-TH54wu4eiIFA3nhzYaevsL7953ihy-tpo"
             ),
         )
 
@@ -205,7 +205,7 @@ class TestDeployedMpicApi:
             domain_or_ip_target=domain_or_ip_target,
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
             dcv_check_parameters=DcvAcmeDns01ValidationParameters(
-                key_authorization="7FwkJPsKf-TH54wu4eiIFA3nhzYaevsL7953ihy-tpo"
+                key_authorization_hash="7FwkJPsKf-TH54wu4eiIFA3nhzYaevsL7953ihy-tpo"
             ),
         )
 
@@ -244,7 +244,7 @@ class TestDeployedMpicApi:
         ('integration-testing.open-mpic.org', 'Failed 302 http-01 test', "evaGxfADs6pSRb2LAv9IZf17Dt3juxGJ-PCt92wr-oB", "evaGxfADs6pSRb2LAv9IZf17Dt3juxGJ-PCt92wr-oA.NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xa")
     ])
     # fmt: on
-    def api_should_return_200_given_invalid_http_01_validation(
+    def api_should_return_200_given_invalid_dns_01_validation(
         self, api_client, domain_or_ip_target, purpose_of_test, token, key_authorization
     ):
         print(f"Running test for {domain_or_ip_target} ({purpose_of_test})")
@@ -252,7 +252,7 @@ class TestDeployedMpicApi:
             domain_or_ip_target=domain_or_ip_target,
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
             dcv_check_parameters=DcvAcmeDns01ValidationParameters(
-                key_authorization="7FwkJPsKf-TH54wu4eiIFA3nhzYaevsL7953ihy-tpo"
+                key_authorization_hash="7FwkJPsKf-TH54wu4eiIFA3nhzYaevsL7953ihy-tpo"
             ),
         )
 
