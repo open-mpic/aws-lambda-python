@@ -13,7 +13,7 @@ from pydantic import TypeAdapter, ValidationError, BaseModel
 from aws_lambda_powertools.utilities.parser import event_parser, envelopes
 
 from open_mpic_core import MpicRequest, CheckRequest, CheckResponse
-from open_mpic_core import MpicRequestValidationException, MpicRequestProcessingException, MpicRequestValidationMessages
+from open_mpic_core import MpicRequestValidationException, MpicRequestValidationMessages
 from open_mpic_core import MpicCoordinator, MpicCoordinatorConfiguration
 from open_mpic_core import CheckType
 from open_mpic_core import RemotePerspective
@@ -196,7 +196,7 @@ def handle_lambda_exceptions(func):
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
-        except (MpicRequestValidationException, MpicRequestProcessingException) as e:
+        except MpicRequestValidationException as e:
             validation_issues = json.loads(e.__notes__[0])
             return build_400_response(MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key, validation_issues)
         except ValidationError as validation_error:
