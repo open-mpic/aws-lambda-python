@@ -160,6 +160,10 @@ def main(raw_args=None):
             else:
                 aws_perspective_tf_region = aws_perspective_tf_region.replace("{{log-level-with-key}}", "")
 
+            # Set timeouts if present:
+            if "dcv-http-client-timeout-seconds" in config:
+                aws_perspective_tf_region = aws_perspective_tf_region.replace("{{dcv-http-client-timeout-seconds-with-key}}", f"dcv_http_client_timeout_seconds = \"{config['dcv-http-client-timeout-seconds']}\"")
+
             if not args.aws_perspective_tf_template.endswith(".tf.template"):
                 print(f"Error: invalid tf template name: {args.aws_perspective_tf_template}. Make sure all tf template files end in '.tf.template'.")
                 exit()

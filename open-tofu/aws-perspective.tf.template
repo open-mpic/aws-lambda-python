@@ -221,6 +221,7 @@ resource "aws_lambda_function" "mpic_dcv_checker_lambda_{{region}}" {
     environment {
       variables = {
         {{log-level-with-key}}
+        {{dcv-http-client-timeout-seconds-with-key}}
       }
     }
 }

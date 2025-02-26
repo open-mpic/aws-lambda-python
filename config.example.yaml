@@ -24,3 +24,4 @@ caa-domains:
 absolute-max-attempts: 3
 
 log-level: INFO
+dcv-http-client-timeout-seconds: 30
