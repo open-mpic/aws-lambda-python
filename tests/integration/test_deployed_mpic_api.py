@@ -8,14 +8,15 @@ from open_mpic_core import (
     CaaCheckParameters,
     DcvWebsiteChangeValidationParameters,
     DcvAcmeDns01ValidationParameters,
+    DcvAcmeHttp01ValidationParameters,
     DcvDnsChangeValidationParameters,
 )
-from open_mpic_core import DcvCheckParameters
 from open_mpic_core import CertificateType, CheckType, DnsRecordType
 from open_mpic_core import MpicCaaRequest, MpicDcvRequest, MpicResponse, PerspectiveResponse
-from open_mpic_core import MpicRequestOrchestrationParameters
+from open_mpic_core import MpicRequestOrchestrationParameters, MpicEffectiveOrchestrationParameters
 from open_mpic_core import MpicRequestValidationMessages
-from open_mpic_core import DcvAcmeHttp01ValidationParameters
+from open_mpic_core import DcvCheckResponse, DcvDnsCheckResponseDetails, DcvValidationMethod
+from open_mpic_core import CaaCheckResponse, CaaCheckResponseDetails
 
 import testing_api_client
 
@@ -39,7 +40,7 @@ class TestDeployedMpicApi:
             yield api_client
             api_client.close()
 
-    def api_should_return_200_and_passed_corroboration_given_successful_caa_check(self, api_client):
+    def api__should_return_successful_corroboration_with_check_details_for_successful_caa_check(self, api_client):
         request = MpicCaaRequest(
             domain_or_ip_target="example.com",
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
@@ -48,20 +49,112 @@ class TestDeployedMpicApi:
             ),
         )
 
+        response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
+        assert response.status_code == 200
+        mpic_response = self.mpic_response_adapter.validate_json(response.text)
+
+        # Verify base response structure
+        assert mpic_response.is_valid is True
+        assert mpic_response.mpic_completed is True
+        assert mpic_response.check_type == CheckType.CAA
+        assert mpic_response.domain_or_ip_target == request.domain_or_ip_target
+        assert isinstance(mpic_response.request_orchestration_parameters, MpicRequestOrchestrationParameters)
+        assert isinstance(mpic_response.actual_orchestration_parameters, MpicEffectiveOrchestrationParameters)
+        assert isinstance(mpic_response.perspectives, list)
+        perspectives_list: list[PerspectiveResponse] = mpic_response.perspectives
+        assert len(perspectives_list) >= request.orchestration_parameters.perspective_count
+
+        # Verify each perspective response
+        for perspective in perspectives_list:
+            assert isinstance(perspective.perspective_code, str)
+            assert isinstance(perspective.check_response, CaaCheckResponse)
+
+            # Verify check response
+            check_response = perspective.check_response
+            assert check_response.check_completed is True
+            assert check_response.check_passed is True
+            assert check_response.check_type == CheckType.CAA
+            assert check_response.errors is None or len(check_response.errors) == 0
+            assert isinstance(check_response.timestamp_ns, int)
+
+            # Verify CAA check details
+            details = check_response.details
+            assert isinstance(details, CaaCheckResponseDetails)
+            assert isinstance(details.caa_record_present, bool) or details.caa_record_present is None
+            assert isinstance(details.found_at, str) or details.found_at is None
+            assert isinstance(details.records_seen, list) or details.records_seen is None
+
+    # fmt: on
+    def api__should_return_successful_corroboration_with_check_details_for_valid_dns_01_validation(self, api_client):
+        domain_or_ip_target = 'dns-01.integration-testing.open-mpic.org'
+        request = MpicDcvRequest(
+            domain_or_ip_target=domain_or_ip_target,
+            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
+            dcv_check_parameters=DcvAcmeDns01ValidationParameters(
+                key_authorization_hash="7FwkJPsKf-TH54wu4eiIFA3nhzYaevsL7953ihy-tpo"
+            ),
+        )
+
         print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
         response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
-        # response_body_as_json = response.json()
         assert response.status_code == 200
-        # assert response body has a list of perspectives with length 2, and each element has response code 200
         mpic_response = self.mpic_response_adapter.validate_json(response.text)
-        print("\nResponse:\n", json.dumps(mpic_response.model_dump(), indent=4))  # pretty print response body
         assert mpic_response.is_valid is True
-        perspectives_list: list[PerspectiveResponse] = mpic_response.perspectives
-        assert len(perspectives_list) == request.orchestration_parameters.perspective_count
-        assert (
-            len(list(filter(lambda perspective: perspective.check_response.check_type == CheckType.CAA, perspectives_list)))
-            == request.orchestration_parameters.perspective_count
+        assert mpic_response.mpic_completed is True
+        assert mpic_response.check_type == CheckType.DCV
+        assert mpic_response.domain_or_ip_target == domain_or_ip_target
+        assert isinstance(mpic_response.request_orchestration_parameters, MpicRequestOrchestrationParameters)
+        assert isinstance(mpic_response.actual_orchestration_parameters, MpicEffectiveOrchestrationParameters)
+        assert isinstance(mpic_response.perspectives, list)
+        assert len(mpic_response.perspectives) >= mpic_response.request_orchestration_parameters.perspective_count
+
+        # Verify each perspective response
+        for perspective in mpic_response.perspectives:
+            assert isinstance(perspective.perspective_code, str)
+            assert isinstance(perspective.check_response, DcvCheckResponse)
+
+            # Verify check response
+            check_response = perspective.check_response
+            assert check_response.check_completed is True
+            assert check_response.check_passed is True
+            assert check_response.check_type == CheckType.DCV
+            assert check_response.errors is None or len(check_response.errors) == 0
+            assert isinstance(check_response.timestamp_ns, int)
+
+            # Verify DNS check details
+            details = check_response.details
+            assert isinstance(details, DcvDnsCheckResponseDetails)
+            assert details.validation_method == DcvValidationMethod.ACME_DNS_01
+            assert isinstance(details.records_seen, list)
+            assert isinstance(details.response_code, int)
+            assert isinstance(details.ad_flag, bool) or details.ad_flag is None
+            assert isinstance(details.found_at, str) or details.found_at is None
+
+    # fmt: off
+    @pytest.mark.parametrize('domain_or_ip_target, purpose_of_test', [
+        ('dns-01.integration-testing.open-mpic.org', 'Standard proper dns-01 test'),
+        ('dns-01-multi.integration-testing.open-mpic.org', 'Proper dns-01 test with multiple TXT records'),
+        ('dns-01-cname.integration-testing.open-mpic.org', 'Proper dns-01 test with CNAME')
+    ])
+    # fmt: on
+    def api__should_return_successful_corroboration_for_valid_dns_01_validation_of_various_dns_record_types(
+        self, api_client, domain_or_ip_target, purpose_of_test
+    ):
+        print(f"Running test for {domain_or_ip_target} ({purpose_of_test})")
+        request = MpicDcvRequest(
+            domain_or_ip_target=domain_or_ip_target,
+            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
+            dcv_check_parameters=DcvAcmeDns01ValidationParameters(
+                key_authorization_hash="7FwkJPsKf-TH54wu4eiIFA3nhzYaevsL7953ihy-tpo"
+            ),
         )
+
+        print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
+        response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
+        assert response.status_code == 200
+        mpic_response = self.mpic_response_adapter.validate_json(response.text)
+        assert mpic_response.is_valid is True
+        assert mpic_response.mpic_completed is True
 
     # fmt: off
     @pytest.mark.parametrize('domain_or_ip_target, purpose_of_test, is_wildcard_domain', [
@@ -89,7 +182,7 @@ class TestDeployedMpicApi:
         ('xss.caatestsuite.com', 'Tests rejection when issue property has HTML and JS', False),
     ])
     # fmt: on
-    def api_should_return_is_valid_false_for_all_tests_in_do_not_issue_caa_test_suite(
+    def api__should_return_failed_corroboration_for_all_tests_in_do_not_issue_caa_test_suite(
         self, api_client, domain_or_ip_target, purpose_of_test, is_wildcard_domain
     ):
         print(f"Running test for {domain_or_ip_target} ({purpose_of_test})")
@@ -127,7 +220,7 @@ class TestDeployedMpicApi:
         ('deny.permit.basic.caatestsuite.com', 'Tests acceptance on a CAA record set', False),
     ])
     # fmt: on
-    def api_should_return_is_valid_true_for_valid_tests_in_caa_test_suite_when_caa_domain_is_caatestsuite_com(
+    def api__should_return_successful_corroboration_for_caa_test_suite_when_caa_domain_is_caatestsuite_com(
         self, api_client, domain_or_ip_target, purpose_of_test, is_wildcard_domain
     ):
         print(f"Running test for {domain_or_ip_target} ({purpose_of_test})")
@@ -151,7 +244,7 @@ class TestDeployedMpicApi:
         ('cname-deny-sub.basic.caatestsuite.com', 'Tests handling of a CNAME when CAA record exists at parent of CNAME target')
     ])
     # fmt: on
-    def api_should_return_is_valid_false_for_do_not_issue_caa_test_suite_for_rfc_6844(
+    def api__should_return_is_valid_false_for_do_not_issue_caa_test_suite_for_rfc_6844(
         self, api_client, domain_or_ip_target, purpose_of_test
     ):
         print(f"Running test for {domain_or_ip_target} ({purpose_of_test})")
@@ -168,36 +261,12 @@ class TestDeployedMpicApi:
 
     # fmt: off
     @pytest.mark.parametrize('domain_or_ip_target, purpose_of_test', [
-        ('dns-01.integration-testing.open-mpic.org', 'Standard proper dns-01 test'),
-        ('dns-01-multi.integration-testing.open-mpic.org', 'Proper dns-01 test with multiple TXT records'),
-        ('dns-01-cname.integration-testing.open-mpic.org', 'Proper dns-01 test with CNAME')
-    ])
-    # fmt: on
-    def api_should_return_200_given_valid_dns_01_validation(self, api_client, domain_or_ip_target, purpose_of_test):
-        print(f"Running test for {domain_or_ip_target} ({purpose_of_test})")
-        request = MpicDcvRequest(
-            domain_or_ip_target=domain_or_ip_target,
-            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
-            dcv_check_parameters=DcvAcmeDns01ValidationParameters(
-                key_authorization_hash="7FwkJPsKf-TH54wu4eiIFA3nhzYaevsL7953ihy-tpo"
-            ),
-        )
-
-        print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
-        response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
-        assert response.status_code == 200
-        mpic_response = self.mpic_response_adapter.validate_json(response.text)
-
-        assert mpic_response.is_valid is True
-
-    # fmt: off
-    @pytest.mark.parametrize('domain_or_ip_target, purpose_of_test', [
         ('dns-01-leading-whitespace.integration-testing.open-mpic.org', 'leading whitespace'),
         ('dns-01-trailing-whitespace.integration-testing.open-mpic.org', 'trailing'),
         ('dns-01-nxdomain.integration-testing.open-mpic.org', 'NXDOMAIN')
     ])
     # fmt: on
-    def api_should_return_200_is_valid_false_given_invalid_dns_01_validation(
+    def api__should_return_200_and_failed_corroboration_for_invalid_dns_01_validation(
         self, api_client, domain_or_ip_target, purpose_of_test
     ):
         print(f"Running test for {domain_or_ip_target} ({purpose_of_test})")
@@ -222,14 +291,14 @@ class TestDeployedMpicApi:
         ('integration-testing.open-mpic.org', 'Redirect 302 http-01 test', "evaGxfADs6pSRb2LAv9IZf17Dt3juxGJ-PCt92wr-oB", "evaGxfADs6pSRb2LAv9IZf17Dt3juxGJ-PCt92wr-oA.NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs")
     ])
     # fmt: on
-    def api_should_return_200_given_valid_http_01_validation(
+    def api__should_return_200_and_successful_corroboration_for_valid_http_01_validation(
         self, api_client, domain_or_ip_target, purpose_of_test, token, key_authorization
     ):
         print(f"Running test for {domain_or_ip_target} ({purpose_of_test})")
         request = MpicDcvRequest(
             domain_or_ip_target=domain_or_ip_target,
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
-            dcv_check_parameters=DcvAcmeHttp01ValidationParameters(key_authorization=key_authorization, token=token)
+            dcv_check_parameters=DcvAcmeHttp01ValidationParameters(key_authorization=key_authorization, token=token),
         )
         print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
         response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
@@ -244,7 +313,7 @@ class TestDeployedMpicApi:
         ('integration-testing.open-mpic.org', 'Failed 302 http-01 test', "evaGxfADs6pSRb2LAv9IZf17Dt3juxGJ-PCt92wr-oB", "evaGxfADs6pSRb2LAv9IZf17Dt3juxGJ-PCt92wr-oA.NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xa")
     ])
     # fmt: on
-    def api_should_return_200_given_invalid_dns_01_validation(
+    def api__should_return_200_and_failed_corroboration_for_invalid_dns_01_validation(
         self, api_client, domain_or_ip_target, purpose_of_test, token, key_authorization
     ):
         print(f"Running test for {domain_or_ip_target} ({purpose_of_test})")
@@ -269,7 +338,7 @@ class TestDeployedMpicApi:
         ('integration-testing.open-mpic.org', 'Valid 302 website change v2 challenge', 'validation-doc-redirect.txt', "test-validation-redirect")
     ])
     # fmt: on
-    def api_should_return_200_given_valid_website_change_validation(
+    def api__should_return_200_and_successful_corroboration_for_valid_website_change_validation(
         self, api_client, domain_or_ip_target, purpose_of_test, http_token_path, challenge_value
     ):
         print(f"Running test for {domain_or_ip_target} ({purpose_of_test})")
@@ -294,7 +363,7 @@ class TestDeployedMpicApi:
         ('dns-change-caa.integration-testing.open-mpic.org', DnsRecordType.CAA, '1234567890abcdefg.', 'standard CAA dns change'),
     ])
     # fmt: on
-    def api_should_return_200_is_valid_true_given_valid_dns_change_validation(
+    def api__should_return_200_and_successful_corroboration_for_valid_dns_change_validation(
         self, api_client, domain_or_ip_target, dns_record_type, challenge_value, purpose_of_test
     ):
         print(f"Running test for {domain_or_ip_target} ({purpose_of_test})")
@@ -313,10 +382,10 @@ class TestDeployedMpicApi:
         mpic_response = self.mpic_response_adapter.validate_json(response.text)
         assert mpic_response.is_valid is True
 
-    def api_should_return_200_and_failed_corroboration_given_failed_dcv_check(self, api_client):
+    def api__should_return_200_and_failed_corroboration_given_failed_dcv_check(self, api_client):
         request = MpicDcvRequest(
             domain_or_ip_target="ifconfig.me",
-            dcv_check_parameters=DcvWebsiteChangeValidationParameters(http_token_path="/", challenge_value="test")
+            dcv_check_parameters=DcvWebsiteChangeValidationParameters(http_token_path="/", challenge_value="test"),
         )
 
         print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
@@ -325,7 +394,7 @@ class TestDeployedMpicApi:
         response_body = json.loads(response.text)
         print("\nResponse:\n", json.dumps(response_body, indent=4))  # pretty print response body
 
-    def api_should_return_400_given_invalid_orchestration_parameters_in_request(self, api_client):
+    def api__should_return_400_given_invalid_orchestration_parameters_in_request(self, api_client):
         request = MpicCaaRequest(
             domain_or_ip_target="example.com",
             orchestration_parameters=MpicRequestOrchestrationParameters(
@@ -347,7 +416,7 @@ class TestDeployedMpicApi:
             for issue in response_body["validation_issues"]
         )
 
-    def api_should_return_400_given_invalid_check_type_in_request(self, api_client):
+    def api__should_return_400_given_invalid_check_type_in_request(self, api_client):
         request = MpicCaaRequest(
             domain_or_ip_target="example.com",
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
