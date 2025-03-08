@@ -240,22 +240,20 @@ class TestDeployedMpicApi:
 
     # fmt: off
     @pytest.mark.parametrize('domain_or_ip_target, purpose_of_test, token, key_authorization', [
-        ('integration-testing.open-mpic.org', 'Failed http-01 test', "evaGxfADs6pSRb2LAv9IZf17Dt3juxGJ-PCt92wr-oA", "evaGxfADs6pSRb2LAv9IZf17Dt3juxGJ-PCt92wr-oA.NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xa"),
-        ('integration-testing.open-mpic.org', 'Failed 302 http-01 test', "evaGxfADs6pSRb2LAv9IZf17Dt3juxGJ-PCt92wr-oB", "evaGxfADs6pSRb2LAv9IZf17Dt3juxGJ-PCt92wr-oA.NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xa")
+        ('integration-testing.open-mpic.org', 'Failed http-01 test', "evaGxfADs6pSRb2LAv9IZf17Dt3juxGJ-PCt92wr-oA", "evaGxfADs6pSRb2LAv9IZf17Dt3juxGJ-PCt92wr-oA.NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9XZ"),
+        ('integration-testing.open-mpic.org', 'Failed 302 http-01 test', "evaGxfADs6pSRb2LAv9IZf17Dt3juxGJ-PCt92wr-oB", "evaGxfADs6pSRb2LAv9IZf17Dt3juxGJ-PCt92wr-oA.NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9XZ"),
+        ('integration-testing.open-mpic.org', '404 token', "evaGxfADs6pSRb2LAv9IZf17Dt3juxGJ-PCt92wr-oZ", "evaGxfADs6pSRb2LAv9IZf17Dt3juxGJ-PCt92wr-oA.NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9XZ")
     ])
     # fmt: on
-    def api_should_return_200_given_invalid_dns_01_validation(
+    def api_should_return_200_is_valid_false_given_invalid_http_01_validation(
         self, api_client, domain_or_ip_target, purpose_of_test, token, key_authorization
     ):
         print(f"Running test for {domain_or_ip_target} ({purpose_of_test})")
         request = MpicDcvRequest(
             domain_or_ip_target=domain_or_ip_target,
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
-            dcv_check_parameters=DcvAcmeDns01ValidationParameters(
-                key_authorization_hash="7FwkJPsKf-TH54wu4eiIFA3nhzYaevsL7953ihy-tpo"
-            ),
+            dcv_check_parameters=DcvAcmeHttp01ValidationParameters(key_authorization=key_authorization, token=token)
         )
-
         print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
         response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
         assert response.status_code == 200
