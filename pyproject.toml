@@ -27,13 +27,13 @@ classifiers = [
 ]
 dependencies = [
 #    "open-mpic-core @ git+https://github.com/open-mpic/open-mpic-core-python.git@birgelee-key-auth-hash",
-    "pyyaml==6.0.1",
+    "pyyaml==6.0.2",
     "requests>=2.32.3",
-    "dnspython==2.6.1",
-    "pydantic==2.8.2",
-    "aiohttp==3.11.11",
+    "dnspython==2.7.0",
+    "pydantic==2.10.6",
+    "aiohttp==3.11.13",
     "aws-lambda-powertools[parser]==3.2.0",
-    "open-mpic-core==5.2.0",
+    "open-mpic-core==5.5.1",
     "aioboto3~=13.3.0",
     "black==24.8.0",
 ]
