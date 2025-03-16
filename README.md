@@ -93,7 +93,7 @@ If you would like to take the API down, run `tofu destroy` in the open-tofu dire
 
 After `tofu destroy`, `./clean.sh` in the root directory also clears generated/zip files.
 
-
+`hatch run lambda:destroy-tf` can be run as an alternative to `tofu destroy`
 
 # Remaining tasks
 
