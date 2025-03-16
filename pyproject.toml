@@ -88,9 +88,9 @@ PIP_ONLY_BINARY = ":all:"
 
 [tool.hatch.envs.lambda.scripts]
 layer-install = "pip install . --platform manylinux2014_aarch64 --only-binary=:all: --target layer/create_layer_virtualenv/lib/python3.11/site-packages"
-layer-package = "sh ./package-layer.sh"
+layer-package = "./package-layer.sh"
 configure-tf = "python configure.py"
-zip-lambdas = "sh ./zip-all.sh"
+zip-lambdas = "./zip-all.sh"
 apply-tf-dnssec = "(cd open-tofu && tofu apply -var=\"dnssec_enabled=true\"  -auto-approve)"
 apply-tf-no-dnssec = "(cd open-tofu && tofu apply -var=\"dnssec_enabled=false\" -auto-approve)"
 destroy-tf = "(cd open-tofu && tofu destroy -auto-approve)"
