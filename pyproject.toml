@@ -27,13 +27,13 @@ classifiers = [
 ]
 dependencies = [
 #    "open-mpic-core @ git+https://github.com/open-mpic/open-mpic-core-python.git@birgelee-key-auth-hash",
-    "pyyaml==6.0.1",
+    "pyyaml==6.0.2",
     "requests>=2.32.3",
-    "dnspython==2.6.1",
-    "pydantic==2.8.2",
-    "aiohttp==3.11.11",
-    "aws-lambda-powertools[parser]==3.2.0",
-    "open-mpic-core==5.2.0",
+    "dnspython==2.7.0",
+    "pydantic==2.10.6",
+    "aiohttp==3.11.13",
+    "aws-lambda-powertools[parser]==3.8.0",
+    "open-mpic-core==5.5.1",
     "aioboto3~=13.3.0",
     "black==24.8.0",
 ]
@@ -56,7 +56,7 @@ Source = "https://github.com/open-mpic/aws-lambda-python"
 #virtual = ".hatch"
 
 [tool.api]
-spec_version = "3.1.0"
+spec_version = "3.3.0"
 spec_repository = "https://github.com/open-mpic/open-mpic-specification"
 
 [tool.hatch]
@@ -87,10 +87,10 @@ PIP_ONLY_BINARY = ":all:"
 #PIP_TARGET = "layer/create_layer_virtualenv2/lib/python3.11/site-packages"  # does not work... bug in pip 24.2?
 
 [tool.hatch.envs.lambda.scripts]
-layer-install = "pip install . --platform manylinux2014_aarch64 --only-binary=:all: --target layer/create_layer_virtualenv/lib/python3.11/site-packages"
-layer-package = "sh ./package-layer.sh"
+layer-install = "pip install . --upgrade --platform manylinux2014_aarch64 --only-binary=:all: --target layer/create_layer_virtualenv/lib/python3.11/site-packages"
+layer-package = "./package-layer.sh"
 configure-tf = "python configure.py"
-zip-lambdas = "sh ./zip-all.sh"
+zip-lambdas = "./zip-all.sh"
 apply-tf-dnssec = "(cd open-tofu && tofu apply -var=\"dnssec_enabled=true\"  -auto-approve)"
 apply-tf-no-dnssec = "(cd open-tofu && tofu apply -var=\"dnssec_enabled=false\" -auto-approve)"
 destroy-tf = "(cd open-tofu && tofu destroy -auto-approve)"
@@ -100,7 +100,7 @@ prepare = [
     "configure-tf",
     "zip-lambdas"
 ]
-clean = "sh ./clean.sh"
+clean = "./clean.sh"
 deploy-dnssec = [
     "clean",
     "prepare",

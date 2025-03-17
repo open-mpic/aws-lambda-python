@@ -26,6 +26,8 @@ For convenience:
 * `hatch run lambda:prepare` will run steps 2-5 in a single command.
 * `hatch run lambda:deploy-no-dnssec` or `hatch run lambda:deploy-dnssec` will clean the environment and then run steps 2-6 with DNSSEC validation enabled or disabled respectively.
 
+Note: the above commands do not run `tofu init`. During first time environment setup this will need to be run in the `open-tofu` dir for these commands to work.
+
 ## Testing
 The following is an example of a test API call that uses bash command substitution to fill in the proper values for the API URL and the API key.
 
@@ -93,7 +95,7 @@ If you would like to take the API down, run `tofu destroy` in the open-tofu dire
 
 After `tofu destroy`, `./clean.sh` in the root directory also clears generated/zip files.
 
-
+`hatch run lambda:destroy-tf` can be run as an alternative to `tofu destroy`
 
 # Remaining tasks
 
