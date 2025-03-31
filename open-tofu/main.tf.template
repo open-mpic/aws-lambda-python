@@ -73,6 +73,7 @@ resource "aws_lambda_function" "mpic_coordinator_lambda" {
     source_code_hash = filebase64sha256("../{{source-path}}/mpic_coordinator_lambda/mpic_coordinator_lambda.zip")
     runtime = "python3.11"
     architectures = ["arm64"]
+    memory_size = var.coordinator_memory_size
     timeout = 60
     layers = [
         aws_lambda_layer_version.python3_open_mpic_layer.arn,
