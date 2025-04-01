@@ -7,5 +7,6 @@ variable "dnssec_enabled" {
 variable "coordinator_memory_size" {
   type        = number
   description = "MPIC Coordinator Lambda Function Memory"
-  default     = 256
+  default     = 512
+
 }
