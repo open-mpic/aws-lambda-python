@@ -3,3 +3,10 @@ variable "dnssec_enabled" {
   description = "Enable DNSSEC"
   default     = true
 }
+
+variable "coordinator_memory_size" {
+  type        = number
+  description = "MPIC Coordinator Lambda Function Memory"
+  default     = 512
+
+}
