@@ -31,6 +31,10 @@ class PerspectiveEndpoints(BaseModel):
     caa_endpoint_info: PerspectiveEndpointInfo
 
 
+class LambdaExecutionException(Exception):
+    pass
+
+
 class MpicCoordinatorLambdaHandler:
     def __init__(self):
         perspectives_json = os.environ["perspectives"]
@@ -140,11 +144,11 @@ class MpicCoordinatorLambdaHandler:
                 InvocationType="RequestResponse",
                 Payload=check_request.model_dump_json(),  # AWS Lambda functions expect a JSON string for payload
             )
-            response_payload = json.loads(await response["Payload"].read())
+            response_payload = await response["Payload"].read()
+            if 'FunctionError' in response:
+                raise LambdaExecutionException(f"Lambda execution error: {response_payload.decode('utf-8')}")
+            response_payload = json.loads(response_payload)
             return self.check_response_adapter.validate_json(response_payload["body"])
-        except ValidationError as ve:
-            self.logger.error(msg=f"Validation error in response from {perspective.code}: {ve}")
-            raise ve
         finally:
             await self.release_lambda_client(perspective.code, client)
 

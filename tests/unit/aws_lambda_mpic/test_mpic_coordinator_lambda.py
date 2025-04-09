@@ -11,7 +11,7 @@ from aws_lambda_powertools.utilities.parser.models import (
     APIGatewayEventRequestContext,
     APIGatewayEventIdentity,
 )
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, BaseModel
 
 from open_mpic_core import RemotePerspective
 from open_mpic_core import DcvCheckRequest, DcvCheckResponse, CaaCheckResponse, PerspectiveResponse
@@ -22,8 +22,9 @@ from open_mpic_core import MpicEffectiveOrchestrationParameters
 from open_mpic_core import MpicCaaResponse
 from botocore.response import StreamingBody
 import aws_lambda_mpic.mpic_coordinator_lambda.mpic_coordinator_lambda_function as mpic_coordinator_lambda_function
-from aws_lambda_mpic.mpic_coordinator_lambda.mpic_coordinator_lambda_function import MpicCoordinatorLambdaHandler
 from aws_lambda_mpic.mpic_coordinator_lambda.mpic_coordinator_lambda_function import (
+    MpicCoordinatorLambdaHandler,
+    LambdaExecutionException,
     PerspectiveEndpoints,
     PerspectiveEndpointInfo,
 )
@@ -78,22 +79,9 @@ class TestMpicCoordinatorLambda:
     async def call_remote_perspective__should_make_aws_lambda_call_with_provided_arguments_and_return_check_response(
         self, set_env_variables, mocker
     ):
-        # Mock the aioboto3 client creation and context manager
-        mock_client = AsyncMock()
-        mock_client.invoke = AsyncMock(side_effect=self.create_successful_aioboto3_response_for_dcv_check)
-
-        # Mock the __aenter__ method that gets called in initialize_client_pools()
-        mock_client.__aenter__.return_value = mock_client
-
-        # Mock the session creation and client initialization
-        mock_session = mocker.patch("aioboto3.Session")
-        mock_session.return_value.client.return_value = mock_client
+        lambda_handler, mock_client = await self.mock_lambda_handler_for_lambda_invoke(mocker, self.create_successful_aioboto3_response_for_dcv_check)
 
         dcv_check_request = ValidCheckCreator.create_valid_dns_check_request()
-        lambda_handler = MpicCoordinatorLambdaHandler()
-
-        await lambda_handler.initialize_client_pools()
-
         perspective_code = "us-west-1"
         check_response = await lambda_handler.call_remote_perspective(
             RemotePerspective(code=perspective_code, rir="arin"), CheckType.DCV, dcv_check_request
@@ -110,6 +98,20 @@ class TestMpicCoordinatorLambda:
             InvocationType="RequestResponse",
             Payload=dcv_check_request.model_dump_json(),
         )
+
+    async def call_remote_perspective__should_make_aws_lambda_call_and_handle_lambda_execution_exceptions(
+        self, set_env_variables, mocker
+    ):
+        lambda_handler, mock_client = await self.mock_lambda_handler_for_lambda_invoke(mocker, self.create_error_aioboto3_response)
+
+        class Dummy(BaseModel):
+            pass
+
+        with pytest.raises(LambdaExecutionException) as exc_info:
+            await lambda_handler.call_remote_perspective(
+                RemotePerspective(code="us-west-1", rir="dummy"), CheckType.DCV, Dummy()
+            )        
+        assert exc_info.value.args[0] == "Lambda execution error: {\"errorMessage\": \"some message\"}"
 
     def lambda_handler__should_return_400_error_and_details_given_invalid_request_body(self):
         request = ValidMpicRequestCreator.create_valid_dcv_mpic_request()
@@ -250,6 +252,19 @@ class TestMpicCoordinatorLambda:
                 return json_bytes
 
         return {"Payload": MockStreamingBody()}
+    
+    # noinspection PyUnusedLocal
+    async def create_error_aioboto3_response(self, *args, **kwargs):
+        expected_response = {"errorMessage": "some message"}
+        json_bytes = json.dumps(expected_response).encode("utf-8")
+
+        class MockStreamingBody:
+            # noinspection PyMethodMayBeStatic
+            async def read(self):
+                return json_bytes
+            
+        # See https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/lambda/client/invoke.html, "Response Structure"
+        return {"Payload": MockStreamingBody(), "FunctionError": None}
 
     @staticmethod
     def create_caa_mpic_response():
@@ -304,6 +319,18 @@ class TestMpicCoordinatorLambda:
             perspectives = perspective_type_adapter.validate_python(perspectives_yaml["aws_available_regions"])
             return {perspective.code: perspective for perspective in perspectives}
 
+    async def mock_lambda_handler_for_lambda_invoke(self, mocker, lambda_invoke_side_effect):
+        # Mock the aioboto3 client creation and context manager
+        mock_client = AsyncMock()
+        mock_client.invoke = AsyncMock(side_effect=lambda_invoke_side_effect)
+        # Mock the __aenter__ method that gets called in initialize_client_pools()
+        mock_client.__aenter__.return_value = mock_client
+        # Mock the session creation and client initialization
+        mock_session = mocker.patch("aioboto3.Session")
+        mock_session.return_value.client.return_value = mock_client
+        lambda_handler = MpicCoordinatorLambdaHandler()
+        await lambda_handler.initialize_client_pools()
+        return lambda_handler, mock_client
 
 if __name__ == "__main__":
     pytest.main()
