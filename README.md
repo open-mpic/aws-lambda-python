@@ -91,7 +91,7 @@ If you encounter issues running integration tests with the above commands, conta
 
 
 ## Tear-down
-If you would like to take the API down, run `tofu destroy` in the open-tofu directory and type `yes` at the prompt. This will remove all AWS resources created by Open Tofu for the API. **There is currently a situation where AWS takes a very long time to release internal IP prefix resources from a VPC upon teardown. This can lead to `tofu destroy` hanging for a long time.** One mitigation is that `tofu destroy` can be run (which deprovisions almost all resources within minutes) and then aborted several minutes later with crtl+c. Then, after several hours, `tofu destroy` can be rerun which will deprovision the remaining IP prefix resources after sufficient time has passed for AWS to register the IP prefix objects are no longer associated with the VPC.
+If you would like to take the API down, run `tofu destroy` in the open-tofu directory and type `yes` at the prompt. This will remove all AWS resources created by Open Tofu for the API. **There is currently a situation where AWS takes a very long time to release internal IP prefix resources from a VPC upon teardown. This can lead to `tofu destroy` hanging for a long time.** One mitigation is that `tofu destroy` can be run (which deprovisions almost all resources within minutes) and then aborted several minutes later with ctrl+c. Then, after several hours, `tofu destroy` can be rerun which will deprovision the remaining IP prefix resources after sufficient time has passed for AWS to register the IP prefix objects are no longer associated with the VPC.
 
 After `tofu destroy`, `./clean.sh` in the root directory also clears generated/zip files.
 
