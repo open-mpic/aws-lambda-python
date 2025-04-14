@@ -88,7 +88,7 @@ class MpicCoordinatorLambdaHandler:
     async def initialize_client_pools(self):
         # Call this during cold start
         for perspective_code in self._all_target_perspective_codes:
-            for _ in range(10):  # pre-populate pool
+            for _ in range(10):  # prepopulate pool
                 client = await self._session.client("lambda", perspective_code).__aenter__()
                 await self._client_pools[perspective_code].put(client)
 
