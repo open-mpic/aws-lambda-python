@@ -109,7 +109,7 @@ class TestMpicCoordinatorLambda:
 
         with pytest.raises(LambdaExecutionException) as exc_info:
             await lambda_handler.call_remote_perspective(
-                RemotePerspective(code="us-west-1", rir="dummy"), CheckType.DCV, Dummy()
+                RemotePerspective(code="us-west-1", rir="arin"), CheckType.DCV, Dummy()
             )        
         assert exc_info.value.args[0] == "Lambda execution error: {\"errorMessage\": \"some message\"}"
 
