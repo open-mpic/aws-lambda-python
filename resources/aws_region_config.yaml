@@ -72,57 +72,57 @@ aws_available_regions:
   -
     code: "eu-central-1"
     name: "Europe (Frankfurt)"
-    rir: "ripe"
+    rir: "ripe ncc"
     too_close_codes: ["eu-central-2"]
   -
     code: "eu-central-2"
     name: "Europe (Zurich)"
-    rir: "ripe"
+    rir: "ripe ncc"
     too_close_codes: ["eu-central-1", "eu-south-1"]
   -
     code: "eu-north-1"
     name: "Europe (Stockholm)"
-    rir: "ripe"
+    rir: "ripe ncc"
     too_close_codes: []
   -
     code: "eu-south-1"
     name: "Europe (Milan)"
-    rir: "ripe"
+    rir: "ripe ncc"
     too_close_codes: ["eu-central-2"]
   -
     code: "eu-south-2"
     name: "Europe (Spain)"
-    rir: "ripe"
+    rir: "ripe ncc"
     too_close_codes: []
   -
     code: "eu-west-1"
     name: "Europe (Ireland)"
-    rir: "ripe"
+    rir: "ripe ncc"
     too_close_codes: []
   -
     code: "eu-west-2"
     name: "Europe (London)"
-    rir: "ripe"
+    rir: "ripe ncc"
     too_close_codes: ["eu-west-3"]
   -
     code: "eu-west-3"
     name: "Europe (Paris)"
-    rir: "ripe"
+    rir: "ripe ncc"
     too_close_codes: ["eu-west-2"]
   -
     code: "il-central-1"
     name: "Israel (Tel Aviv)"
-    rir: "ripe"
+    rir: "ripe ncc"
     too_close_codes: []
   -
     code: "me-central-1"
     name: "Middle East (UAE)"
-    rir: "ripe"
+    rir: "ripe ncc"
     too_close_codes: ["me-south-1"]
   -
     code: "me-south-1"
     name: "Middle East (Bahrain)"
-    rir: "ripe"
+    rir: "ripe ncc"
     too_close_codes: ["me-central-1"]
   -
     code: "sa-east-1"

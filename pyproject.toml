@@ -33,7 +33,7 @@ dependencies = [
     "pydantic==2.10.6",
     "aiohttp==3.11.13",
     "aws-lambda-powertools[parser]==3.8.0",
-    "open-mpic-core==5.5.1",
+    "open-mpic-core==5.5.2",
     "aioboto3~=13.3.0",
     "black==24.8.0",
 ]
