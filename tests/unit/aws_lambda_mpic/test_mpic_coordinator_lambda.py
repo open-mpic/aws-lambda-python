@@ -1,3 +1,4 @@
+import asyncio
 import io
 import json
 from datetime import datetime
@@ -76,16 +77,16 @@ class TestMpicCoordinatorLambda:
                 class_scoped_monkeypatch.setenv(k, v)
             yield class_scoped_monkeypatch  # restore the environment afterward
 
-    async def call_remote_perspective__should_make_aws_lambda_call_with_provided_arguments_and_return_check_response(
+    def call_remote_perspective__should_make_aws_lambda_call_with_provided_arguments_and_return_check_response(
         self, set_env_variables, mocker
     ):
-        lambda_handler, mock_client = await self.mock_lambda_handler_for_lambda_invoke(mocker, self.create_successful_aioboto3_response_for_dcv_check)
+        lambda_handler, mock_client = self.mock_lambda_handler_for_lambda_invoke(mocker, self.create_successful_aioboto3_response_for_dcv_check)
 
         dcv_check_request = ValidCheckCreator.create_valid_dns_check_request()
         perspective_code = "us-west-1"
-        check_response = await lambda_handler.call_remote_perspective(
+        check_response = asyncio.get_event_loop().run_until_complete(lambda_handler.call_remote_perspective(
             RemotePerspective(code=perspective_code, rir="arin"), CheckType.DCV, dcv_check_request
-        )
+        ))
         assert check_response.check_passed is True
         # hijacking the value of 'details.found_at' to verify that the right arguments got passed to the call
         assert check_response.details.found_at == dcv_check_request.domain_or_ip_target
@@ -99,18 +100,18 @@ class TestMpicCoordinatorLambda:
             Payload=dcv_check_request.model_dump_json(),
         )
 
-    async def call_remote_perspective__should_make_aws_lambda_call_and_handle_lambda_execution_exceptions(
+    def call_remote_perspective__should_make_aws_lambda_call_and_handle_lambda_execution_exceptions(
         self, set_env_variables, mocker
     ):
-        lambda_handler, mock_client = await self.mock_lambda_handler_for_lambda_invoke(mocker, self.create_error_aioboto3_response)
+        lambda_handler, mock_client = self.mock_lambda_handler_for_lambda_invoke(mocker, self.create_error_aioboto3_response)
 
         class Dummy(BaseModel):
             pass
 
         with pytest.raises(LambdaExecutionException) as exc_info:
-            await lambda_handler.call_remote_perspective(
+            asyncio.get_event_loop().run_until_complete(lambda_handler.call_remote_perspective(
                 RemotePerspective(code="us-west-1", rir="arin"), CheckType.DCV, Dummy()
-            )        
+            ))
         assert exc_info.value.args[0] == "Lambda execution error: {\"errorMessage\": \"some message\"}"
 
     def lambda_handler__should_return_400_error_and_details_given_invalid_request_body(self):
@@ -319,7 +320,7 @@ class TestMpicCoordinatorLambda:
             perspectives = perspective_type_adapter.validate_python(perspectives_yaml["aws_available_regions"])
             return {perspective.code: perspective for perspective in perspectives}
 
-    async def mock_lambda_handler_for_lambda_invoke(self, mocker, lambda_invoke_side_effect):
+    def mock_lambda_handler_for_lambda_invoke(self, mocker, lambda_invoke_side_effect):
         # Mock the aioboto3 client creation and context manager
         mock_client = AsyncMock()
         mock_client.invoke = AsyncMock(side_effect=lambda_invoke_side_effect)
@@ -329,7 +330,6 @@ class TestMpicCoordinatorLambda:
         mock_session = mocker.patch("aioboto3.Session")
         mock_session.return_value.client.return_value = mock_client
         lambda_handler = MpicCoordinatorLambdaHandler()
-        await lambda_handler.initialize_client_pools()
         return lambda_handler, mock_client
 
 if __name__ == "__main__":

@@ -20,17 +20,10 @@ class MpicDcvCheckerLambdaHandler:
         self.dcv_checker = MpicDcvChecker(reuse_http_client=False, log_level=self.logger.level)
 
     def process_invocation(self, dcv_request: DcvCheckRequest):
-        try:
-            event_loop = asyncio.get_running_loop()
-        except RuntimeError:
-            # No running event loop, create a new one
-            event_loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(event_loop)
-
         self.logger.debug("(debug log) Processing DCV check request: %s", dcv_request)
         print("(print) Processing DCV check request: %s", dcv_request)
 
-        dcv_response = event_loop.run_until_complete(self.dcv_checker.check_dcv(dcv_request))
+        dcv_response = asyncio.get_event_loop().run_until_complete(self.dcv_checker.check_dcv(dcv_request))
         status_code = 200
         if dcv_response.errors is not None and len(dcv_response.errors) > 0:
             if dcv_response.errors[0].error_type == "404":
@@ -55,9 +48,13 @@ def get_handler() -> MpicDcvCheckerLambdaHandler:
     """
     global _handler
     if _handler is None:
+        event_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(event_loop)
         _handler = MpicDcvCheckerLambdaHandler()
     return _handler
 
+if os.environ.get("PYTEST_VERSION") is None:
+    get_handler()
 
 # noinspection PyUnusedLocal
 # for now, we are not using context, but it is required by the lambda handler signature

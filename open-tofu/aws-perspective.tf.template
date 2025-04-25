@@ -210,6 +210,7 @@ resource "aws_lambda_function" "mpic_dcv_checker_lambda_{{region}}" {
     timeout = 60
     runtime = "python3.11"
     architectures = ["arm64"]
+    memory_size = var.perspective_memory_size
     layers = [
         aws_lambda_layer_version.python3_open_mpic_layer_{{region}}.arn,
     ]
@@ -240,6 +241,7 @@ resource "aws_lambda_function" "mpic_caa_checker_lambda_{{region}}" {
     timeout = 60
     runtime = "python3.11"
     architectures = ["arm64"]
+    memory_size = var.perspective_memory_size
     layers = [
         aws_lambda_layer_version.python3_open_mpic_layer_{{region}}.arn,
     ]

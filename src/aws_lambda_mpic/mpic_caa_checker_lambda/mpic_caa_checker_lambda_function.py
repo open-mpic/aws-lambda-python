@@ -24,14 +24,7 @@ class MpicCaaCheckerLambdaHandler:
         )
 
     def process_invocation(self, caa_request: CaaCheckRequest):
-        try:
-            event_loop = asyncio.get_running_loop()
-        except RuntimeError:
-            # No running event loop, create a new one
-            event_loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(event_loop)
-
-        caa_response = event_loop.run_until_complete(self.caa_checker.check_caa(caa_request))
+        caa_response = asyncio.get_event_loop().run_until_complete(self.caa_checker.check_caa(caa_request))
         result = {
             "statusCode": 200,  # note: must be snakeCase
             "headers": {"Content-Type": "application/json"},
@@ -50,9 +43,13 @@ def get_handler() -> MpicCaaCheckerLambdaHandler:
     """
     global _handler
     if _handler is None:
+        event_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(event_loop)
         _handler = MpicCaaCheckerLambdaHandler()
     return _handler
 
+if os.environ.get("PYTEST_VERSION") is None:
+    get_handler()
 
 # noinspection PyUnusedLocal
 # for now, we are not using context, but it is required by the lambda handler signature
