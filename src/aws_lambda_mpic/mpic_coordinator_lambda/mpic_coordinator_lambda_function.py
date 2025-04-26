@@ -147,6 +147,7 @@ class MpicCoordinatorLambdaHandler:
 # Global instance for Lambda runtime
 _handler = None
 
+
 def get_handler() -> MpicCoordinatorLambdaHandler:
     """
     Singleton pattern to avoid recreating the handler on every Lambda invocation.
@@ -159,9 +160,11 @@ def get_handler() -> MpicCoordinatorLambdaHandler:
         _handler = MpicCoordinatorLambdaHandler()
     return _handler
 
-# Eagerly initialize the handler if not running in a test environment.
-if os.environ.get("PYTEST_VERSION") is None:
+
+# Not eagerly initialize the handler when running in a test environment as it leads to errors.
+if os.environ.get("AWS_LAMBDA_FUNCTION_NAME") is not None:
     get_handler()
+
 
 def handle_lambda_exceptions(func):
     def build_400_response(error_name, issues_list):

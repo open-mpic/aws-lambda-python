@@ -53,8 +53,10 @@ def get_handler() -> MpicDcvCheckerLambdaHandler:
         _handler = MpicDcvCheckerLambdaHandler()
     return _handler
 
-if os.environ.get("PYTEST_VERSION") is None:
+
+if os.environ.get("AWS_LAMBDA_FUNCTION_NAME") is not None:
     get_handler()
+
 
 # noinspection PyUnusedLocal
 # for now, we are not using context, but it is required by the lambda handler signature

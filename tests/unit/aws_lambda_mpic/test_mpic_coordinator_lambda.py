@@ -332,5 +332,6 @@ class TestMpicCoordinatorLambda:
         lambda_handler = MpicCoordinatorLambdaHandler()
         return lambda_handler, mock_client
 
+
 if __name__ == "__main__":
     pytest.main()
