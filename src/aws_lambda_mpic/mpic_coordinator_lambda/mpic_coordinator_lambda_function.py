@@ -82,27 +82,13 @@ class MpicCoordinatorLambdaHandler:
         self.mpic_request_adapter = TypeAdapter(MpicRequest)
         self.check_response_adapter = TypeAdapter(CheckResponse)
 
-        self._session = aioboto3.Session()
-        self._client_pools = defaultdict(lambda: Queue(maxsize=10))  # pool of 10 clients per region
+        self._clients = {}
+        asyncio.get_event_loop().run_until_complete(self.initialize_clients())
 
-    async def initialize_client_pools(self):
-        # Call this during cold start
+    async def initialize_clients(self):
+        session = aioboto3.Session()
         for perspective_code in self._all_target_perspective_codes:
-            for _ in range(10):  # prepopulate pool
-                client = await self._session.client("lambda", perspective_code).__aenter__()
-                await self._client_pools[perspective_code].put(client)
-
-    async def get_lambda_client(self, perspective_code: str):
-        return await self._client_pools[perspective_code].get()
-
-    async def release_lambda_client(self, perspective_code: str, client):
-        await self._client_pools[perspective_code].put(client)
-
-    # async def cleanup(self):  # Call this during shutdown if needed (maybe not needed in Lambda)
-    #     for pool in self._client_pools.values():
-    #         while not pool.empty():
-    #             client = await pool.get()
-    #             await client.__aexit__(None, None, None)
+            self._clients[perspective_code] = await session.client("lambda", perspective_code).__aenter__()
 
     @staticmethod
     def load_aws_region_config() -> dict[str, RemotePerspective]:
@@ -136,24 +122,21 @@ class MpicCoordinatorLambdaHandler:
     async def call_remote_perspective(
         self, perspective: RemotePerspective, check_type: CheckType, check_request: CheckRequest
     ) -> CheckResponse:
-        client = await self.get_lambda_client(perspective.code)
-        try:
-            function_endpoint_info = self.remotes_per_perspective_per_check_type[check_type][perspective.code]
-            response = await client.invoke(  # AWS Lambda-specific structure
-                FunctionName=function_endpoint_info.arn,
-                InvocationType="RequestResponse",
-                Payload=check_request.model_dump_json(),  # AWS Lambda functions expect a JSON string for payload
-            )
-            response_payload = await response["Payload"].read()
-            if 'FunctionError' in response:
-                raise LambdaExecutionException(f"Lambda execution error: {response_payload.decode('utf-8')}")
-            response_payload = json.loads(response_payload)
-            return self.check_response_adapter.validate_json(response_payload["body"])
-        finally:
-            await self.release_lambda_client(perspective.code, client)
+        client = self._clients[perspective.code]
+        function_endpoint_info = self.remotes_per_perspective_per_check_type[check_type][perspective.code]
+        response = await client.invoke(  # AWS Lambda-specific structure
+            FunctionName=function_endpoint_info.arn,
+            InvocationType="RequestResponse",
+            Payload=check_request.model_dump_json(),  # AWS Lambda functions expect a JSON string for payload
+        )
+        response_payload = await response["Payload"].read()
+        if 'FunctionError' in response:
+            raise LambdaExecutionException(f"Lambda execution error: {response_payload.decode('utf-8')}")
+        response_payload = json.loads(response_payload)
+        return self.check_response_adapter.validate_json(response_payload["body"])
 
-    async def process_invocation(self, mpic_request: MpicRequest) -> dict:
-        mpic_response = await self.mpic_coordinator.coordinate_mpic(mpic_request)
+    def process_invocation(self, mpic_request: MpicRequest) -> dict:
+        mpic_response = asyncio.get_event_loop().run_until_complete(self.mpic_coordinator.coordinate_mpic(mpic_request))
         return {
             "statusCode": 200,
             "headers": {"Content-Type": "application/json"},
@@ -165,12 +148,6 @@ class MpicCoordinatorLambdaHandler:
 _handler = None
 
 
-async def initialize_handler() -> MpicCoordinatorLambdaHandler:
-    handler = MpicCoordinatorLambdaHandler()
-    await handler.initialize_client_pools()
-    return handler
-
-
 def get_handler() -> MpicCoordinatorLambdaHandler:
     """
     Singleton pattern to avoid recreating the handler on every Lambda invocation.
@@ -178,15 +155,15 @@ def get_handler() -> MpicCoordinatorLambdaHandler:
     """
     global _handler
     if _handler is None:
-        try:
-            event_loop = asyncio.get_running_loop()
-        except RuntimeError:
-            # No running event loop, create a new one
-            event_loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(event_loop)
-
-        _handler = event_loop.run_until_complete(initialize_handler())
+        event_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(event_loop)
+        _handler = MpicCoordinatorLambdaHandler()
     return _handler
+
+
+# Not eagerly initialize the handler when running in a test environment as it leads to errors.
+if os.environ.get("AWS_LAMBDA_FUNCTION_NAME") is not None:
+    get_handler()
 
 
 def handle_lambda_exceptions(func):
@@ -224,5 +201,4 @@ def handle_lambda_exceptions(func):
 @handle_lambda_exceptions
 @event_parser(model=MpicRequest, envelope=envelopes.ApiGatewayEnvelope)  # AWS Lambda Powertools decorator
 def lambda_handler(event: MpicRequest, context):  # AWS Lambda entry point
-    handler = get_handler()
-    return asyncio.get_event_loop().run_until_complete(handler.process_invocation(event))
+    return get_handler().process_invocation(event)
