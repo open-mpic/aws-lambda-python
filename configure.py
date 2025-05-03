@@ -144,9 +144,7 @@ def main(raw_args=None):
         # Iterate through the different regions specified and produce an output file for each region.
         for region in config['perspectives']:
             aws_perspective_tf_region = aws_perspective_tf.replace("{{region}}", region)
-            
-            # Replace the deployment id.
-            aws_perspective_tf_region = aws_perspective_tf_region.replace("{{deployment-id}}", str(deployment_id))
+
             # Construct the default CAA domain list.
             default_caa_domains_list = "|".join(config['caa-domains'])
             aws_perspective_tf_region = aws_perspective_tf_region.replace("{{default-caa-domains}}", f"\"{default_caa_domains_list}\"")

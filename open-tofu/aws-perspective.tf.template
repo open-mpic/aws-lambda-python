@@ -1,7 +1,7 @@
 # Each layer must be created in the region of the functions.
 resource "aws_lambda_layer_version" "python3_open_mpic_layer_{{region}}" {
     filename            = "../layer/python3_layer_content.zip"
-    layer_name          = "python3_open_mpic_layer_{{region}}_{{deployment-id}}"
+    layer_name          = "python3_open_mpic_layer_{{region}}_${local.deployment_id}"
     source_code_hash    = "${filebase64sha256("../layer/python3_layer_content.zip")}"
     compatible_runtimes = ["python3.11"]
     provider = aws.{{region}}
@@ -197,7 +197,7 @@ resource "aws_route53_resolver_dnssec_config" "dnssec_config_{{region}}" {
 
 resource "aws_lambda_function" "mpic_dcv_checker_lambda_{{region}}" {
     filename      = "../{{source-path}}/mpic_dcv_checker_lambda/mpic_dcv_checker_lambda.zip"
-    function_name = "open_mpic_dcv_checker_lambda_{{region}}_{{deployment-id}}"
+    function_name = "open_mpic_dcv_checker_lambda_{{region}}_${local.deployment_id}"
     role          = aws_iam_role.open_mpic_lambda_role.arn
     depends_on = [
       aws_iam_role.open_mpic_lambda_role,
@@ -228,7 +228,7 @@ resource "aws_lambda_function" "mpic_dcv_checker_lambda_{{region}}" {
 
 resource "aws_lambda_function" "mpic_caa_checker_lambda_{{region}}" {
     filename      = "../{{source-path}}/mpic_caa_checker_lambda/mpic_caa_checker_lambda.zip"
-    function_name = "open_mpic_caa_checker_lambda_{{region}}_{{deployment-id}}"
+    function_name = "open_mpic_caa_checker_lambda_{{region}}_${local.deployment_id}"
     role          = aws_iam_role.open_mpic_lambda_role.arn
     depends_on = [
       aws_iam_role.open_mpic_lambda_role,
