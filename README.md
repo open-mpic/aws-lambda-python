@@ -45,8 +45,7 @@ The above sample must be run from the root directory of a deployed Open MPIC aws
 
 The API is compliant with the [Open MPIC Specification](https://github.com/open-mpic/open-mpic-specification).
 
-There is [documentation based on the API specification  used in this version] 
-(https://open-mpic.org/documentation.html?commit=e6e4272673edc064cf311a3935ec027eba2df8b7).
+There is [documentation based on the API specification used in this version](https://open-mpic.org/documentation.html?commit=65f7409f102995747b966e4cb0c86bfd7f621211).
 
 ## Development
 Code changes can easily be deployed by editing the .py files and then rezipping the project via `./zip-all.sh` and `./2-package.sh` in the `layer` directory. Then, running `tofu apply` run from the open-tofu directory will update only on the required resources and leave the others unchanged. If any `.tf.template` files are changed or `config.yaml` is edited, `hatch run ./configure.py` must be rerun followed by `tofu apply` in the open-tofu directory.
