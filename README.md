@@ -100,7 +100,7 @@ After `tofu destroy`, `./clean.sh` in the root directory also clears generated/z
 
 ## EventBridge Warmer
 
-The AWS Lambda deployment takes approximately 8 seconds to perform the fist Open MPIC call because of [Lambda cold starts](https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtime-environment.html). Subsequent calls take approximately 1 second. To avoid a cold start and get a ~1 second response time even on the first API call, the EventBridge Warmer can optionally be used to keep the Lambda functions "hot." To deploy with this feature, add `-var="eventbridge_warmer_enabled=true"` to the `tofu apply` command (e.g., `tofu apply -var="eventbridge_warmer_enabled=true"`). **The use of the EventBridge Warmer will increase costs and incur costs even when no API calls are being made.**
+The AWS Lambda deployment takes approximately 8 seconds to perform the fist Open MPIC call because of [Lambda cold starts](https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtime-environment.html). Subsequent calls take approximately 1 second. To avoid a cold start and get a ~1 second response time even on the first API call, the EventBridge Warmer can optionally be used to keep the Lambda functions "hot." To deploy with this feature, add `-var="eventbridge_warmer_enabled=true"` to the `tofu apply` command (e.g., `tofu apply -var="dnssec_enabled=false" -var="eventbridge_warmer_enabled=true"`). **The use of the EventBridge Warmer will increase costs and incur costs even when no API calls are being made.**
 
 ## Additional Implementation Tasks
 There are several features that may be of interest to the community, but we don't yet have a specific completion timeline. These may be given higher priority based on feedback and community interest.
