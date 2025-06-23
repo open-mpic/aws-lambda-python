@@ -26,25 +26,25 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-#    "open-mpic-core @ git+https://github.com/open-mpic/open-mpic-core-python.git@birgelee-key-auth-hash",
+    "open-mpic-core @ git+https://github.com/open-mpic/open-mpic-core-python.git@birgelee-version-bump",
     "pyyaml==6.0.2",
-    "requests>=2.32.3",
+    "requests==2.32.4",
     "dnspython==2.7.0",
-    "pydantic==2.10.6",
-    "aiohttp==3.11.13",
-    "aws-lambda-powertools[parser]==3.8.0",
-    "open-mpic-core==5.6.0",
-    "aioboto3~=13.3.0",
-    "black==24.8.0",
+    "pydantic==2.11.7",
+    "aiohttp==3.12.13",
+    "aws-lambda-powertools[parser]==3.15.1",
+    #"open-mpic-core==5.9.0",
+    "aioboto3~=14.3.0",
+    "black==25.1.0",
 ]
 
 [project.optional-dependencies]
 test = [
-    "pytest==8.2.2",
-    "pytest-cov==5.0.0",
-    "pytest-mock==3.14.0",
+    "pytest==8.4.1",
+    "pytest-cov==6.2.1",
+    "pytest-mock==3.14.1",
     "pytest-html==4.1.1",
-    "pytest-asyncio==0.25.1",
+    "pytest-asyncio==1.0.0",
 ]
 
 [project.urls]
