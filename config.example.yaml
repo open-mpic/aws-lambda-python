@@ -24,7 +24,6 @@ caa-domains:
 absolute-max-attempts: 3
 
 log-level: INFO
-coordinator-http-client-timeout-seconds: 25
-dcv-http-client-timeout-seconds: 20
+http-client-timeout-seconds: 20
 dns-timeout-seconds: 5
 dns-resolution-lifetime-seconds: 11

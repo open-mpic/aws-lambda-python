@@ -222,6 +222,9 @@ resource "aws_lambda_function" "mpic_dcv_checker_lambda_{{region}}" {
     environment {
       variables = {
         {{log-level-with-key}}
+        {{http-client-timeout-with-key}}
+        {{dns-timeout-with-key}}
+        {{dns-resolution-lifetime-with-key}}
       }
     }
 }
@@ -254,6 +257,8 @@ resource "aws_lambda_function" "mpic_caa_checker_lambda_{{region}}" {
       variables = {
         default_caa_domains = {{default-caa-domains}}
         {{log-level-with-key}}
+        {{dns-timeout-with-key}}
+        {{dns-resolution-lifetime-with-key}}
       }
     }
 }

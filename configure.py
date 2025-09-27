@@ -159,12 +159,27 @@ def main(raw_args=None):
                 out_stream.write(aws_perspective_tf_region)
         
 
-def set_common_env_configuration(tf_string:str, config:dict) -> str:
+def set_common_env_configuration(tf_string: str, config: dict) -> str:
     # set log level if present
     if "log-level" in config:
         tf_string = tf_string.replace("{{log-level-with-key}}", f"log_level = \"{config['log-level']}\"")
     else:
         tf_string = tf_string.replace("{{log-level-with-key}}", "")
+
+    # set timeouts if present
+    if "http-client-timeout-seconds" in config:
+        tf_string = tf_string.replace("{{http-client-timeout-with-key}}", f"http_client_timeout_seconds = {config['http-client-timeout-seconds']}")
+    else:
+        tf_string = tf_string.replace("{{http-client-timeout-with-key}}", "")
+    if "dns-timeout-seconds" in config:
+        tf_string = tf_string.replace("{{dns-timeout-with-key}}", f"dns_timeout_seconds = {config['dns-timeout-seconds']}")
+    else:
+        tf_string = tf_string.replace("{{dns-timeout-with-key}}", "")
+    if "dns-resolution-lifetime-seconds" in config:
+        tf_string = tf_string.replace("{{dns-resolution-lifetime-with-key}}", f"dns_resolution_lifetime_seconds = {config['dns-resolution-lifetime-seconds']}")
+    else:
+        tf_string = tf_string.replace("{{dns-resolution-lifetime-with-key}}", "")
+
     return tf_string
 
 
