@@ -113,7 +113,7 @@ class TestDeployedMpicApi:
         self, api_client
     ):
         request = MpicCaaRequest(
-            domain_or_ip_target="nonexistentdomainforsure.open-mpic.org",
+            domain_or_ip_target="servfail.caatestsuite-dnssec.com",
             orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
             caa_check_parameters=CaaCheckParameters(
                 certificate_type=CertificateType.TLS_SERVER,
