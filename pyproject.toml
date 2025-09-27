@@ -31,9 +31,10 @@ dependencies = [
     "requests==2.32.4",
     "dnspython==2.7.0",
     "pydantic==2.11.7",
-    "aiohttp==3.12.13",
+    "aiohttp==3.12.14",
     "aws-lambda-powertools[parser]==3.15.1",
-    "open-mpic-core==5.10.0",
+    #"open-mpic-core==6.1.0",
+    "open-mpic-core @ git+https://github.com/open-mpic/open-mpic-core-python.git@ds-allow-caa-lookup-failure-flag",
     "aioboto3~=14.3.0",
     "black==25.1.0",
 ]

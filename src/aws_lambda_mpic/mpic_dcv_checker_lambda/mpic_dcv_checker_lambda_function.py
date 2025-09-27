@@ -12,12 +12,30 @@ logger = get_logger(__name__)
 class MpicDcvCheckerLambdaHandler:
     def __init__(self):
         self.log_level = os.environ["log_level"] if "log_level" in os.environ else None
+        self.http_client_timeout_seconds = (
+            float(os.environ["dcv_http_client_timeout_seconds"])
+            if "dcv_http_client_timeout_seconds" in os.environ and float(os.environ["dcv_http_client_timeout_seconds"])
+            else 30
+        )
+        self.dns_timeout_seconds = (
+            float(os.environ["dns_timeout_seconds"]) if "dns_timeout_seconds" in os.environ else None
+        )
+        self.dns_resolution_lifetime_seconds = (
+            float(os.environ["dns_resolution_lifetime_seconds"])
+            if "dns_resolution_lifetime_seconds" in os.environ
+            else None
+        )
 
         self.logger = logger.getChild(self.__class__.__name__)
         if self.log_level:
             self.logger.setLevel(self.log_level)
 
-        self.dcv_checker = MpicDcvChecker(reuse_http_client=False, log_level=self.logger.level)
+        self.dcv_checker = MpicDcvChecker(
+            log_level=self.logger.level,
+            http_client_timeout=self.http_client_timeout_seconds,
+            dns_timeout=self.dns_timeout_seconds,
+            dns_resolution_lifetime=self.dns_resolution_lifetime_seconds,
+        )
 
     def process_invocation(self, dcv_request: DcvCheckRequest):
         self.logger.debug("(debug log) Processing DCV check request: %s", dcv_request)

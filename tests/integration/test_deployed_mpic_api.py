@@ -10,7 +10,6 @@ from open_mpic_core import (
     DcvAcmeDns01ValidationParameters,
     DcvDnsChangeValidationParameters,
 )
-from open_mpic_core import DcvCheckParameters
 from open_mpic_core import CertificateType, CheckType, DnsRecordType
 from open_mpic_core import MpicCaaRequest, MpicDcvRequest, MpicResponse, PerspectiveResponse
 from open_mpic_core import MpicRequestOrchestrationParameters
@@ -50,12 +49,16 @@ class TestDeployedMpicApi:
 
         print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
         response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
-        # response_body_as_json = response.json()
-        assert response.status_code == 200
-        # assert response body has a list of perspectives with length 2, and each element has response code 200
         mpic_response = self.mpic_response_adapter.validate_json(response.text)
-        print("\nResponse:\n", json.dumps(mpic_response.model_dump(), indent=4))  # pretty print response body
+
+        if response.status_code != 200:
+            print("\nResponse:\n", response.text)
+
+        assert response.status_code == 200
         assert mpic_response.is_valid is True
+        print("\nResponse:\n", json.dumps(mpic_response.model_dump(), indent=4))  # pretty print response body
+
+        # assert response body has a list of perspectives with length 2, and each element has response code 200
         perspectives_list: list[PerspectiveResponse] = mpic_response.perspectives
         assert len(perspectives_list) == request.orchestration_parameters.perspective_count
         assert (
@@ -106,6 +109,24 @@ class TestDeployedMpicApi:
         mpic_response = self.mpic_response_adapter.validate_json(response.text)
         assert mpic_response.is_valid is False
 
+    def api_should_return_is_valid_true_for_caa_lookup_failure_if_allow_lookup_failure_flag_is_true(
+        self, api_client
+    ):
+        request = MpicCaaRequest(
+            domain_or_ip_target="nonexistentdomainforsure.open-mpic.org",
+            orchestration_parameters=MpicRequestOrchestrationParameters(perspective_count=3, quorum_count=2),
+            caa_check_parameters=CaaCheckParameters(
+                certificate_type=CertificateType.TLS_SERVER,
+                caa_domains=["example.com"],
+                allow_caa_lookup_failure=True,
+            ),
+        )
+        response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
+        mpic_response = self.mpic_response_adapter.validate_json(response.text)
+        if mpic_response.is_valid is False:
+            print("\nResponse:\n", response.text)
+        assert mpic_response.is_valid is True
+
     # NOTE: Open MPIC AWS-Lambda-Python currently is not able to communicate with an IPv6 only nameserver.
     # This case is handled in a compliant manner as it is treated as a lookup failure.
     # The test for proper communication with an IPv6 nameserver can be enabled with the following additional parameter to the list below.
@@ -142,6 +163,8 @@ class TestDeployedMpicApi:
         )
         response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
         mpic_response = self.mpic_response_adapter.validate_json(response.text)
+        if mpic_response.is_valid is False:
+            print("\nResponse:\n", response.text)
         assert mpic_response.is_valid is True
 
     @pytest.mark.skip(reason="Behavior not required in RFC 8659")
@@ -185,9 +208,12 @@ class TestDeployedMpicApi:
 
         print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
         response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
+
+        if response.status_code != 200:
+            print("\nResponse:\n", response.text)
+
         assert response.status_code == 200
         mpic_response = self.mpic_response_adapter.validate_json(response.text)
-
         assert mpic_response.is_valid is True
 
     # fmt: off
@@ -211,9 +237,12 @@ class TestDeployedMpicApi:
 
         print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
         response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
+
+        if response.status_code != 200:
+            print("\nResponse:\n", response.text)
+
         assert response.status_code == 200
         mpic_response = self.mpic_response_adapter.validate_json(response.text)
-
         assert mpic_response.is_valid is False
 
     # fmt: off
@@ -233,9 +262,12 @@ class TestDeployedMpicApi:
         )
         print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
         response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
+
+        if response.status_code != 200:
+            print("\nResponse:\n", response.text)
+
         assert response.status_code == 200
         mpic_response = self.mpic_response_adapter.validate_json(response.text)
-
         assert mpic_response.is_valid is True
 
     # fmt: off
@@ -258,9 +290,12 @@ class TestDeployedMpicApi:
 
         print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
         response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
+
+        if response.status_code != 200:
+            print("\nResponse:\n", response.text)
+
         assert response.status_code == 200
         mpic_response = self.mpic_response_adapter.validate_json(response.text)
-
         assert mpic_response.is_valid is False
 
     # fmt: off
@@ -282,9 +317,12 @@ class TestDeployedMpicApi:
         )
         print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
         response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
+
+        if response.status_code != 200:
+            print("\nResponse:\n", response.text)
+
         assert response.status_code == 200
         mpic_response = self.mpic_response_adapter.validate_json(response.text)
-
         assert mpic_response.is_valid is True
 
     # fmt: off
@@ -309,6 +347,10 @@ class TestDeployedMpicApi:
         print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
         response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
         print("\nResponse:\n", json.dumps(json.loads(response.text), indent=4))  # pretty print request body
+
+        if response.status_code != 200:
+            print("\nResponse:\n", response.text)
+
         assert response.status_code == 200
         mpic_response = self.mpic_response_adapter.validate_json(response.text)
         assert mpic_response.is_valid is True
@@ -321,6 +363,10 @@ class TestDeployedMpicApi:
 
         print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
         response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
+
+        if response.status_code != 200:
+            print("\nResponse:\n", response.text)
+
         assert response.status_code == 200
         response_body = json.loads(response.text)
         print("\nResponse:\n", json.dumps(response_body, indent=4))  # pretty print response body
@@ -338,9 +384,10 @@ class TestDeployedMpicApi:
 
         print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
         response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
-        assert response.status_code == 400
         response_body = json.loads(response.text)
         print("\nResponse:\n", json.dumps(response_body, indent=4))  # pretty print response body
+
+        assert response.status_code == 400
         assert response_body["error"] == MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key
         assert any(
             issue["issue_type"] == MpicRequestValidationMessages.INVALID_QUORUM_COUNT.key
@@ -359,7 +406,8 @@ class TestDeployedMpicApi:
 
         print("\nRequest:\n", json.dumps(request.model_dump(), indent=4))  # pretty print request body
         response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
-        assert response.status_code == 400
         response_body = json.loads(response.text)
         print("\nResponse:\n", json.dumps(response_body, indent=4))
+
+        assert response.status_code == 400
         assert response_body["error"] == MpicRequestValidationMessages.REQUEST_VALIDATION_FAILED.key
