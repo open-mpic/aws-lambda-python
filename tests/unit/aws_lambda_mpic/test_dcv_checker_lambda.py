@@ -5,9 +5,12 @@ from open_mpic_core import MpicValidationError
 from open_mpic_core import DcvHttpCheckResponseDetails
 from open_mpic_core import DcvValidationMethod
 from open_mpic_core import DcvCheckResponse
+
 import aws_lambda_mpic.mpic_dcv_checker_lambda.mpic_dcv_checker_lambda_function as mpic_dcv_checker_lambda_function
 
 from open_mpic_core_test.test_util.valid_check_creator import ValidCheckCreator
+
+from aws_lambda_mpic.mpic_dcv_checker_lambda.mpic_dcv_checker_lambda_function import MpicDcvCheckerLambdaHandler
 from unit.aws_lambda_mpic.conftest import setup_logging
 
 
@@ -16,7 +19,13 @@ class TestDcvCheckerLambda:
     @staticmethod
     @pytest.fixture(scope="class")
     def set_env_variables():
-        envvars = {"AWS_REGION": "us-east-1", "log_level": "TRACE"}
+        envvars = {
+            "AWS_REGION": "us-east-1",
+            "log_level": "TRACE",
+            "http_client_timeout_seconds": "11",
+            "dns_timeout_seconds": "12",
+            "dns_resolution_lifetime_seconds": "13",
+        }
         with pytest.MonkeyPatch.context() as class_scoped_monkeypatch:
             for k, v in envvars.items():
                 class_scoped_monkeypatch.setenv(k, v)
@@ -67,6 +76,14 @@ class TestDcvCheckerLambda:
         assert result["statusCode"] == 200
         log_contents = setup_logging.getvalue()
         assert all(text in log_contents for text in ["MpicDcvChecker", "TRACE"])  # Verify the log level was set
+
+    async def lambda_handler__should_set_dns_timeout_configuration_of_dcv_checker(self, set_env_variables):
+        # a bit leaky in terms of implementation but there's not an easy way to enforce this otherwise
+        configured_dcv_checker = MpicDcvCheckerLambdaHandler().dcv_checker
+        assert configured_dcv_checker.resolver.timeout == 12.0
+        assert configured_dcv_checker.resolver.lifetime == 13.0
+        async with configured_dcv_checker.get_async_http_client() as http_client:
+            assert http_client.timeout.total == 11.0
 
     @staticmethod
     def create_dcv_check_response():

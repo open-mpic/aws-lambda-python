@@ -13,8 +13,8 @@ class MpicDcvCheckerLambdaHandler:
     def __init__(self):
         self.log_level = os.environ["log_level"] if "log_level" in os.environ else None
         self.http_client_timeout_seconds = (
-            float(os.environ["dcv_http_client_timeout_seconds"])
-            if "dcv_http_client_timeout_seconds" in os.environ and float(os.environ["dcv_http_client_timeout_seconds"])
+            float(os.environ["http_client_timeout_seconds"])
+            if "http_client_timeout_seconds" in os.environ and float(os.environ["http_client_timeout_seconds"])
             else 30
         )
         self.dns_timeout_seconds = (

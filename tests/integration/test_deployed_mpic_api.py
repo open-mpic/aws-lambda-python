@@ -118,7 +118,7 @@ class TestDeployedMpicApi:
             caa_check_parameters=CaaCheckParameters(
                 certificate_type=CertificateType.TLS_SERVER,
                 caa_domains=["example.com"],
-                allow_caa_lookup_failure=True,
+                allow_lookup_failure=True,
             ),
         )
         response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
