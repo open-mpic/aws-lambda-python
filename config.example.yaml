@@ -1,6 +1,6 @@
 # A list of perspectives with the format <RIR>.<AWS-Region> TODO link to pages.
 perspectives:
-  - us-east-2
+  - us-west-1
   - us-west-2
   - ca-west-1
   - eu-central-2
