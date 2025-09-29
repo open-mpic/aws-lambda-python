@@ -24,7 +24,7 @@ All requirements for running the API are packaged and uploaded to AWS as a lambd
 
 For convenience:
 * `hatch run lambda:prepare` will run steps 2-5 in a single command.
-* `hatch run lambda:deploy-no-dnssec` or `hatch run lambda:deploy-dnssec` will clean the environment and then run steps 2-6 with DNSSEC validation enabled or disabled respectively.
+* `hatch run lambda:deploy-dnssec` or `hatch run lambda:deploy-no-dnssec` will clean the environment and then run steps 2-6 with DNSSEC validation enabled or disabled respectively.
 
 Note: the above commands do not run `tofu init`. During first time environment setup this will need to be run in the `open-tofu` dir for these commands to work.
 
@@ -45,7 +45,7 @@ The above sample must be run from the root directory of a deployed Open MPIC aws
 
 The API is compliant with the [Open MPIC Specification](https://github.com/open-mpic/open-mpic-specification).
 
-There is [documentation based on the API specification used in this version](https://open-mpic.org/documentation.html?commit=65f7409f102995747b966e4cb0c86bfd7f621211).
+There is [documentation based on the API specification used in this version](https://open-mpic.org/documentation.html?commit=150a21d8c8e1c4758494f75d4e6811a1c6d05058).
 
 ## Development
 Code changes can easily be deployed by editing the .py files and then rezipping the project via `./zip-all.sh` and `./2-package.sh` in the `layer` directory. Then, running `tofu apply` run from the open-tofu directory will update only on the required resources and leave the others unchanged. If any `.tf.template` files are changed or `config.yaml` is edited, `hatch run ./configure.py` must be rerun followed by `tofu apply` in the open-tofu directory.

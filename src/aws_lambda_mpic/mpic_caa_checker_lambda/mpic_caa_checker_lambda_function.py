@@ -14,13 +14,24 @@ class MpicCaaCheckerLambdaHandler:
     def __init__(self):
         self.default_caa_domain_list = os.environ["default_caa_domains"].split("|")
         self.log_level = os.environ["log_level"] if "log_level" in os.environ else None
+        self.dns_timeout_seconds = (
+            float(os.environ["dns_timeout_seconds"]) if "dns_timeout_seconds" in os.environ else None
+        )
+        self.dns_resolution_lifetime_seconds = (
+            float(os.environ["dns_resolution_lifetime_seconds"])
+            if "dns_resolution_lifetime_seconds" in os.environ
+            else None
+        )
 
         self.logger = logger.getChild(self.__class__.__name__)
         if self.log_level:
             self.logger.setLevel(self.log_level)
 
         self.caa_checker = MpicCaaChecker(
-            default_caa_domain_list=self.default_caa_domain_list, log_level=self.logger.level
+            default_caa_domain_list=self.default_caa_domain_list,
+            log_level=self.logger.level,
+            dns_timeout=self.dns_timeout_seconds,
+            dns_resolution_lifetime=self.dns_resolution_lifetime_seconds,
         )
 
     def process_invocation(self, caa_request: CaaCheckRequest):

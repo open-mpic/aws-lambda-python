@@ -6,8 +6,6 @@ import yaml
 import asyncio
 import aioboto3
 
-from asyncio import Queue
-from collections import defaultdict
 from importlib import resources
 from pydantic import TypeAdapter, ValidationError, BaseModel
 from aws_lambda_powertools.utilities.parser import event_parser, envelopes

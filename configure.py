@@ -109,11 +109,7 @@ def main(raw_args=None):
         # Set the source path for the lambda functions.
         main_tf_string = main_tf_string.replace("{{source-path}}", f"{config['source-path']}")
 
-        # Set log level if present.
-        if "log-level" in config:
-            main_tf_string = main_tf_string.replace("{{log-level-with-key}}", f"log_level = \"{config['log-level']}\"")
-        else:
-            main_tf_string = main_tf_string.replace("{{log-level-with-key}}", "")
+        main_tf_string = set_common_env_configuration(main_tf_string, config)
 
         # Derive the out file from the input file name.
         if not args.main_tf_template.endswith(".tf.template"):
@@ -152,11 +148,7 @@ def main(raw_args=None):
             # Set the source path for the lambda functions.
             aws_perspective_tf_region = aws_perspective_tf_region.replace("{{source-path}}", f"{config['source-path']}")
 
-            # Set log level if present.
-            if "log-level" in config:
-                aws_perspective_tf_region = aws_perspective_tf_region.replace("{{log-level-with-key}}", f"log_level = \"{config['log-level']}\"")
-            else:
-                aws_perspective_tf_region = aws_perspective_tf_region.replace("{{log-level-with-key}}", "")
+            aws_perspective_tf_region = set_common_env_configuration(aws_perspective_tf_region, config)
 
             if not args.aws_perspective_tf_template.endswith(".tf.template"):
                 print(f"Error: invalid tf template name: {args.aws_perspective_tf_template}. Make sure all tf template files end in '.tf.template'.")
@@ -166,6 +158,30 @@ def main(raw_args=None):
             with open(out_file_name, 'w') as out_stream:
                 out_stream.write(aws_perspective_tf_region)
         
+
+def set_common_env_configuration(tf_string: str, config: dict) -> str:
+    # set log level if present
+    if "log-level" in config:
+        tf_string = tf_string.replace("{{log-level-with-key}}", f"log_level = \"{config['log-level']}\"")
+    else:
+        tf_string = tf_string.replace("{{log-level-with-key}}", "")
+
+    # set timeouts if present
+    if "http-client-timeout-seconds" in config:
+        tf_string = tf_string.replace("{{http-client-timeout-with-key}}", f"http_client_timeout_seconds = {config['http-client-timeout-seconds']}")
+    else:
+        tf_string = tf_string.replace("{{http-client-timeout-with-key}}", "")
+    if "dns-timeout-seconds" in config:
+        tf_string = tf_string.replace("{{dns-timeout-with-key}}", f"dns_timeout_seconds = {config['dns-timeout-seconds']}")
+    else:
+        tf_string = tf_string.replace("{{dns-timeout-with-key}}", "")
+    if "dns-resolution-lifetime-seconds" in config:
+        tf_string = tf_string.replace("{{dns-resolution-lifetime-with-key}}", f"dns_resolution_lifetime_seconds = {config['dns-resolution-lifetime-seconds']}")
+    else:
+        tf_string = tf_string.replace("{{dns-resolution-lifetime-with-key}}", "")
+
+    return tf_string
+
 
 # Main module init for direct invocation. 
 if __name__ == '__main__':
