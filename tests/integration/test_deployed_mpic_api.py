@@ -371,6 +371,24 @@ class TestDeployedMpicApi:
         response_body = json.loads(response.text)
         print("\nResponse:\n", json.dumps(response_body, indent=4))  # pretty print response body
 
+    # this test will only pass if 4+ perspectives are configured in the deployed MPIC service
+    def api_should_accept_specific_cohort_number_if_enough_perspective_cohorts_are_accommodated(self, api_client):
+        request = MpicCaaRequest(
+            domain_or_ip_target="example.com",
+            orchestration_parameters=MpicRequestOrchestrationParameters(
+                perspective_count=2, quorum_count=2, cohort_for_single_attempt=2  # use the second cohort of two
+            ),
+            caa_check_parameters=CaaCheckParameters(
+                certificate_type=CertificateType.TLS_SERVER, caa_domains=["mozilla.com"]
+            ),
+        )
+
+        response = api_client.post(MPIC_REQUEST_PATH, json.dumps(request.model_dump()))
+        mpic_response = self.mpic_response_adapter.validate_json(response.text)
+        assert response.status_code == 200
+        assert mpic_response.is_valid is True
+        assert len(mpic_response.perspectives) == 2
+
     def api_should_return_400_given_invalid_orchestration_parameters_in_request(self, api_client):
         request = MpicCaaRequest(
             domain_or_ip_target="example.com",
