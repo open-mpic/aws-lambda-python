@@ -165,14 +165,13 @@ class TestDeployedMpicApi:
             print("\nResponse:\n", response.text)
         assert mpic_response.is_valid is True
 
-    @pytest.mark.skip(reason="Behavior not required in RFC 8659")
     # fmt: off
     @pytest.mark.parametrize('domain_or_ip_target, purpose_of_test', [
-        ('dname-deny.basic.caatestsuite.com', 'Tests handling of a DNAME when CAA record exists at DNAME target'),
-        ('cname-deny-sub.basic.caatestsuite.com', 'Tests handling of a CNAME when CAA record exists at parent of CNAME target')
+        ('dname-permit.deny.basic.caatestsuite.com', 'Tests handling of a DNAME when a permissible CAA record exists at DNAME target'),
+        ('cname-permit-sub.deny.basic.caatestsuite.com', 'Tests handling of a CNAME when a permissible CAA record exists at parent of CNAME target')
     ])
     # fmt: on
-    def api_should_return_is_valid_false_for_do_not_issue_caa_test_suite_for_rfc_6844(
+    def api_should_return_is_valid_false_for_do_not_issue_caa_test_suite_for_rfc_8659(
         self, api_client, domain_or_ip_target, purpose_of_test
     ):
         print(f"Running test for {domain_or_ip_target} ({purpose_of_test})")
