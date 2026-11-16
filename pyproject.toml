@@ -10,7 +10,7 @@ name = "aws-lambda-python"
 dynamic = ["version"]
 description = 'MPIC standard API implementation leveraging AWS Lambda.'
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.14"
 license = "MIT"
 keywords = []
 authors = [
@@ -29,20 +29,19 @@ dependencies = [
     #"open-mpic-core @ git+https://github.com/open-mpic/open-mpic-core-python.git@birgelee-version-bump",
     "pyyaml==6.0.2",
     "requests==2.33.0",
-    "dnspython==2.7.0",
+    "dnspython==2.9.2",
     "pydantic==2.11.7",
-    "aiohttp==3.13.4",
+    "aiohttp==3.14.5",
     "aws-lambda-powertools[parser]==3.15.1",
-    "open-mpic-core==6.4.0",
+    "open-mpic-core==6.6.0",
     "aioboto3~=14.3.0",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "black==26.3.0"
+    "black==26.3.1"
 ]
 test = [
-    "pytest==8.4.1",
     "pytest-cov==6.2.1",
     "pytest-mock==3.14.1",
     "pytest-html==4.1.1",
@@ -58,7 +57,7 @@ Source = "https://github.com/open-mpic/aws-lambda-python"
 #virtual = ".hatch"
 
 [tool.api]
-spec_version = "3.9.0"
+spec_version = "3.11.0"
 spec_repository = "https://github.com/open-mpic/open-mpic-specification"
 
 [tool.hatch]
